@@ -1,0 +1,195 @@
+/* ── Global ─────────────────────────────────── */
+* {
+    font-family: "Press Start 2P";
+    font-size: 10px;
+    color: #F0E8D0;
+    outline: none;
+}
+
+QMainWindow, QWidget {
+    background-color: #1A1A2E;
+}
+
+/* ── Buttons (Pokémon-style white box) ───────── */
+QPushButton {
+    background-color: #F0E8D0;
+    color: #1A1A2E;
+    border: 3px solid #1A1A2E;
+    border-right-color:  #5A5A7A;
+    border-bottom-color: #5A5A7A;
+    padding: 6px 14px;
+    min-width: 180px;
+    max-width: 320px;
+    min-height: 28px;
+    max-height: 40px;
+    font-size: 9px;
+}
+
+QPushButton:hover {
+    background-color: #FFE066;
+}
+
+QPushButton:pressed {
+    border-top-color:    #5A5A7A;
+    border-left-color:   #5A5A7A;
+    border-right-color:  #1A1A2E;
+    border-bottom-color: #1A1A2E;
+    background-color: #E0D060;
+}
+
+QPushButton:disabled {
+    background-color: #888880;
+    color: #555550;
+    border-color: #555550;
+}
+/* ── Title ───────────────────────────────────── */
+QLabel#titleLabel {
+    font-size: 16px;
+    color: #FFE066;
+    letter-spacing: 2px;
+}
+
+QLabel#subtitleLabel {
+    font-size: 7px;
+    color: #A0A0C0;
+}
+/* ── Difficulty combo ────────────────────────── */
+QComboBox {
+    background-color: #F0E8D0;
+    color: #1A1A2E;
+    border: 3px solid #1A1A2E;
+    border-right-color:  #5A5A7A;
+    border-bottom-color: #5A5A7A;
+    padding: 4px 10px;
+    min-width: 120px;
+    max-width: 200px;
+    font-size: 9px;
+}
+/* ── Labels ──────────────────────────────────── */
+QLabel {
+    background: transparent;
+    color: #F0E8D0;
+}
+
+QLabel#titleLabel {
+    font-size: 18px;
+    color: #FFE066;
+}
+
+QLabel#subtitleLabel {
+    font-size: 8px;
+    color: #A0A0C0;
+}
+
+/* ── The battle log text box ─────────────────── */
+QTextEdit, QPlainTextEdit {
+    background-color: #0D0D1A;
+    color: #F0E8D0;
+    border: 3px solid #F0E8D0;
+    border-right-color:  #5A5A7A;
+    border-bottom-color: #5A5A7A;
+    padding: 8px;
+}
+
+/* ── Scoreboard table ────────────────────────── */
+QTableWidget {
+    background-color: #0D0D1A;
+    color: #F0E8D0;
+    gridline-color: #3A3A5A;
+    border: 3px solid #F0E8D0;
+}
+
+QHeaderView::section {
+    background-color: #1A1A2E;
+    color: #FFE066;
+    border: 1px solid #3A3A5A;
+    padding: 4px;
+    font-size: 9px;
+}
+
+QTableWidget::item:selected {
+    background-color: #3A3A7A;
+}
+
+/* ── Slider (for difficulty / settings) ─────── */
+QSlider::groove:horizontal {
+    background: #0D0D1A;
+    height: 6px;
+    border: 2px solid #F0E8D0;
+}
+
+QSlider::handle:horizontal {
+    background: #FFE066;
+    border: 2px solid #1A1A2E;
+    width: 16px;
+    height: 16px;
+    margin: -7px 0;
+}
+
+QSlider::sub-page:horizontal {
+    background: #4A90D9;
+}
+
+/* ── ComboBox (difficulty picker) ────────────── */
+QComboBox {
+    background-color: #F0E8D0;
+    color: #1A1A2E;
+    border: 3px solid #1A1A2E;
+    padding: 6px 10px;
+    min-width: 120px;
+}
+
+QComboBox::drop-down {
+    border-left: 2px solid #1A1A2E;
+    width: 20px;
+}
+
+QComboBox QAbstractItemView {
+    background-color: #F0E8D0;
+    color: #1A1A2E;
+    selection-background-color: #FFE066;
+}
+
+/* ── ScrollBar (in battle log) ───────────────── */
+QScrollBar:vertical {
+    background: #0D0D1A;
+    width: 10px;
+    border: 1px solid #3A3A5A;
+}
+
+QScrollBar::handle:vertical {
+    background: #F0E8D0;
+    min-height: 20px;
+}
+
+QScrollBar::add-line:vertical,
+QScrollBar::sub-line:vertical { height: 0; }
+
+/* ── Line edit (name input on char select) ───── */
+QLineEdit {
+    background-color: #0D0D1A;
+    color: #FFE066;
+    border: 3px solid #F0E8D0;
+    padding: 6px 8px;
+    selection-background-color: #3A3A7A;
+}
+
+QLineEdit:focus {
+    border-color: #FFE066;
+}
+
+/* ── Selected character card button ──────────── */
+QPushButton[selected="true"] {
+    background-color: #FFE066;
+    color: #1A1A2E;
+    border: 3px solid #FFE066;
+    border-right-color:  #B8A000;
+    border-bottom-color: #B8A000;
+}
+
+/* ── Character card container ────────────────── */
+QWidget#characterCard {
+    background-color: #16213E;
+    border: 2px solid #3A3A5A;
+    border-radius: 8px;
+}
