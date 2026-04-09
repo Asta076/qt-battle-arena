@@ -75,6 +75,8 @@ DungeonWidget::DungeonWidget(QWidget *parent)
 
     buildScene();
     setFocusPolicy(Qt::StrongFocus);
+    m_view->setTransform(QTransform());
+    m_view->setSceneRect(0, 0, WORLD_W, WORLD_H);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
