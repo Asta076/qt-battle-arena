@@ -49,7 +49,7 @@ OverworldWidget::OverworldWidget(QWidget *parent)
     layout->setContentsMargins(0, 0, 0, 0);
     layout->setSpacing(0);
 
-    m_scene = new QGraphicsScene(0, 0, WORLD_W, WORLD_H, this);
+    m_scene = new QGraphicsScene(0, 0, 800, 600, this);
 
     m_view = new QGraphicsView(m_scene, this);
     m_view->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
@@ -64,7 +64,7 @@ OverworldWidget::OverworldWidget(QWidget *parent)
     buildScene();
     setFocusPolicy(Qt::StrongFocus);
     m_view->setTransform(QTransform());  // reset any scaling
-    m_view->setSceneRect(0, 0, WORLD_W, WORLD_H);
+    m_view->setSceneRect(0, 0, 800, 600);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -216,10 +216,10 @@ void OverworldWidget::keyReleaseEvent(QKeyEvent *e)
 void OverworldWidget::resizeEvent(QResizeEvent *e)
 {
     QWidget::resizeEvent(e);
-    fitView();
+    
 }
 
 void OverworldWidget::fitView()
 {
-    m_view->fitInView(m_scene->sceneRect(), Qt::KeepAspectRatio);
+   
 }
