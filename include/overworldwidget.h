@@ -87,8 +87,8 @@ inline int idleCol(Direction d) { return static_cast<int>(d); }
 class PlayerSprite : public QGraphicsPixmapItem
 {
 public:
-    static constexpr qreal W     = 48.0;   // logical scene size (scaled from 68px)
-    static constexpr qreal H     = 48.0;
+    static constexpr qreal W     = 96.0;   // logical scene size (scaled from 68px)
+    static constexpr qreal H     = 96.0;
     static constexpr qreal SPEED = 3.0;
 
     explicit PlayerSprite(const SpriteSheet &sheet,
