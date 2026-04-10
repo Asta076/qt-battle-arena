@@ -6,34 +6,131 @@
 #include <QBrush>
 #include <QPen>
 #include <QFont>
+#include <QKeyEvent>
 
 // ═════════════════════════════════════════════════════════════════════════════
 //  PlayerSprite
 // ═════════════════════════════════════════════════════════════════════════════
 
-PlayerSprite::PlayerSprite(QGraphicsItem *parent)
-    : QGraphicsRectItem(0, 0, W, H, parent)
+PlayerSprite::PlayerSprite(const SpriteSheet &sheet, QGraphicsItem *parent)
+    : QGraphicsPixmapItem(parent)
+    , m_sheet(sheet)
 {
-    setBrush(QColor("#4a90d9"));
-    setPen(QPen(QColor("#1a5a99"), 2));
-    // Centre the item's origin so setPos() moves the centre of the sprite.
+    setTransformationMode(Qt::SmoothTransformation);
     setTransformOriginPoint(W / 2.0, H / 2.0);
+
+    // Start idle, facing toward camera (Direction::S)
+    setIdleFrame(Direction::S);
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+
+void PlayerSprite::setIdleFrame(Direction dir)
+{
+    m_isIdle     = true;
+    m_facing     = dir;
+    m_frameIndex = 0;
+    m_tickAccum  = 0;
+    applyFrame();
+}
+
+void PlayerSprite::setWalkAnim(Direction dir)
+{
+    // Only reset the frame counter when we actually change direction,
+    // so the walk cycle doesn't stutter while holding the same key.
+    if (!m_isIdle && m_facing == dir) return;
+
+    m_isIdle     = false;
+    m_facing     = dir;
+    m_frameIndex = 0;
+    m_tickAccum  = 0;
+    applyFrame();
+}
+
+void PlayerSprite::applyFrame()
+{
+    int col, row;
+
+    if (m_isIdle) {
+        // Row 0, column = direction index
+        row = 0;
+        col = idleCol(m_facing);
+    } else {
+        // Walk row = direction index + 1, column = current frame (0-5)
+        row = walkRow(m_facing);
+        col = m_frameIndex;
+    }
+
+    QPixmap raw = m_sheet.frame(col, row);
+    setPixmap(raw.scaled(static_cast<int>(W),
+                         static_cast<int>(H),
+                         Qt::KeepAspectRatio,
+                         Qt::SmoothTransformation));
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 
 void PlayerSprite::step(const QSet<int> &heldKeys, const QRectF &worldBounds)
 {
+    const bool goUp    = heldKeys.contains(Qt::Key_W) || heldKeys.contains(Qt::Key_Up);
+    const bool goDown  = heldKeys.contains(Qt::Key_S) || heldKeys.contains(Qt::Key_Down);
+    const bool goLeft  = heldKeys.contains(Qt::Key_A) || heldKeys.contains(Qt::Key_Left);
+    const bool goRight = heldKeys.contains(Qt::Key_D) || heldKeys.contains(Qt::Key_Right);
+
     qreal dx = 0, dy = 0;
+    if (goUp)    dy -= SPEED;
+    if (goDown)  dy += SPEED;
+    if (goLeft)  dx -= SPEED;
+    if (goRight) dx += SPEED;
 
-    if (heldKeys.contains(Qt::Key_W) || heldKeys.contains(Qt::Key_Up))    dy -= SPEED;
-    if (heldKeys.contains(Qt::Key_S) || heldKeys.contains(Qt::Key_Down))  dy += SPEED;
-    if (heldKeys.contains(Qt::Key_A) || heldKeys.contains(Qt::Key_Left))  dx -= SPEED;
-    if (heldKeys.contains(Qt::Key_D) || heldKeys.contains(Qt::Key_Right)) dx += SPEED;
-
-    // Normalise diagonal movement so speed stays consistent.
+    // Normalise diagonal so speed is consistent
     if (dx != 0 && dy != 0) { dx *= 0.7071; dy *= 0.7071; }
 
-    qreal nx = qBound(worldBounds.left(),           x() + dx, worldBounds.right()  - W);
-    qreal ny = qBound(worldBounds.top(),             y() + dy, worldBounds.bottom() - H);
+    const bool moving = (dx != 0 || dy != 0);
+
+    // ── Choose direction ──────────────────────────────────────────────────
+    //
+    //  8-way WASD → Direction mapping:
+    //
+    //   W       → N    (back to camera, row 2)
+    //   S       → S    (toward camera,  row 8)
+    //   A       → W    (left,           row 4)
+    //   D       → E    (right-forward,  row 7)
+    //   W+D     → NE   (up-right diag,  row 5)
+    //   W+A     → SW   (up-left diag,   row 3)
+    //   S+D     → SE   (down-right,     row 1)
+    //   S+A     → SW2  (down-left,      row 6)
+    //
+    if (moving) {
+        Direction dir;
+        if      (goUp   && goRight) dir = Direction::NE;
+        else if (goUp   && goLeft)  dir = Direction::SW;
+        else if (goDown && goRight) dir = Direction::SE;
+        else if (goDown && goLeft)  dir = Direction::SW2;
+        else if (goRight)           dir = Direction::E;
+        else if (goLeft)            dir = Direction::W;
+        else if (goUp)              dir = Direction::N;
+        else                        dir = Direction::S;
+
+        setWalkAnim(dir);
+
+        // Advance animation frame every TICKS_PER_FRAME physics ticks
+        ++m_tickAccum;
+        if (m_tickAccum >= TICKS_PER_FRAME) {
+            m_tickAccum  = 0;
+            m_frameIndex = (m_frameIndex + 1) % WALK_FRAMES;
+            applyFrame();
+        }
+    } else {
+        // Stopped — show idle stance for last known facing direction
+        if (!m_isIdle) {
+            setIdleFrame(m_facing);
+        }
+    }
+
+    // ── Clamp to world and move ───────────────────────────────────────────
+    qreal nx = qBound(worldBounds.left(),  x() + dx, worldBounds.right()  - W);
+    qreal ny = qBound(worldBounds.top(),   y() + dy, worldBounds.bottom() - H);
     setPos(nx, ny);
 }
 
@@ -45,26 +142,42 @@ void PlayerSprite::step(const QSet<int> &heldKeys, const QRectF &worldBounds)
 OverworldWidget::OverworldWidget(QWidget *parent)
     : QWidget(parent)
 {
+    // ── Load sprite sheet ────────────────────────────────────────────────────
+    // Primary:  Qt resource  :/sprites/player.png
+    //   Add to your .qrc:
+    //     <file alias="sprites/player.png">assets/player.png</file>
+    //
+    // Fallback: player.png next to the executable
+    m_sheet.pixmap = QPixmap(":/sprites/player.png");
+    if (m_sheet.pixmap.isNull())
+        m_sheet.pixmap = QPixmap("player.png");
+
+    Q_ASSERT_X(!m_sheet.pixmap.isNull(), "OverworldWidget",
+               "Could not load player sprite sheet.\n"
+               "Add it to resources as :/sprites/player.png "
+               "or place player.png next to the executable.");
+
+    // ── Layout ───────────────────────────────────────────────────────────────
     auto *layout = new QVBoxLayout(this);
     layout->setContentsMargins(0, 0, 0, 0);
     layout->setSpacing(0);
 
-    m_scene = new QGraphicsScene(0, 0, 800, 600, this);
+    m_scene = new QGraphicsScene(0, 0, WORLD_W, WORLD_H, this);
 
     m_view = new QGraphicsView(m_scene, this);
     m_view->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     m_view->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     m_view->setRenderHint(QPainter::Antialiasing);
-    m_view->setFocusPolicy(Qt::NoFocus);  // keys handled at widget level
+    m_view->setFocusPolicy(Qt::NoFocus);
     layout->addWidget(m_view);
 
-    m_ticker.setInterval(16);  // ~60 fps
+    m_ticker.setInterval(16);   // ~60 fps
     connect(&m_ticker, &QTimer::timeout, this, &OverworldWidget::onTick);
 
     buildScene();
     setFocusPolicy(Qt::StrongFocus);
-    m_view->setTransform(QTransform());  // reset any scaling
-    m_view->setSceneRect(0, 0, 800, 600);
+    m_view->setTransform(QTransform());
+    m_view->setSceneRect(0, 0, WORLD_W, WORLD_H);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -89,16 +202,16 @@ void OverworldWidget::deactivate()
 
 void OverworldWidget::buildScene()
 {
-    // ── Background (grass) ───────────────────────────────────────────────────
+    // ── Background ───────────────────────────────────────────────────────────
     m_scene->setBackgroundBrush(QColor("#4a7c40"));
 
-    // Central dirt path running top-to-bottom
+    // Central dirt path
     auto *path = m_scene->addRect(WORLD_W * 0.38, 0,
                                   WORLD_W * 0.24, WORLD_H,
                                   Qt::NoPen, QBrush(QColor("#8d6e3a")));
     path->setZValue(0);
 
-    // ── A simple building (inn / safe house) ─────────────────────────────────
+    // ── Inn ──────────────────────────────────────────────────────────────────
     auto *walls = m_scene->addRect(80, 220, 140, 110,
                                    QPen(QColor("#4e342e"), 2),
                                    QBrush(QColor("#8d6e63")));
@@ -114,31 +227,27 @@ void OverworldWidget::buildScene()
     innLabel->setPos(134, 258);
     innLabel->setZValue(3);
 
-    // ── Decorative trees ─────────────────────────────────────────────────────
+    // ── Trees ────────────────────────────────────────────────────────────────
     const QList<QPointF> trees = {
         {60,  60},  {150, 50},  {680, 55},  {740, 130},
         {60,  430}, {130, 510}, {690, 420}, {750, 300},
         {550, 480}, {580, 80},
     };
     for (const QPointF &p : trees) {
-        // Trunk
         m_scene->addRect(p.x() + 8, p.y() + 26, 12, 16,
                          Qt::NoPen, QBrush(QColor("#5d4037")))->setZValue(1);
-        // Canopy
         m_scene->addEllipse(p.x(), p.y(), 28, 32,
                             Qt::NoPen, QBrush(QColor("#2e7d32")))->setZValue(2);
     }
 
-    // ── Dungeon entrance (top-centre of map) ─────────────────────────────────
+    // ── Dungeon entrance ─────────────────────────────────────────────────────
     const qreal dw = 80, dh = 56;
     const qreal dx = (WORLD_W - dw) / 2.0;
     const qreal dy = 6;
 
-    // Stone frame
     m_scene->addRect(dx - 10, dy - 6, dw + 20, dh + 10,
                      Qt::NoPen, QBrush(QColor("#424242")))->setZValue(1);
 
-    // Dark portal (this is also the trigger zone stored in m_dungeonZone)
     m_dungeonZone = m_scene->addRect(dx, dy, dw, dh,
                                      Qt::NoPen, QBrush(QColor("#1a1a2e")));
     m_dungeonZone->setZValue(2);
@@ -156,8 +265,8 @@ void OverworldWidget::buildScene()
     hint->setPos(8, WORLD_H - 20);
     hint->setZValue(10);
 
-    // ── Player (always on top) ───────────────────────────────────────────────
-    m_player = new PlayerSprite();
+    // ── Player ───────────────────────────────────────────────────────────────
+    m_player = new PlayerSprite(m_sheet);
     m_player->setZValue(9);
     m_scene->addItem(m_player);
     placePlayer();
@@ -165,7 +274,6 @@ void OverworldWidget::buildScene()
 
 void OverworldWidget::placePlayer()
 {
-    // Spawn in the centre of the map
     if (m_player)
         m_player->setPos((WORLD_W - PlayerSprite::W) / 2.0,
                          (WORLD_H - PlayerSprite::H) / 2.0);
@@ -183,7 +291,6 @@ void OverworldWidget::onTick()
 
 void OverworldWidget::checkTriggers()
 {
-    // Dungeon door: player bounding rect overlaps the zone rect
     if (m_player->collidesWithItem(m_dungeonZone)) {
         deactivate();
         emit dungeonEntered();
@@ -210,16 +317,14 @@ void OverworldWidget::keyReleaseEvent(QKeyEvent *e)
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-//  Resize: keep the view fitted to the widget
+//  Resize
 // ─────────────────────────────────────────────────────────────────────────────
 
 void OverworldWidget::resizeEvent(QResizeEvent *e)
 {
     QWidget::resizeEvent(e);
-    
 }
 
 void OverworldWidget::fitView()
 {
-   
 }
