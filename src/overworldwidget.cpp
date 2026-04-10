@@ -19,7 +19,7 @@ PlayerSprite::PlayerSprite(const SpriteSheet &sheet, QGraphicsItem *parent)
     : QGraphicsPixmapItem(parent)
     , m_sheet(sheet)
 {
-    setTransformationMode(Qt::SmoothTransformation);
+    setTransformationMode(Qt::FastTransformation);
     setTransformOriginPoint(W / 2.0, H / 2.0);
 
     // Start idle, facing toward camera (Direction::S)
@@ -68,7 +68,7 @@ void PlayerSprite::applyFrame()
     setPixmap(raw.scaled(static_cast<int>(W),
                          static_cast<int>(H),
                          Qt::KeepAspectRatio,
-                         Qt::SmoothTransformation));
+                         Qt::FastTransformation));
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
