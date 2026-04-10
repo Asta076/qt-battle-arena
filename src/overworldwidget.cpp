@@ -10,6 +10,7 @@
 #include <QDir>
 #include <QFileInfo>
 #include <QDebug>
+#include <QRandomGenerator>
 
 // ═════════════════════════════════════════════════════════════════════════════
 //  PlayerSprite
