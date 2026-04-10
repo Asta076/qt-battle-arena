@@ -148,13 +148,13 @@ OverworldWidget::OverworldWidget(QWidget *parent)
     //     <file alias="sprites/player.png">assets/player.png</file>
     //
     // Fallback: player.png next to the executable
-    m_sheet.pixmap = QPixmap(":/sprites/player.png");
+    m_sheet.pixmap = QPixmap(":/resources/sprites/player.png");
     if (m_sheet.pixmap.isNull())
         m_sheet.pixmap = QPixmap("player.png");
 
     Q_ASSERT_X(!m_sheet.pixmap.isNull(), "OverworldWidget",
                "Could not load player sprite sheet.\n"
-               "Add it to resources as :/sprites/player.png "
+               "Add it to resources as :/resources/sprites/player.png "
                "or place player.png next to the executable.");
 
     // ── Layout ───────────────────────────────────────────────────────────────
