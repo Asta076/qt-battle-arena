@@ -204,7 +204,7 @@ void OverworldWidget::buildScene()
 {
     // ── Background ───────────────────────────────────────────────────────────
     QPixmap grassTile("resources/sprites/grass.png");
-    onst int TILE_SIZE = 64; // choose 32 or 64 depending on your game
+    const int TILE_SIZE = 64; // choose 32 or 64 depending on your game
 
     QPixmap scaledTile = grassTile.scaled(
         TILE_SIZE,
