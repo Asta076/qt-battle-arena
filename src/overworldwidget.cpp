@@ -26,21 +26,25 @@ PlayerSprite::PlayerSprite(const SpriteSheet &sheet, QGraphicsItem *parent)
     setIdleFrame(Direction::Down);
 
     // ── Shadow ─────────────────────────────────────────────
-    m_shadow = new QGraphicsEllipseItem(0, 0, W * 0.6, H * 0.25, this);
+    const qreal shadowW = W * 0.65;
+    const qreal shadowH = H * 0.30;
     
-    QRadialGradient grad(W * 0.3, H * 0.125, W * 0.3);
-    grad.setColorAt(0, QColor(0, 0, 0, 120));
-    grad.setColorAt(1, QColor(0, 0, 0, 0));
+    m_shadow = new QGraphicsEllipseItem(0, 0, shadowW, shadowH, this);
+    
+    // gradient centered in ellipse
+    QRadialGradient grad(shadowW / 2.0, shadowH / 2.0, shadowW / 2.0);
+    
+    grad.setColorAt(0.0, QColor(0,0,0,140));  // darker center
+    grad.setColorAt(0.6, QColor(0,0,0,80));
+    grad.setColorAt(1.0, QColor(0,0,0,0));    // smooth fade
     
     m_shadow->setBrush(grad);
     m_shadow->setPen(Qt::NoPen);
     
-    // position under the character
-    m_shadow->setPos(W * 0.2, H * 0.75);
+    // position under feet
+    m_shadow->setPos((W - shadowW) / 2.0, H * 0.78);
     
-    // ensure it renders under the sprite
     m_shadow->setZValue(-1);
-    }
 
 
 
