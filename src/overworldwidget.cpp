@@ -46,7 +46,7 @@ PlayerSprite::PlayerSprite(const SpriteSheet &sheet, QGraphicsItem *parent)
     m_shadow->setPos((W - shadowW) / 2.0, H * 0.78);
     
     m_shadow->setZValue(-1);
-
+}
 
 
 void PlayerSprite::setIdleFrame(Direction dir)
