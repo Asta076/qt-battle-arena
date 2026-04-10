@@ -24,9 +24,25 @@ PlayerSprite::PlayerSprite(const SpriteSheet &sheet, QGraphicsItem *parent)
 
     // Start idle, facing down (toward camera)
     setIdleFrame(Direction::Down);
-}
 
-// ─────────────────────────────────────────────────────────────────────────────
+    // ── Shadow ─────────────────────────────────────────────
+    m_shadow = new QGraphicsEllipseItem(0, 0, W * 0.6, H * 0.25, this);
+    
+    QRadialGradient grad(W * 0.3, H * 0.125, W * 0.3);
+    grad.setColorAt(0, QColor(0, 0, 0, 120));
+    grad.setColorAt(1, QColor(0, 0, 0, 0));
+    
+    m_shadow->setBrush(grad);
+    m_shadow->setPen(Qt::NoPen);
+    
+    // position under the character
+    m_shadow->setPos(W * 0.2, H * 0.75);
+    
+    // ensure it renders under the sprite
+    m_shadow->setZValue(-1);
+    }
+
+
 
 void PlayerSprite::setIdleFrame(Direction dir)
 {
