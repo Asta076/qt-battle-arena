@@ -109,6 +109,7 @@ private:
 
     static constexpr int TICKS_PER_FRAME = 5;   // animation speed (~12 fps @ 60)
     static constexpr int WALK_FRAMES     = 6;   // frames per walk row (cols 0-5)
+    QGraphicsEllipseItem *m_shadow = nullptr;
 };
 
 // ═════════════════════════════════════════════════════════════════════════════
