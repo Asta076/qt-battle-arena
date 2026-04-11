@@ -11,6 +11,7 @@
 #include <QFileInfo>
 #include <QDebug>
 #include <QRandomGenerator>
+#include <QRadialGradient>
 
 // ═════════════════════════════════════════════════════════════════════════════
 //  PlayerSprite
