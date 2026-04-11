@@ -259,16 +259,11 @@ void OverworldWidget::buildScene()
         // Place it so its top edge aligns with the bottom of the house
         auto *houseShadow = m_scene->addRect(
             0, 0, shadowW, shadowH,
-            Qt::NoPen, QBrush(QColor(0, 0, 0, 130)));
+            Qt::NoPen, QBrush(QColor(0, 0, 0, 80)));
 
-        // Shear horizontally: positive value skews right at the bottom
-        // giving a parallelogram that stretches bottom-right
-        QTransform t;
-        t.shear(0.55, 0.0);   // tweak 0.55 to change the sun angle
-        houseShadow->setTransform(t);
 
         // Position: sits at ~60% down the house, not the very bottom
-        houseShadow->setPos(HOUSE_X+35, HOUSE_Y + HOUSE_H * 0.60);
+        houseShadow->setPos(HOUSE_X, HOUSE_Y);
         houseShadow->setZValue(2);   // above ground tiles, below house sprite
     }
 
