@@ -268,7 +268,7 @@ void OverworldWidget::buildScene()
         houseShadow->setTransform(t);
 
         // Position: sits at ~60% down the house, not the very bottom
-        houseShadow->setPos(HOUSE_X, HOUSE_Y + HOUSE_H * 0.60);
+        houseShadow->setPos(HOUSE_X+35, HOUSE_Y + HOUSE_H * 0.60);
         houseShadow->setZValue(2);   // above ground tiles, below house sprite
     }
 
@@ -280,7 +280,7 @@ void OverworldWidget::buildScene()
                            Qt::KeepAspectRatio,
                            Qt::FastTransformation));
         houseItem->setPos(HOUSE_X, HOUSE_Y);
-        houseItem->setZValue(3);
+        houseItem->setZValue(10);
     } else {
         qWarning("Could not load resources/sprites/house.png");
     }
