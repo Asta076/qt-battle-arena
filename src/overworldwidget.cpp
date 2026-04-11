@@ -7,6 +7,7 @@
 #include <QPen>
 #include <QFont>
 #include <QKeyEvent>
+#include <QShowEvent>
 #include <QDir>
 #include <QFileInfo>
 #include <QDebug>
@@ -27,7 +28,6 @@ PlayerSprite::PlayerSprite(const SpriteSheet &sheet, QGraphicsItem *parent)
     setTransformationMode(Qt::FastTransformation);
     setTransformOriginPoint(W / 2.0, H / 2.0);
 
-    // Start idle, facing down (toward camera)
     setIdleFrame(Direction::Down);
 
     // ── Shadow ─────────────────────────────────────────────
@@ -175,7 +175,6 @@ OverworldWidget::OverworldWidget(AudioManager *audio, QWidget *parent)
 
     buildScene();
     setFocusPolicy(Qt::StrongFocus);
-    m_view->setTransform(QTransform());
     m_view->setSceneRect(0, 0, WORLD_W, WORLD_H);
 
     buildPauseOverlay();
@@ -243,31 +242,45 @@ void OverworldWidget::buildScene()
         }
     }
 
+    // ── Border — dirt wall tiles around the scene edges ──────────────────────
+    QPixmap dirtWallPx("resources/sprites/dirt_wall.png");
+    if (!dirtWallPx.isNull()) {
+        const int WALL_TILE_W = 44;
+        const int WALL_TILE_H = 30;
+        QPixmap wallTile = dirtWallPx.scaled(WALL_TILE_W, WALL_TILE_H,
+                                             Qt::IgnoreAspectRatio, Qt::FastTransformation);
+        // Top and bottom rows
+        for (int x = 0; x < WORLD_W; x += WALL_TILE_W) {
+            auto *t = m_scene->addPixmap(wallTile); t->setPos(x, 0);                       t->setZValue(5);
+            auto *b = m_scene->addPixmap(wallTile); b->setPos(x, WORLD_H - WALL_TILE_H);   b->setZValue(5);
+        }
+        // Left and right columns
+        for (int y = WALL_TILE_H; y < WORLD_H - WALL_TILE_H; y += WALL_TILE_H) {
+            auto *l = m_scene->addPixmap(wallTile); l->setPos(0, y);                        l->setZValue(5);
+            auto *r = m_scene->addPixmap(wallTile); r->setPos(WORLD_W - WALL_TILE_W, y);   r->setZValue(5);
+        }
+    } else {
+        qWarning("Could not load resources/sprites/dirt_wall.png");
+    }
+
     // ── House ────────────────────────────────────────────────────────────────
     static constexpr int HOUSE_W = 240;
     static constexpr int HOUSE_H = 240;
     static constexpr int HOUSE_X = 60;
     static constexpr int HOUSE_Y = 180;
 
-    // Shadow — sheared rectangle simulating sunlight from the top-left
-    // The shadow is a parallelogram: same width as the house, cast to the right
     {
-        // Shadow rect before shearing: full house width, about 30% of house height
         const qreal shadowW = HOUSE_W * 0.75;
         const qreal shadowH = HOUSE_H * 0.30;
 
-        // Place it so its top edge aligns with the bottom of the house
         auto *houseShadow = m_scene->addRect(
             0, 0, shadowW, shadowH,
             Qt::NoPen, QBrush(QColor(0, 0, 0, 65)));
 
-
-        // Position: sits at ~60% down the house, not the very bottom
-        houseShadow->setPos(HOUSE_X+33, HOUSE_Y+155);
-        houseShadow->setZValue(2);   // above ground tiles, below house sprite
+        houseShadow->setPos(HOUSE_X + 33, HOUSE_Y + 155);
+        houseShadow->setZValue(2);
     }
 
-    // House sprite
     QPixmap housePx("resources/sprites/house.png");
     if (!housePx.isNull()) {
         QGraphicsPixmapItem *houseItem = m_scene->addPixmap(
@@ -280,8 +293,6 @@ void OverworldWidget::buildScene()
         qWarning("Could not load resources/sprites/house.png");
     }
 
-    // Invisible collision box — starts at 60%, inset 10% on each side
-    // Player hits the wall face, not the air in front of the building
     const qreal colliderInset = HOUSE_W * 0.10;
     const qreal colliderY     = HOUSE_Y + HOUSE_H * 0.60;
     const qreal colliderH     = HOUSE_H * 0.25;
@@ -292,16 +303,52 @@ void OverworldWidget::buildScene()
     m_houseCollider->setZValue(1);
 
     // ── Trees ────────────────────────────────────────────────────────────────
-    const QList<QPointF> trees = {
-        {60,  60},  {150, 50},  {680, 55},  {740, 130},
-        {60,  430}, {130, 510}, {690, 420}, {750, 300},
-        {550, 480}, {580, 80},
+    QPixmap treeRoundPx("resources/sprites/tree_round.png");
+    QPixmap treePinePx ("resources/sprites/tree_pine.png");
+
+    const int TREE_W = 80;
+    const int TREE_H = 80;
+    QPixmap treeRound = treeRoundPx.scaled(TREE_W, TREE_H, Qt::KeepAspectRatio, Qt::FastTransformation);
+    QPixmap treePine  = treePinePx .scaled(TREE_W, TREE_H, Qt::KeepAspectRatio, Qt::FastTransformation);
+
+    // Each entry: position, true = round tree  false = pine
+    const QList<QPair<QPointF,bool>> trees = {
+        {{60,  60},  false},
+        {{150, 50},  true },
+        {{680, 55},  true },
+        {{740, 130}, false},
+        {{60,  430}, true },
+        {{130, 510}, false},
+        {{690, 420}, false},
+        {{750, 300}, true },
+        {{550, 480}, true },
+        {{580, 80},  false},
     };
-    for (const QPointF &p : trees) {
-        m_scene->addRect(p.x() + 8, p.y() + 26, 12, 16,
-                         Qt::NoPen, QBrush(QColor("#5d4037")))->setZValue(1);
-        m_scene->addEllipse(p.x(), p.y(), 28, 32,
-                            Qt::NoPen, QBrush(QColor("#2e7d32")))->setZValue(2);
+
+    for (const auto &[p, isRound] : trees) {
+        const QPixmap &px = isRound ? treeRound : treePine;
+        const qreal tw = px.width();
+        const qreal th = px.height();
+
+        // Shadow ellipse under the trunk
+        const qreal shadowW = tw * 0.65;
+        const qreal shadowH = th * 0.15;
+        const qreal shadowX = p.x() + (tw - shadowW) / 2.0;
+        const qreal shadowY = p.y() + th - shadowH * 0.8;
+
+        auto *shadow = m_scene->addEllipse(shadowX, shadowY, shadowW, shadowH,
+                                           Qt::NoPen, Qt::NoBrush);
+        QRadialGradient grad(shadowW / 2.0, shadowH / 2.0, shadowW / 2.0);
+        grad.setColorAt(0.0, QColor(0, 0, 0, 120));
+        grad.setColorAt(0.6, QColor(0, 0, 0, 50));
+        grad.setColorAt(1.0, QColor(0, 0, 0, 0));
+        shadow->setBrush(grad);
+        shadow->setZValue(2);
+
+        // Tree sprite
+        auto *treeItem = m_scene->addPixmap(px);
+        treeItem->setPos(p.x(), p.y());
+        treeItem->setZValue(3);
     }
 
     // ── Dungeon entrance ─────────────────────────────────────────────────────
@@ -419,8 +466,16 @@ void OverworldWidget::resizeEvent(QResizeEvent *e)
     fitView();
 }
 
+void OverworldWidget::showEvent(QShowEvent *e)
+{
+    QWidget::showEvent(e);
+    fitView();
+}
+
 void OverworldWidget::fitView()
 {
+    if (!m_view) return;
+    m_view->fitInView(0, 0, WORLD_W, WORLD_H, Qt::KeepAspectRatio);
 }
 
 void OverworldWidget::togglePause()
