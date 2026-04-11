@@ -147,17 +147,18 @@ private:
     static constexpr qreal WORLD_W = 800;
     static constexpr qreal WORLD_H = 600;
 
-    QGraphicsScene    *m_scene       = nullptr;
-    QGraphicsView     *m_view        = nullptr;
-    PlayerSprite      *m_player      = nullptr;
-    QGraphicsRectItem *m_dungeonZone = nullptr;
+    QGraphicsScene    *m_scene         = nullptr;
+    QGraphicsView     *m_view          = nullptr;
+    PlayerSprite      *m_player        = nullptr;
+    QGraphicsRectItem *m_dungeonZone   = nullptr;
+    QGraphicsRectItem *m_houseCollider = nullptr;   // invisible collision box for the house
 
     QTimer    m_ticker;
     QSet<int> m_heldKeys;
 
     SpriteSheet m_sheet;
 
-    AudioManager *m_audio   = nullptr;
+    AudioManager *m_audio        = nullptr;
     QWidget      *m_pauseOverlay = nullptr;
-    bool          m_paused  = false;
+    bool          m_paused       = false;
 };
