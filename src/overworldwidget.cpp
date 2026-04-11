@@ -226,7 +226,7 @@ void OverworldWidget::buildScene()
     QPixmap dirt1(":/sprites/dirt1.png");
     QPixmap dirt2(":/sprites/dirt2.png");
 
-    const int TILE = 64; 
+    const int TILE = 64;
 
     QPixmap d1 = dirt1.scaled(TILE, TILE, Qt::IgnoreAspectRatio, Qt::FastTransformation);
     QPixmap d2 = dirt2.scaled(TILE, TILE, Qt::IgnoreAspectRatio, Qt::FastTransformation);
@@ -244,11 +244,35 @@ void OverworldWidget::buildScene()
     }
 
     // ── House ────────────────────────────────────────────────────────────────
-    static constexpr int  HOUSE_W = 240;
-    static constexpr int  HOUSE_H = 240;
-    static constexpr int  HOUSE_X = 60;
-    static constexpr int  HOUSE_Y = 180;
+    static constexpr int HOUSE_W = 240;
+    static constexpr int HOUSE_H = 240;
+    static constexpr int HOUSE_X = 60;
+    static constexpr int HOUSE_Y = 180;
 
+    // Shadow — sheared rectangle simulating sunlight from the top-left
+    // The shadow is a parallelogram: same width as the house, cast to the right
+    {
+        // Shadow rect before shearing: full house width, about 30% of house height
+        const qreal shadowW = HOUSE_W * 1.0;
+        const qreal shadowH = HOUSE_H * 0.30;
+
+        // Place it so its top edge aligns with the bottom of the house
+        auto *houseShadow = m_scene->addRect(
+            0, 0, shadowW, shadowH,
+            Qt::NoPen, QBrush(QColor(0, 0, 0, 55)));
+
+        // Shear horizontally: positive value skews right at the bottom
+        // giving a parallelogram that stretches bottom-right
+        QTransform t;
+        t.shear(0.55, 0.0);   // tweak 0.55 to change the sun angle
+        houseShadow->setTransform(t);
+
+        // Position: bottom-left of the house, shifted right by the shear offset
+        houseShadow->setPos(HOUSE_X, HOUSE_Y + HOUSE_H - shadowH * 0.15);
+        houseShadow->setZValue(2);   // above ground tiles, below house sprite
+    }
+
+    // House sprite
     QPixmap housePx("resources/sprites/house.png");
     if (!housePx.isNull()) {
         QGraphicsPixmapItem *houseItem = m_scene->addPixmap(
@@ -258,14 +282,18 @@ void OverworldWidget::buildScene()
         houseItem->setPos(HOUSE_X, HOUSE_Y);
         houseItem->setZValue(3);
     } else {
-        qWarning("Could not load :/sprites/house.png");
+        qWarning("Could not load resources/sprites/house.png");
     }
 
-    // Invisible collision box — lower 45% of the sprite (walls + doorstep, not roof)
-    const qreal colliderY = HOUSE_Y;
-    const qreal colliderH = HOUSE_H;
-    m_houseCollider = m_scene->addRect(HOUSE_X, colliderY, HOUSE_W, colliderH,
-                                       Qt::NoPen, Qt::NoBrush);
+    // Invisible collision box — bottom 25%, inset 10% on each side
+    // Player hits the wall face, not the air in front of the building
+    const qreal colliderInset = HOUSE_W * 0.10;
+    const qreal colliderY     = HOUSE_Y + HOUSE_H * 0.75;
+    const qreal colliderH     = HOUSE_H * 0.25;
+    m_houseCollider = m_scene->addRect(
+        HOUSE_X + colliderInset, colliderY,
+        HOUSE_W - colliderInset * 2, colliderH,
+        Qt::NoPen, Qt::NoBrush);
     m_houseCollider->setZValue(1);
 
     // ── Trees ────────────────────────────────────────────────────────────────
