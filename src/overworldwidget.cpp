@@ -306,8 +306,8 @@ void OverworldWidget::buildScene()
     QPixmap treeRoundPx("resources/sprites/tree_round.png");
     QPixmap treePinePx ("resources/sprites/tree_pine.png");
 
-    const int TREE_W = 80;
-    const int TREE_H = 80;
+    const int TREE_W = 160;
+    const int TREE_H = 160;
     QPixmap treeRound = treeRoundPx.scaled(TREE_W, TREE_H, Qt::KeepAspectRatio, Qt::FastTransformation);
     QPixmap treePine  = treePinePx .scaled(TREE_W, TREE_H, Qt::KeepAspectRatio, Qt::FastTransformation);
 
