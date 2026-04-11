@@ -39,8 +39,8 @@ void MainWindow::buildUI()
     // ── Construct all screens ────────────────────────────────────────────────
     m_startScreen  = new StartScreenWidget(m_engine, this);
     m_charSelect   = new CharacterSelectWidget(m_engine, this);
-    m_overworld    = new OverworldWidget(this);
-    m_dungeon      = new DungeonWidget(this);
+    m_overworld = new OverworldWidget(m_audio, this);
+    m_dungeon   = new DungeonWidget(m_audio, this);
     m_battleWidget = new BattleWidget(m_engine, m_audio, this);
     m_gameOver     = new GameOverWidget(m_engine, this);
     m_scoreboard   = new ScoreboardWidget(m_engine, this);
@@ -119,7 +119,6 @@ void MainWindow::onStateChanged(GameState newState)
             m_playerHasChosen = true;
             m_overworld->activate();
             m_stack->setCurrentWidget(m_overworld);
-            m_audio->playMusic("/music/menu.ogg");
         } else {
             // Already in a battle (enemy took their turn, now it's player's turn again)
             m_stack->setCurrentWidget(m_battleWidget);
@@ -151,7 +150,6 @@ void MainWindow::onExitedDungeon()
     // Player reached the exit portal inside the Dungeon
     m_overworld->activate();
     m_stack->setCurrentWidget(m_overworld);
-    m_audio->playMusic("/music/menu.ogg");
 }
 
 void MainWindow::onBattleTriggered(CharacterType enemyType, const QString &enemyName)

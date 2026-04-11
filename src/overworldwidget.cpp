@@ -12,7 +12,10 @@
 #include <QDebug>
 #include <QRandomGenerator>
 #include <QRadialGradient>
-
+#include "audiomanager.h"
+#include <QVBoxLayout>
+#include <QLabel>
+#include <QPushButton>
 // ═════════════════════════════════════════════════════════════════════════════
 //  PlayerSprite
 // ═════════════════════════════════════════════════════════════════════════════
@@ -164,8 +167,9 @@ void PlayerSprite::step(const QSet<int> &heldKeys, const QRectF &worldBounds)
 //  OverworldWidget
 // ═════════════════════════════════════════════════════════════════════════════
 
-OverworldWidget::OverworldWidget(QWidget *parent)
+OverworldWidget::OverworldWidget(AudioManager *audio, QWidget *parent)
     : QWidget(parent)
+    , m_audio(audio)
 {
     // ── Load sprite sheet ────────────────────────────────────────────────────
     QString spritePath = ":/sprites/player.png";
@@ -200,12 +204,16 @@ OverworldWidget::OverworldWidget(QWidget *parent)
     setFocusPolicy(Qt::StrongFocus);
     m_view->setTransform(QTransform());
     m_view->setSceneRect(0, 0, WORLD_W, WORLD_H);
+
+    buildPauseOverlay();
+
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 
 void OverworldWidget::activate()
 {
+    if (m_audio) m_audio->playMusic("/music/overworld.ogg");
     m_heldKeys.clear();
     placePlayer();
     m_ticker.start();
@@ -363,12 +371,13 @@ void OverworldWidget::checkTriggers()
 void OverworldWidget::keyPressEvent(QKeyEvent *e)
 {
     if (e->key() == Qt::Key_Escape) {
-        deactivate();
-        emit backToMenu();
+        togglePause();
         return;
     }
-    m_heldKeys.insert(e->key());
+    if (!m_paused)
+        m_heldKeys.insert(e->key());
 }
+
 
 void OverworldWidget::keyReleaseEvent(QKeyEvent *e)
 {
@@ -382,8 +391,57 @@ void OverworldWidget::keyReleaseEvent(QKeyEvent *e)
 void OverworldWidget::resizeEvent(QResizeEvent *e)
 {
     QWidget::resizeEvent(e);
+    if (m_pauseOverlay) m_pauseOverlay->resize(size());
+    fitView();
 }
 
 void OverworldWidget::fitView()
 {
+}
+
+void OverworldWidget::togglePause()
+{
+    m_paused = !m_paused;
+    if (m_paused) {
+        m_ticker.stop();
+        m_heldKeys.clear();
+        m_pauseOverlay->resize(size());
+        m_pauseOverlay->show();
+        m_pauseOverlay->raise();
+    } else {
+        m_pauseOverlay->hide();
+        m_ticker.start();
+        setFocus();
+    }
+}
+
+void OverworldWidget::buildPauseOverlay()
+{
+    m_pauseOverlay = new QWidget(this);
+    m_pauseOverlay->setAttribute(Qt::WA_TranslucentBackground);
+    m_pauseOverlay->hide();
+
+    auto *layout = new QVBoxLayout(m_pauseOverlay);
+    layout->setAlignment(Qt::AlignCenter);
+    layout->setSpacing(16);
+
+    auto *title   = new QLabel("— PAUSED —", m_pauseOverlay);
+    auto *resume  = new QPushButton("► RESUME",    m_pauseOverlay);
+    auto *menu    = new QPushButton("  MAIN MENU", m_pauseOverlay);
+
+    title->setObjectName("titleLabel");
+    title->setAlignment(Qt::AlignCenter);
+
+    connect(resume, &QPushButton::clicked, this, &OverworldWidget::togglePause);
+    connect(menu,   &QPushButton::clicked, this, [this]{
+        m_paused = false;
+        m_pauseOverlay->hide();
+        deactivate();
+        emit backToMenu();
+    });
+
+    layout->addWidget(title);
+    layout->addSpacing(12);
+    layout->addWidget(resume);
+    layout->addWidget(menu);
 }

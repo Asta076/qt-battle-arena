@@ -11,6 +11,8 @@
 #include <QList>
 #include "character.h"   // for CharacterType
 
+class AudioManager; // Forward Declaration
+
 // ─────────────────────────────────────────────────────────────────────────────
 //  EnemySprite  –  a roaming enemy the player can bump into to start a battle.
 // ─────────────────────────────────────────────────────────────────────────────
@@ -56,7 +58,7 @@ class DungeonWidget : public QWidget
     Q_OBJECT
 
 public:
-    explicit DungeonWidget(QWidget *parent = nullptr);
+    explicit DungeonWidget(AudioManager *audio, QWidget *parent = nullptr);
     ~DungeonWidget() override = default;
 
     // Call every time this screen becomes visible.
@@ -113,4 +115,10 @@ private:
     void patrolEnemies();
     void checkCollisions();
     void fitView();
+    void togglePause();
+    void buildPauseOverlay();
+
+    AudioManager *m_audio        = nullptr;
+    QWidget      *m_pauseOverlay = nullptr;
+    bool          m_paused       = false;
 };

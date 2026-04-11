@@ -7,7 +7,10 @@
 #include <QPen>
 #include <QFont>
 #include <QRandomGenerator>
-
+#include "audiomanager.h"
+#include <QVBoxLayout>
+#include <QLabel>
+#include <QPushButton>
 // ═════════════════════════════════════════════════════════════════════════════
 //  EnemySprite
 // ═════════════════════════════════════════════════════════════════════════════
@@ -54,8 +57,9 @@ void EnemySprite::patrol(const QRectF &worldBounds)
 //  DungeonWidget
 // ═════════════════════════════════════════════════════════════════════════════
 
-DungeonWidget::DungeonWidget(QWidget *parent)
+DungeonWidget::DungeonWidget(AudioManager *audio, QWidget *parent)
     : QWidget(parent)
+    , m_audio(audio)
 {
     auto *layout = new QVBoxLayout(this);
     layout->setContentsMargins(0, 0, 0, 0);
@@ -77,12 +81,15 @@ DungeonWidget::DungeonWidget(QWidget *parent)
     setFocusPolicy(Qt::StrongFocus);
     m_view->setTransform(QTransform());
     m_view->setSceneRect(0, 0, 800, 600);
+
+    buildPauseOverlay();
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 
 void DungeonWidget::activate()
 {
+    if (m_audio) m_audio->playMusic("/music/battle.ogg");
     m_heldKeys.clear();
     placePlayer();
 
@@ -292,11 +299,11 @@ void DungeonWidget::checkCollisions()
 void DungeonWidget::keyPressEvent(QKeyEvent *e)
 {
     if (e->key() == Qt::Key_Escape) {
-        deactivate();
-        emit backToMenu();
+        togglePause();
         return;
     }
-    m_heldKeys.insert(e->key());
+    if (!m_paused)
+        m_heldKeys.insert(e->key());
 }
 
 void DungeonWidget::keyReleaseEvent(QKeyEvent *e)
@@ -311,10 +318,57 @@ void DungeonWidget::keyReleaseEvent(QKeyEvent *e)
 void DungeonWidget::resizeEvent(QResizeEvent *e)
 {
     QWidget::resizeEvent(e);
-
+    if (m_pauseOverlay) m_pauseOverlay->resize(size());
 }
 
 void DungeonWidget::fitView()
 {
  
+}
+
+void DungeonWidget::togglePause()
+{
+    m_paused = !m_paused;
+    if (m_paused) {
+        m_ticker.stop();
+        m_heldKeys.clear();
+        m_pauseOverlay->resize(size());
+        m_pauseOverlay->show();
+        m_pauseOverlay->raise();
+    } else {
+        m_pauseOverlay->hide();
+        m_ticker.start();
+        setFocus();
+    }
+}
+
+void DungeonWidget::buildPauseOverlay()
+{
+    m_pauseOverlay = new QWidget(this);
+    m_pauseOverlay->setAttribute(Qt::WA_TranslucentBackground);
+    m_pauseOverlay->hide();
+
+    auto *layout = new QVBoxLayout(m_pauseOverlay);
+    layout->setAlignment(Qt::AlignCenter);
+    layout->setSpacing(16);
+
+    auto *title  = new QLabel("— PAUSED —", m_pauseOverlay);
+    auto *resume = new QPushButton("► RESUME",    m_pauseOverlay);
+    auto *menu   = new QPushButton("  MAIN MENU", m_pauseOverlay);
+
+    title->setObjectName("titleLabel");
+    title->setAlignment(Qt::AlignCenter);
+
+    connect(resume, &QPushButton::clicked, this, &DungeonWidget::togglePause);
+    connect(menu,   &QPushButton::clicked, this, [this]{
+        m_paused = false;
+        m_pauseOverlay->hide();
+        deactivate();
+        emit backToMenu();
+    });
+
+    layout->addWidget(title);
+    layout->addSpacing(12);
+    layout->addWidget(resume);
+    layout->addWidget(menu);
 }

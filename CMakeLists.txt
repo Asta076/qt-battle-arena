@@ -69,6 +69,7 @@ qt_add_resources(CS2-Battle-Arena "assets"
         resources/backgrounds/battle_bg.png
         resources/music/battle.ogg
         resources/music/menu.ogg
+        resources/music/overworld.ogg
         resources/sfx/hit.wav
         resources/sfx/faint.wav
         resources/sfx/special.wav

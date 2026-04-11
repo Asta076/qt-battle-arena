@@ -10,6 +10,8 @@
 #include <QPixmap>
 #include <QKeyEvent>
 
+class AudioManager;
+
 // ═════════════════════════════════════════════════════════════════════════════
 //  SpriteSheet
 //
@@ -21,10 +23,8 @@
 struct SpriteSheet
 {
     QPixmap pixmap;
-
     static constexpr int FRAME_W = 68;
     static constexpr int FRAME_H = 68;
-
     QPixmap frame(int col, int row) const
     {
         return pixmap.copy(col * FRAME_W, row * FRAME_H, FRAME_W, FRAME_H);
@@ -119,7 +119,7 @@ class OverworldWidget : public QWidget
 {
     Q_OBJECT
 public:
-    explicit OverworldWidget(QWidget *parent = nullptr);
+    explicit OverworldWidget(AudioManager *audio, QWidget *parent = nullptr);
 
     void activate();
     void deactivate();
@@ -141,6 +141,8 @@ private:
     void placePlayer();
     void checkTriggers();
     void fitView();
+    void togglePause();
+    void buildPauseOverlay();
 
     static constexpr qreal WORLD_W = 800;
     static constexpr qreal WORLD_H = 600;
@@ -154,4 +156,8 @@ private:
     QSet<int> m_heldKeys;
 
     SpriteSheet m_sheet;
+
+    AudioManager *m_audio   = nullptr;
+    QWidget      *m_pauseOverlay = nullptr;
+    bool          m_paused  = false;
 };
