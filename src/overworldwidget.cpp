@@ -259,7 +259,7 @@ void OverworldWidget::buildScene()
         // Place it so its top edge aligns with the bottom of the house
         auto *houseShadow = m_scene->addRect(
             0, 0, shadowW, shadowH,
-            Qt::NoPen, QBrush(QColor(0, 0, 0, 55)));
+            Qt::NoPen, QBrush(QColor(0, 0, 0, 130)));
 
         // Shear horizontally: positive value skews right at the bottom
         // giving a parallelogram that stretches bottom-right
@@ -267,8 +267,8 @@ void OverworldWidget::buildScene()
         t.shear(0.55, 0.0);   // tweak 0.55 to change the sun angle
         houseShadow->setTransform(t);
 
-        // Position: bottom-left of the house, shifted right by the shear offset
-        houseShadow->setPos(HOUSE_X, HOUSE_Y + HOUSE_H - shadowH * 0.15);
+        // Position: sits at ~60% down the house, not the very bottom
+        houseShadow->setPos(HOUSE_X, HOUSE_Y + HOUSE_H * 0.60);
         houseShadow->setZValue(2);   // above ground tiles, below house sprite
     }
 
@@ -285,10 +285,10 @@ void OverworldWidget::buildScene()
         qWarning("Could not load resources/sprites/house.png");
     }
 
-    // Invisible collision box — bottom 25%, inset 10% on each side
+    // Invisible collision box — starts at 60%, inset 10% on each side
     // Player hits the wall face, not the air in front of the building
     const qreal colliderInset = HOUSE_W * 0.10;
-    const qreal colliderY     = HOUSE_Y + HOUSE_H * 0.75;
+    const qreal colliderY     = HOUSE_Y + HOUSE_H * 0.60;
     const qreal colliderH     = HOUSE_H * 0.25;
     m_houseCollider = m_scene->addRect(
         HOUSE_X + colliderInset, colliderY,
