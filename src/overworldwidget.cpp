@@ -242,26 +242,6 @@ void OverworldWidget::buildScene()
         }
     }
 
-    // ── Border — dirt wall tiles around the scene edges ──────────────────────
-    QPixmap dirtWallPx("resources/sprites/dirt_wall.png");
-    if (!dirtWallPx.isNull()) {
-        const int WALL_TILE_W = 44;
-        const int WALL_TILE_H = 30;
-        QPixmap wallTile = dirtWallPx.scaled(WALL_TILE_W, WALL_TILE_H,
-                                             Qt::IgnoreAspectRatio, Qt::FastTransformation);
-        // Top and bottom rows
-        for (int x = 0; x < WORLD_W; x += WALL_TILE_W) {
-            auto *t = m_scene->addPixmap(wallTile); t->setPos(x, 0);                       t->setZValue(5);
-            auto *b = m_scene->addPixmap(wallTile); b->setPos(x, WORLD_H - WALL_TILE_H);   b->setZValue(5);
-        }
-        // Left and right columns
-        for (int y = WALL_TILE_H; y < WORLD_H - WALL_TILE_H; y += WALL_TILE_H) {
-            auto *l = m_scene->addPixmap(wallTile); l->setPos(0, y);                        l->setZValue(5);
-            auto *r = m_scene->addPixmap(wallTile); r->setPos(WORLD_W - WALL_TILE_W, y);   r->setZValue(5);
-        }
-    } else {
-        qWarning("Could not load resources/sprites/dirt_wall.png");
-    }
 
     // ── House ────────────────────────────────────────────────────────────────
     static constexpr int HOUSE_W = 240;
