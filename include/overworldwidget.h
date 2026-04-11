@@ -132,6 +132,7 @@ protected:
     void keyPressEvent(QKeyEvent   *e) override;
     void keyReleaseEvent(QKeyEvent *e) override;
     void resizeEvent(QResizeEvent  *e) override;
+    void showEvent(QShowEvent      *e) override;
 
 private slots:
     void onTick();
