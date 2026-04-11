@@ -253,7 +253,7 @@ void OverworldWidget::buildScene()
     // The shadow is a parallelogram: same width as the house, cast to the right
     {
         // Shadow rect before shearing: full house width, about 30% of house height
-        const qreal shadowW = HOUSE_W * 0.7;
+        const qreal shadowW = HOUSE_W * 0.75;
         const qreal shadowH = HOUSE_H * 0.30;
 
         // Place it so its top edge aligns with the bottom of the house
