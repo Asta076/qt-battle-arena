@@ -263,7 +263,7 @@ void OverworldWidget::buildScene()
 
 
         // Position: sits at ~60% down the house, not the very bottom
-        houseShadow->setPos(HOUSE_X+25, HOUSE_Y+130);
+        houseShadow->setPos(HOUSE_X+40, HOUSE_Y+155);
         houseShadow->setZValue(2);   // above ground tiles, below house sprite
     }
 
