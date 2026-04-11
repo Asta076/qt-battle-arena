@@ -35,6 +35,7 @@ private slots:
 private:
     void buildUI();
     void buildMenuBar();
+    bool m_playerHasChosen = false;
 
     GameEngine*            m_engine        = nullptr;
     QStackedWidget*        m_stack         = nullptr;

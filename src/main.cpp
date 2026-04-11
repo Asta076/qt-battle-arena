@@ -8,7 +8,7 @@ int main(int argc, char *argv[])
     QApplication app(argc, argv);
 
     // Load the pixel font from resources
-    QFontDatabase::addApplicationFont(":/fonts/PressStart2P.ttf");
+    QFontDatabase::addApplicationFont(":/fonts/PressStart2P-Regular.ttf");
 
     // Load and apply the global stylesheet
     QFile styleFile(":/styles/game.qss");

@@ -168,7 +168,7 @@ OverworldWidget::OverworldWidget(QWidget *parent)
     : QWidget(parent)
 {
     // ── Load sprite sheet ────────────────────────────────────────────────────
-    QString spritePath = "resources/sprites/player.png";
+    QString spritePath = ":/sprites/player.png";
     qDebug() << "Working directory:" << QDir::currentPath();
     qDebug() << "Absolute sprite path:" << QFileInfo(spritePath).absoluteFilePath();
     qDebug() << "File exists on disk:" << QFileInfo(spritePath).exists();
@@ -225,7 +225,7 @@ void OverworldWidget::deactivate()
 void OverworldWidget::buildScene()
 {
     // ── Background ───────────────────────────────────────────────────────────
-    QPixmap grassTile("resources/sprites/grass.png");
+    QPixmap grassTile(":/sprites/grass.png");
 
     const int TILE_SIZE = 64; // choose 32 or 64 depending on your game
     
@@ -245,8 +245,8 @@ void OverworldWidget::buildScene()
     }
 
     // ── Dirt path ─────────────────────────────────────────────
-    QPixmap dirt1("resources/sprites/dirt1.png");
-    QPixmap dirt2("resources/sprites/dirt2.png");
+    QPixmap dirt1(":/sprites/dirt1.png");
+    QPixmap dirt2(":/sprites/dirt2.png");
     
     const int TILE = 64;   // match whatever tile size you are using
     

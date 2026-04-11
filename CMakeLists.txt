@@ -52,7 +52,7 @@ target_include_directories(CS2-Battle-Arena PRIVATE include)
 # Resources (font, stylesheet, sprites, backgrounds)
 qt_add_resources(CS2-Battle-Arena "assets"
     PREFIX "/"
-   BASE resources
+    BASE resources
     FILES
         resources/fonts/PressStart2P-Regular.ttf
         resources/styles/game.qss
@@ -62,6 +62,10 @@ qt_add_resources(CS2-Battle-Arena "assets"
         resources/sprites/mage_back.png
         resources/sprites/archer_front.png
         resources/sprites/archer_back.png
+        resources/sprites/player.png
+        resources/sprites/grass.png
+        resources/sprites/dirt1.png
+        resources/sprites/dirt2.png
         resources/backgrounds/battle_bg.png
         resources/music/battle.ogg
         resources/music/menu.ogg

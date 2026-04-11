@@ -193,10 +193,19 @@ void GameEngine::enemyTakeTurn()
         break;
     }
     }
-    if (useSpecial)
-        m_enemy->drainSp();
-    else
+    if (useSpecial) {
+        if (!m_enemy->canUseSpecial()) {
+            // Not enough SP — fall back to basic attack
+            useSpecial = false;
+            damage = m_enemy->attack();
+            m_enemy->addSpFromAttack();
+        } else {
+            m_enemy->drainSp();
+        }
+    } else {
         m_enemy->addSpFromAttack();
+    }
+
 
     emit energyUpdated(m_player->getSpPercent(), m_enemy->getSpPercent());
     m_player->takeDamage(damage);

@@ -116,6 +116,7 @@ void MainWindow::onStateChanged(GameState newState)
     case GameState::PlayerTurn:
         if (m_stack->currentWidget() == m_charSelect) {
             // Player just finished character select — send them to the Overworld first
+            m_playerHasChosen = true;
             m_overworld->activate();
             m_stack->setCurrentWidget(m_overworld);
             m_audio->playMusic("/music/menu.ogg");
@@ -162,20 +163,19 @@ void MainWindow::onBattleTriggered(CharacterType enemyType, const QString &enemy
     m_pendingEnemyType = enemyType;
     m_pendingEnemyName = enemyName;
 
-    if (m_engine->getState() == GameState::MainMenu ||
-        m_engine->getPlayerName().isEmpty()) {
-        // First time – player hasn't chosen a class yet
+    if (!m_playerHasChosen) {
+        // First time — send to character select
         m_stack->setCurrentWidget(m_charSelect);
     } else {
-        // Player already has a character from a previous round – start directly
+        // Player already chose — start battle directly
         m_engine->onPlayerSelectedCharacter(m_engine->getPlayerType(),
                                             m_engine->getPlayerName());
-        // GameEngine will emit stateChanged(PlayerTurn) which shows m_battleWidget
     }
 }
 
 void MainWindow::onBackToMenu()
 {
+    m_playerHasChosen = false;
     m_engine->onRestartGame();   // resets engine state → emits stateChanged(MainMenu)
     // onStateChanged will switch to m_startScreen
 }

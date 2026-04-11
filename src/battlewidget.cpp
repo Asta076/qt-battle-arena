@@ -148,14 +148,10 @@ void BattleWidget::onStateChanged(GameState state)
     m_menu->setMenuEnabled(state == GameState::PlayerTurn);
 
     if (state == GameState::PlayerTurn) {
-        m_menu->setFocus();              // ← ADD — force focus to menu
-        m_menu->raise();                 // ← ADD — bring above other widgets
+        m_menu->setFocus();   // force focus to menu
+        m_menu->raise();     // bring above other widgets
     }
 
-    m_pauseOverlay->setVisible(state == GameState::Paused);
-    m_roundOver->setVisible(state == GameState::RoundOver);
-
-    m_menu->setMenuEnabled(state == GameState::PlayerTurn);
     m_pauseOverlay->setVisible(state == GameState::Paused);
     m_roundOver->setVisible(state == GameState::RoundOver);
 
