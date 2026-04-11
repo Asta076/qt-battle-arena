@@ -226,7 +226,7 @@ void OverworldWidget::buildScene()
     QPixmap dirt1(":/sprites/dirt1.png");
     QPixmap dirt2(":/sprites/dirt2.png");
 
-    const int TILE = 64;
+    const int TILE = 64; 
 
     QPixmap d1 = dirt1.scaled(TILE, TILE, Qt::IgnoreAspectRatio, Qt::FastTransformation);
     QPixmap d2 = dirt2.scaled(TILE, TILE, Qt::IgnoreAspectRatio, Qt::FastTransformation);
@@ -244,8 +244,8 @@ void OverworldWidget::buildScene()
     }
 
     // ── House ────────────────────────────────────────────────────────────────
-    static constexpr int  HOUSE_W = 160;
-    static constexpr int  HOUSE_H = 160;
+    static constexpr int  HOUSE_W = 240;
+    static constexpr int  HOUSE_H = 240;
     static constexpr int  HOUSE_X = 60;
     static constexpr int  HOUSE_Y = 180;
 
@@ -262,8 +262,8 @@ void OverworldWidget::buildScene()
     }
 
     // Invisible collision box — lower 45% of the sprite (walls + doorstep, not roof)
-    const qreal colliderY = HOUSE_Y + HOUSE_H * 0.55;
-    const qreal colliderH = HOUSE_H * 0.45;
+    const qreal colliderY = HOUSE_Y;
+    const qreal colliderH = HOUSE_H;
     m_houseCollider = m_scene->addRect(HOUSE_X, colliderY, HOUSE_W, colliderH,
                                        Qt::NoPen, Qt::NoBrush);
     m_houseCollider->setZValue(1);
