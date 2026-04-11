@@ -164,6 +164,10 @@ OverworldWidget::OverworldWidget(AudioManager *audio, QWidget *parent)
     m_scene = new QGraphicsScene(0, 0, WORLD_W, WORLD_H, this);
 
     m_view = new QGraphicsView(m_scene, this);
+    m_view->setFrameShape(QFrame::NoFrame);
+    m_view->setAlignment(Qt::AlignLeft | Qt::AlignTop);
+    m_view->setViewportUpdateMode(QGraphicsView::FullViewportUpdate);
+    m_view->setOptimizationFlag(QGraphicsView::DontAdjustForAntialiasing);
     m_view->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     m_view->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     m_view->setRenderHint(QPainter::Antialiasing);
@@ -209,9 +213,9 @@ void OverworldWidget::buildScene()
     const int TILE_SIZE = 64;
 
     QPixmap scaledTile = grassTile.scaled(
-        TILE_SIZE, TILE_SIZE,
-        Qt::IgnoreAspectRatio,
-        Qt::FastTransformation);
+    TILE_SIZE, TILE_SIZE,
+    Qt::IgnoreAspectRatio,
+    Qt::SmoothTransformation);
 
     for (int y = 0; y < WORLD_H; y += TILE_SIZE) {
         for (int x = 0; x < WORLD_W; x += TILE_SIZE) {
@@ -317,11 +321,16 @@ void OverworldWidget::buildScene()
         const qreal shadowY = p.y() + th - shadowH * 0.8;
 
         auto *shadow = m_scene->addEllipse(shadowX, shadowY, shadowW, shadowH,
-                                           Qt::NoPen, Qt::NoBrush);
-        QRadialGradient grad(shadowW / 2.0, shadowH / 2.0, shadowW / 2.0);
-        grad.setColorAt(0.0, QColor(0, 0, 0, 120));
-        grad.setColorAt(0.6, QColor(0, 0, 0, 50));
-        grad.setColorAt(1.0, QColor(0, 0, 0, 0));
+                                   Qt::NoPen, Qt::NoBrush);
+
+        QRadialGradient grad(shadowX + shadowW/2.0,
+                             shadowY + shadowH/2.0,
+                             shadowW/2.0);
+        
+        grad.setColorAt(0.0, QColor(0,0,0,120));
+        grad.setColorAt(0.6, QColor(0,0,0,50));
+        grad.setColorAt(1.0, QColor(0,0,0,0));
+        
         shadow->setBrush(grad);
         shadow->setZValue(2);
 
