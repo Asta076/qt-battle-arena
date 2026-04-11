@@ -259,11 +259,11 @@ void OverworldWidget::buildScene()
         // Place it so its top edge aligns with the bottom of the house
         auto *houseShadow = m_scene->addRect(
             0, 0, shadowW, shadowH,
-            Qt::NoPen, QBrush(QColor(0, 0, 0, 80)));
+            Qt::NoPen, QBrush(QColor(0, 0, 0, 40)));
 
 
         // Position: sits at ~60% down the house, not the very bottom
-        houseShadow->setPos(HOUSE_X, HOUSE_Y-35);
+        houseShadow->setPos(HOUSE_X, HOUSE_Y-70);
         houseShadow->setZValue(2);   // above ground tiles, below house sprite
     }
 
