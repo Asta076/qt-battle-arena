@@ -17,7 +17,7 @@ qt_add_executable(CS2-Battle-Arena
     include/archer.h            src/archer.cpp
     include/battleresult.h
     include/scoretracker.h      src/scoretracker.cpp
-
+    include/playerprofile.h     src/playerprofile.cpp
     # ── Game engine (Qt Core) ──────────────────
     include/gameengine.h        src/gameengine.cpp
 

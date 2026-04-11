@@ -23,6 +23,7 @@ MainWindow::MainWindow(QWidget* parent)
     connect(m_engine, &GameEngine::stateChanged,
             this,     &MainWindow::onStateChanged);
 
+    m_profile.loadFromFile("profile.json");
     m_audio->playMusic("/music/menu.ogg");
 }
 
@@ -148,6 +149,7 @@ void MainWindow::onDungeonEntered()
 void MainWindow::onExitedDungeon()
 {
     // Player reached the exit portal inside the Dungeon
+    m_profile.saveToFile("profile.json");
     m_overworld->activate();
     m_stack->setCurrentWidget(m_overworld);
 }
@@ -174,6 +176,7 @@ void MainWindow::onBattleTriggered(CharacterType enemyType, const QString &enemy
 void MainWindow::onBackToMenu()
 {
     m_playerHasChosen = false;
+    m_profile.reset();
     m_engine->onRestartGame();   // resets engine state → emits stateChanged(MainMenu)
     // onStateChanged will switch to m_startScreen
 }

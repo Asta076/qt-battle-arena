@@ -5,7 +5,7 @@
 #include "gameengine.h"
 #include "audiomanager.h"
 #include "character.h"   // for CharacterType
-
+#include "playerprofile.h"
 // Forward declarations
 class StartScreenWidget;
 class CharacterSelectWidget;
@@ -53,4 +53,6 @@ private:
     // Remembered so MainWindow can start the fight after character select
     CharacterType m_pendingEnemyType = CharacterType::Warrior;
     QString       m_pendingEnemyName;
+
+    PlayerProfile m_profile;
 };
