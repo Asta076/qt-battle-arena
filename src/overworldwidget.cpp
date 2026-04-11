@@ -236,7 +236,7 @@ void OverworldWidget::buildScene()
 
     for (int y = 0; y < WORLD_H; y += TILE) {
         for (int x = pathX; x < pathX + pathW; x += TILE) {
-            bool useAlt = (QRandomGenerator::global()->bounded(100) < 12);
+            bool useAlt = (QRandomGenerator::global()->bounded(100) < 24);
             QGraphicsPixmapItem *tile = m_scene->addPixmap(useAlt ? d2 : d1);
             tile->setPos(x, y);
             tile->setZValue(1);
@@ -259,7 +259,7 @@ void OverworldWidget::buildScene()
         // Place it so its top edge aligns with the bottom of the house
         auto *houseShadow = m_scene->addRect(
             0, 0, shadowW, shadowH,
-            Qt::NoPen, QBrush(QColor(0, 0, 0, 40)));
+            Qt::NoPen, QBrush(QColor(0, 0, 0, 65)));
 
 
         // Position: sits at ~60% down the house, not the very bottom
