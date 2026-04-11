@@ -13,9 +13,9 @@
 #include <QRandomGenerator>
 #include <QRadialGradient>
 #include "audiomanager.h"
-#include <QVBoxLayout>
 #include <QLabel>
 #include <QPushButton>
+
 // ═════════════════════════════════════════════════════════════════════════════
 //  PlayerSprite
 // ═════════════════════════════════════════════════════════════════════════════
@@ -33,25 +33,19 @@ PlayerSprite::PlayerSprite(const SpriteSheet &sheet, QGraphicsItem *parent)
     // ── Shadow ─────────────────────────────────────────────
     const qreal shadowW = W * 0.65;
     const qreal shadowH = H * 0.30;
-    
+
     m_shadow = new QGraphicsEllipseItem(0, 0, shadowW, shadowH, this);
-    
-    // gradient centered in ellipse
+
     QRadialGradient grad(shadowW / 2.0, shadowH / 2.0, shadowW / 2.0);
-    
-    grad.setColorAt(0.0, QColor(0,0,0,140));  // darker center
+    grad.setColorAt(0.0, QColor(0,0,0,140));
     grad.setColorAt(0.6, QColor(0,0,0,80));
-    grad.setColorAt(1.0, QColor(0,0,0,0));    // smooth fade
-    
+    grad.setColorAt(1.0, QColor(0,0,0,0));
+
     m_shadow->setBrush(grad);
     m_shadow->setPen(Qt::NoPen);
-    
-    // position under feet
     m_shadow->setPos((W - shadowW) / 2.0, H * 0.78);
-    
     m_shadow->setZValue(-1);
 }
-
 
 void PlayerSprite::setIdleFrame(Direction dir)
 {
@@ -64,8 +58,6 @@ void PlayerSprite::setIdleFrame(Direction dir)
 
 void PlayerSprite::setWalkAnim(Direction dir)
 {
-    // Only reset the frame counter when we actually change direction,
-    // so the walk cycle doesn't stutter while holding the same key.
     if (!m_isIdle && m_facing == dir) return;
 
     m_isIdle     = false;
@@ -80,11 +72,9 @@ void PlayerSprite::applyFrame()
     int col, row;
 
     if (m_isIdle) {
-        // Row 0, column = direction index
         row = 0;
         col = idleCol(m_facing);
     } else {
-        // Walk row = direction index + 1, column = current frame (0-5)
         row = walkRow(m_facing);
         col = m_frameIndex;
     }
@@ -111,24 +101,10 @@ void PlayerSprite::step(const QSet<int> &heldKeys, const QRectF &worldBounds)
     if (goLeft)  dx -= SPEED;
     if (goRight) dx += SPEED;
 
-    // Normalise diagonal so speed is consistent
     if (dx != 0 && dy != 0) { dx *= 0.7071; dy *= 0.7071; }
 
     const bool moving = (dx != 0 || dy != 0);
 
-    // ── Choose direction ──────────────────────────────────────────────────
-    //
-    //  8-way WASD → Direction mapping:
-    //
-    //   D       → Right
-    //   A       → Left
-    //   W       → Up
-    //   S       → Down
-    //   W+D     → ForwardRight
-    //   W+A     → ForwardLeft
-    //   S+D     → DownRight
-    //   S+A     → DownLeft
-    //
     if (moving) {
         Direction dir;
         if      (goUp   && goRight) dir = Direction::ForwardRight;
@@ -142,7 +118,6 @@ void PlayerSprite::step(const QSet<int> &heldKeys, const QRectF &worldBounds)
 
         setWalkAnim(dir);
 
-        // Advance animation frame every TICKS_PER_FRAME physics ticks
         ++m_tickAccum;
         if (m_tickAccum >= TICKS_PER_FRAME) {
             m_tickAccum  = 0;
@@ -150,13 +125,11 @@ void PlayerSprite::step(const QSet<int> &heldKeys, const QRectF &worldBounds)
             applyFrame();
         }
     } else {
-        // Stopped — show idle stance for last known facing direction
         if (!m_isIdle) {
             setIdleFrame(m_facing);
         }
     }
 
-    // ── Clamp to world and move ───────────────────────────────────────────
     qreal nx = qBound(worldBounds.left(),  x() + dx, worldBounds.right()  - W);
     qreal ny = qBound(worldBounds.top(),   y() + dy, worldBounds.bottom() - H);
     setPos(nx, ny);
@@ -197,7 +170,7 @@ OverworldWidget::OverworldWidget(AudioManager *audio, QWidget *parent)
     m_view->setFocusPolicy(Qt::NoFocus);
     layout->addWidget(m_view);
 
-    m_ticker.setInterval(16);   // ~60 fps
+    m_ticker.setInterval(16);
     connect(&m_ticker, &QTimer::timeout, this, &OverworldWidget::onTick);
 
     buildScene();
@@ -206,7 +179,6 @@ OverworldWidget::OverworldWidget(AudioManager *audio, QWidget *parent)
     m_view->setSceneRect(0, 0, WORLD_W, WORLD_H);
 
     buildPauseOverlay();
-
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -232,18 +204,16 @@ void OverworldWidget::deactivate()
 
 void OverworldWidget::buildScene()
 {
-    // ── Background ───────────────────────────────────────────────────────────
+    // ── Background grass tiles ───────────────────────────────────────────────
     QPixmap grassTile(":/sprites/grass.png");
 
-    const int TILE_SIZE = 64; // choose 32 or 64 depending on your game
-    
+    const int TILE_SIZE = 64;
+
     QPixmap scaledTile = grassTile.scaled(
-        TILE_SIZE,
-        TILE_SIZE,
+        TILE_SIZE, TILE_SIZE,
         Qt::IgnoreAspectRatio,
-        Qt::FastTransformation
-    );
-    
+        Qt::FastTransformation);
+
     for (int y = 0; y < WORLD_H; y += TILE_SIZE) {
         for (int x = 0; x < WORLD_W; x += TILE_SIZE) {
             QGraphicsPixmapItem *tile = m_scene->addPixmap(scaledTile);
@@ -252,47 +222,51 @@ void OverworldWidget::buildScene()
         }
     }
 
-    // ── Dirt path ─────────────────────────────────────────────
+    // ── Dirt path ────────────────────────────────────────────────────────────
     QPixmap dirt1(":/sprites/dirt1.png");
     QPixmap dirt2(":/sprites/dirt2.png");
-    
-    const int TILE = 64;   // match whatever tile size you are using
-    
+
+    const int TILE = 64;
+
     QPixmap d1 = dirt1.scaled(TILE, TILE, Qt::IgnoreAspectRatio, Qt::FastTransformation);
     QPixmap d2 = dirt2.scaled(TILE, TILE, Qt::IgnoreAspectRatio, Qt::FastTransformation);
-    
+
     qreal pathX = WORLD_W * 0.38;
     qreal pathW = WORLD_W * 0.24;
-    
+
     for (int y = 0; y < WORLD_H; y += TILE) {
         for (int x = pathX; x < pathX + pathW; x += TILE) {
-    
-            // ~12% chance to place dirt2
             bool useAlt = (QRandomGenerator::global()->bounded(100) < 12);
-    
-            QGraphicsPixmapItem *tile =
-                m_scene->addPixmap(useAlt ? d2 : d1);
-    
+            QGraphicsPixmapItem *tile = m_scene->addPixmap(useAlt ? d2 : d1);
             tile->setPos(x, y);
-            tile->setZValue(0);
+            tile->setZValue(1);
         }
-}
+    }
 
-    // ── Inn ──────────────────────────────────────────────────────────────────
-    auto *walls = m_scene->addRect(80, 220, 140, 110,
-                                   QPen(QColor("#4e342e"), 2),
-                                   QBrush(QColor("#8d6e63")));
-    walls->setZValue(1);
+    // ── House ────────────────────────────────────────────────────────────────
+    static constexpr int  HOUSE_W = 160;
+    static constexpr int  HOUSE_H = 160;
+    static constexpr int  HOUSE_X = 60;
+    static constexpr int  HOUSE_Y = 180;
 
-    auto *roof = m_scene->addRect(68, 198, 164, 34,
-                                  QPen(QColor("#b71c1c"), 2),
-                                  QBrush(QColor("#e53935")));
-    roof->setZValue(2);
+    QPixmap housePx(":/sprites/house.png");
+    if (!housePx.isNull()) {
+        QGraphicsPixmapItem *houseItem = m_scene->addPixmap(
+            housePx.scaled(HOUSE_W, HOUSE_H,
+                           Qt::KeepAspectRatio,
+                           Qt::FastTransformation));
+        houseItem->setPos(HOUSE_X, HOUSE_Y);
+        houseItem->setZValue(3);
+    } else {
+        qWarning("Could not load :/sprites/house.png");
+    }
 
-    auto *innLabel = m_scene->addText("INN", QFont("Arial", 9, QFont::Bold));
-    innLabel->setDefaultTextColor(Qt::white);
-    innLabel->setPos(134, 258);
-    innLabel->setZValue(3);
+    // Invisible collision box — lower 45% of the sprite (walls + doorstep, not roof)
+    const qreal colliderY = HOUSE_Y + HOUSE_H * 0.55;
+    const qreal colliderH = HOUSE_H * 0.45;
+    m_houseCollider = m_scene->addRect(HOUSE_X, colliderY, HOUSE_W, colliderH,
+                                       Qt::NoPen, Qt::NoBrush);
+    m_houseCollider->setZValue(1);
 
     // ── Trees ────────────────────────────────────────────────────────────────
     const QList<QPointF> trees = {
@@ -358,9 +332,37 @@ void OverworldWidget::onTick()
 
 void OverworldWidget::checkTriggers()
 {
+    // ── Dungeon entrance ─────────────────────────────────────────────────────
     if (m_player->collidesWithItem(m_dungeonZone)) {
         deactivate();
         emit dungeonEntered();
+        return;
+    }
+
+    // ── House collision — push player out of the collider box ────────────────
+    if (m_houseCollider && m_player->collidesWithItem(m_houseCollider)) {
+        const QRectF playerRect   = m_player->mapToScene(
+                                        m_player->boundingRect()).boundingRect();
+        const QRectF colliderRect = m_houseCollider->sceneBoundingRect();
+
+        const qreal overlapLeft  = playerRect.right()  - colliderRect.left();
+        const qreal overlapRight = colliderRect.right() - playerRect.left();
+        const qreal overlapTop   = playerRect.bottom()  - colliderRect.top();
+        const qreal overlapBot   = colliderRect.bottom() - playerRect.top();
+
+        const qreal minX = qMin(overlapLeft,  overlapRight);
+        const qreal minY = qMin(overlapTop,   overlapBot);
+
+        qreal px = m_player->x();
+        qreal py = m_player->y();
+
+        if (minX < minY) {
+            px += (overlapLeft < overlapRight) ? -overlapLeft : overlapRight;
+        } else {
+            py += (overlapTop  < overlapBot)   ? -overlapTop  : overlapBot;
+        }
+
+        m_player->setPos(px, py);
     }
 }
 
@@ -377,7 +379,6 @@ void OverworldWidget::keyPressEvent(QKeyEvent *e)
     if (!m_paused)
         m_heldKeys.insert(e->key());
 }
-
 
 void OverworldWidget::keyReleaseEvent(QKeyEvent *e)
 {
@@ -425,9 +426,9 @@ void OverworldWidget::buildPauseOverlay()
     layout->setAlignment(Qt::AlignCenter);
     layout->setSpacing(16);
 
-    auto *title   = new QLabel("— PAUSED —", m_pauseOverlay);
-    auto *resume  = new QPushButton("► RESUME",    m_pauseOverlay);
-    auto *menu    = new QPushButton("  MAIN MENU", m_pauseOverlay);
+    auto *title  = new QLabel("— PAUSED —", m_pauseOverlay);
+    auto *resume = new QPushButton("► RESUME",    m_pauseOverlay);
+    auto *menu   = new QPushButton("  MAIN MENU", m_pauseOverlay);
 
     title->setObjectName("titleLabel");
     title->setAlignment(Qt::AlignCenter);
