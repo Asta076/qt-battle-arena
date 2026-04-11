@@ -249,7 +249,7 @@ void OverworldWidget::buildScene()
     static constexpr int  HOUSE_X = 60;
     static constexpr int  HOUSE_Y = 180;
 
-    QPixmap housePx(":/sprites/house.png");
+    QPixmap housePx("resources/sprites/house.png");
     if (!housePx.isNull()) {
         QGraphicsPixmapItem *houseItem = m_scene->addPixmap(
             housePx.scaled(HOUSE_W, HOUSE_H,
