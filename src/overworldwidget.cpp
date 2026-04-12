@@ -182,6 +182,10 @@ OverworldWidget::OverworldWidget(AudioManager *audio, QWidget *parent)
     m_view->setSceneRect(0, 0, WORLD_W, WORLD_H);
 
     buildPauseOverlay();
+    // ── Gold HUD ─────────────────────────────────────────────────────────────
+    m_goldHud = new GoldHudWidget(this);
+    m_goldHud->raise();
+
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -452,6 +456,8 @@ void OverworldWidget::resizeEvent(QResizeEvent *e)
 {
     QWidget::resizeEvent(e);
     if (m_pauseOverlay) m_pauseOverlay->resize(size());
+    if (m_goldHud)
+        m_goldHud->move(width() - m_goldHud->width() - 8, 8);
     fitView();
 }
 
@@ -517,4 +523,9 @@ void OverworldWidget::buildPauseOverlay()
     layout->addWidget(resume);
     layout->addWidget(save);
     layout->addWidget(menu);
+}
+
+void OverworldWidget::setGold(int gold)
+{
+    if (m_goldHud) m_goldHud->setGold(gold);
 }

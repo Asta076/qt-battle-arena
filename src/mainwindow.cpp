@@ -152,6 +152,7 @@ void MainWindow::onLoadSlot(int slotIndex)
         static_cast<CharacterType>(m_profile.characterType),
         m_profile.characterName);
 
+    updateGoldHud();
     m_overworld->activate();
     m_stack->setCurrentWidget(m_overworld);
 }
@@ -243,6 +244,7 @@ void MainWindow::onExitedDungeon()
     if (m_currentSlot >= 0)
         m_profile.saveToFile(SaveSlotWidget::slotPath(m_currentSlot));
 
+    updateGoldHud();
     m_overworld->activate();
     m_stack->setCurrentWidget(m_overworld);
 }
@@ -283,6 +285,7 @@ void MainWindow::onGoldEarned(int amount)
     // Accumulate in memory — written to disk only on dungeon exit or manual save.
     // Gold from an incomplete dungeon run is intentionally lost on quit.
     m_profile.addGold(amount);
+    updateGoldHud();
 }
 
 void MainWindow::onSaveRequested()
@@ -297,6 +300,13 @@ void MainWindow::onReturnToOverworld()
     // Game over → "EXPLORE MORE": save gold earned this run then go to overworld
     if (m_currentSlot >= 0)
         m_profile.saveToFile(SaveSlotWidget::slotPath(m_currentSlot));
+    updateGoldHud();
     m_overworld->activate();
     m_stack->setCurrentWidget(m_overworld);
+}
+
+void MainWindow::updateGoldHud()
+{
+    m_overworld->setGold(m_profile.gold);
+    m_dungeon->setGold(m_profile.gold);
 }

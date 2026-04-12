@@ -9,6 +9,7 @@
 #include <QSet>
 #include <QPixmap>
 #include <QKeyEvent>
+#include "goldhudwidget.h"
 
 class AudioManager;
 
@@ -123,7 +124,7 @@ public:
 
     void activate();
     void deactivate();
-
+    void setGold(int gold);
 signals:
     void dungeonEntered();
     void backToMenu();
@@ -153,6 +154,7 @@ private:
     PlayerSprite      *m_player        = nullptr;
     QGraphicsRectItem *m_dungeonZone   = nullptr;
     QGraphicsRectItem *m_houseCollider = nullptr;   // invisible collision box for the house
+    GoldHudWidget     *m_goldHud = nullptr;
 
     QTimer    m_ticker;
     QSet<int> m_heldKeys;

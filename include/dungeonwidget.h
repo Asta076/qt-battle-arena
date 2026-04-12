@@ -10,7 +10,7 @@
 #include <QSet>
 #include <QList>
 #include "character.h"   // for CharacterType
-
+#include "goldhudwidget.h"
 class AudioManager; // Forward Declaration
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -65,7 +65,7 @@ public:
     void activate();
     // Call when navigating away so the timer stops in the background.
     void deactivate();
-
+    void setGold(int gold);
 signals:
     void battleTriggered(CharacterType enemyType, const QString &enemyName);
     void exitedDungeon();
@@ -83,7 +83,7 @@ private:
     // ── Scene ────────────────────────────────────────────────────────────────
     QGraphicsScene    *m_scene     = nullptr;
     QGraphicsView     *m_view      = nullptr;
-
+    GoldHudWidget     *m_goldHud   = nullptr;  // Gold HUD
     // Player reuses the same PlayerSprite from the overworld concept but we
     // keep it self-contained here with a plain QGraphicsRectItem.
     QGraphicsRectItem *m_player    = nullptr;

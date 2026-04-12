@@ -49,7 +49,7 @@ private slots:
 private:
     void buildUI();
     void buildMenuBar();
-
+    void updateGoldHud();
     // ── Core ──────────────────────────────────────────────────────────────────
     GameEngine*     m_engine          = nullptr;
     AudioManager*   m_audio           = nullptr;

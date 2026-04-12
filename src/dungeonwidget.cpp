@@ -83,6 +83,9 @@ DungeonWidget::DungeonWidget(AudioManager *audio, QWidget *parent)
     m_view->setSceneRect(0, 0, 800, 600);
 
     buildPauseOverlay();
+    // ── Gold HUD ─────────────────────────────────────────────────────────────
+    m_goldHud = new GoldHudWidget(this);
+    m_goldHud->raise();
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -319,6 +322,8 @@ void DungeonWidget::resizeEvent(QResizeEvent *e)
 {
     QWidget::resizeEvent(e);
     if (m_pauseOverlay) m_pauseOverlay->resize(size());
+    if (m_goldHud)
+        m_goldHud->move(width() - m_goldHud->width() - 8, 8);
 }
 
 void DungeonWidget::fitView()
@@ -371,4 +376,9 @@ void DungeonWidget::buildPauseOverlay()
     layout->addSpacing(12);
     layout->addWidget(resume);
     layout->addWidget(menu);
+}
+
+void DungeonWidget::setGold(int gold)
+{
+    if (m_goldHud) m_goldHud->setGold(gold);
 }
