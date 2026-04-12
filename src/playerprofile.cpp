@@ -38,6 +38,7 @@ void PlayerProfile::reset()
     characterName = "Player";
     characterType = 0;
     gold          = 0;
+    dungeonRuns   = 0;
     inventory.clear();
     unlockedBuildings.clear();
     upgrades = StatUpgrades{};
@@ -90,7 +91,7 @@ bool PlayerProfile::saveToFile(const QString &path) const
     root["characterName"] = characterName;
     root["characterType"] = characterType;
     root["gold"]          = gold;
-
+    root["dungeonRuns"]   = dungeonRuns;
     // Inventory — stored as { "HealthPotion": 3, "SpPotion": 1, ... }
     QJsonObject inv;
     for (auto it = inventory.constBegin(); it != inventory.constEnd(); ++it)
@@ -130,7 +131,7 @@ bool PlayerProfile::loadFromFile(const QString &path)
     characterName = root["characterName"].toString("Player");
     characterType = root["characterType"].toInt(0);
     gold          = root["gold"].toInt(0);
-
+    dungeonRuns   = root["dungeonRuns"].toInt(0);
     // Inventory
     inventory.clear();
     QJsonObject inv = root["inventory"].toObject();

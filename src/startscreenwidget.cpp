@@ -53,19 +53,16 @@ StartScreenWidget::StartScreenWidget(GameEngine* engine, QWidget* parent)
     root->addStretch(3);
 
     // ── Connections ───────────────────────────────
-    connect(m_startBtn, &QPushButton::clicked, m_engine, &GameEngine::onStartGame);
+    connect(m_startBtn, &QPushButton::clicked,
+            this, &StartScreenWidget::startRequested);
 
     connect(m_difficultyBox, &QComboBox::currentIndexChanged, this, [this](int idx){
         Difficulty d = m_difficultyBox->itemData(idx).value<Difficulty>();
         m_engine->onDifficultyChanged(d);
     });
 
-    connect(m_loadBtn, &QPushButton::clicked, this, [this]{
-        m_engine->onLoadGame("savegame.json");
-        // onLoadGame internally calls setState(PlayerTurn) if successful,
-        // which MainWindow::onStateChanged will pick up and show the battle screen.
-        // If the file doesn't exist it returns false and nothing happens.
-    });
+    connect(m_loadBtn, &QPushButton::clicked,
+            this, &StartScreenWidget::loadRequested);
 }
 
 void StartScreenWidget::paintEvent(QPaintEvent* event)

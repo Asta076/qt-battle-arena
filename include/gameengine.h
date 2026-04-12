@@ -49,7 +49,7 @@ signals:
     void roundEnded(int playerScore, int enemyScore, bool playerWonRound);
     void gameOver(bool playerWon, int finalPlayerScore, int finalEnemyScore);
     void energyUpdated(float playerSpPct, float enemySpPct);
-
+    void goldEarned(int amount);
 public slots:
     void setState(GameState s);
     void onStartGame();
@@ -64,7 +64,7 @@ public slots:
     void onExitToMenu();
     bool onSaveGame(const QString& path);
     bool onLoadGame(const QString& path);
-
+    void setPlayerIdentity(CharacterType type, const QString& name);
 private slots:
     void enemyTakeTurn();
 

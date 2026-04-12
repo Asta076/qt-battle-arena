@@ -7,6 +7,10 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 
+static constexpr int GOLD_PER_ROUND_EASY   = 10;
+static constexpr int GOLD_PER_ROUND_NORMAL = 20;
+static constexpr int GOLD_PER_ROUND_HARD   = 35;
+
 GameEngine::GameEngine(QObject* parent)
     : QObject(parent)
 {
@@ -70,6 +74,13 @@ void GameEngine::resetRound()
 
 void GameEngine::onStartGame()  { setState(GameState::CharacterSelect); }
 void GameEngine::onDifficultyChanged(Difficulty d) { m_difficulty = d; }
+void GameEngine::setPlayerIdentity(CharacterType type, const QString& name)
+{
+    // Sets who the player is WITHOUT creating characters or changing state.
+    // Used when loading a profile so the engine knows the class for next battle.
+    m_playerType = type;
+    m_playerName = name;
+}
 
 void GameEngine::onPlayerSelectedCharacter(CharacterType type, const QString& name)
 {
@@ -232,8 +243,17 @@ void GameEngine::enemyTakeTurn()
 void GameEngine::endRound(bool playerWon)
 {
     m_roundTimer->stop();
-    if (playerWon) { ++m_playerScore; m_tracker.recordWin();  }
-    else           { ++m_enemyScore;  m_tracker.recordLoss(); }
+    if (playerWon) {
+        ++m_playerScore;
+        m_tracker.recordWin();
+
+        // Award gold for this round win
+        int goldAmount = (m_difficulty == Difficulty::Hard)   ? GOLD_PER_ROUND_HARD
+                         : (m_difficulty == Difficulty::Easy)   ? GOLD_PER_ROUND_EASY
+                                                              : GOLD_PER_ROUND_NORMAL;
+        emit goldEarned(goldAmount);   // ← ADD
+    }
+    else { ++m_enemyScore; m_tracker.recordLoss(); }
 
     // ── Record this round in history ──────────────
     RoundRecord rec;

@@ -265,7 +265,7 @@ void OverworldWidget::buildScene()
         houseShadow->setZValue(2);
     }
 
-    QPixmap housePx("resources/sprites/house.png");
+    QPixmap housePx(":/sprites/house.png");
     if (!housePx.isNull()) {
         QGraphicsPixmapItem *houseItem = m_scene->addPixmap(
             housePx.scaled(HOUSE_W, HOUSE_H,
@@ -287,8 +287,8 @@ void OverworldWidget::buildScene()
     m_houseCollider->setZValue(1);
 
     // ── Trees ────────────────────────────────────────────────────────────────
-    QPixmap treeRoundPx("resources/sprites/tree_round.png");
-    QPixmap treePinePx ("resources/sprites/tree_pine.png");
+    QPixmap treeRoundPx(":/sprites/tree_round.png");
+    QPixmap treePinePx (":/sprites/tree_pine.png");
 
     const int TREE_W = 160;
     const int TREE_H = 160;
@@ -495,12 +495,16 @@ void OverworldWidget::buildPauseOverlay()
 
     auto *title  = new QLabel("— PAUSED —", m_pauseOverlay);
     auto *resume = new QPushButton("► RESUME",    m_pauseOverlay);
+    auto *save   = new QPushButton("  SAVE GAME", m_pauseOverlay);
     auto *menu   = new QPushButton("  MAIN MENU", m_pauseOverlay);
 
     title->setObjectName("titleLabel");
     title->setAlignment(Qt::AlignCenter);
 
     connect(resume, &QPushButton::clicked, this, &OverworldWidget::togglePause);
+    connect(save, &QPushButton::clicked, this, [this]{
+        emit saveRequested();
+    });
     connect(menu,   &QPushButton::clicked, this, [this]{
         m_paused = false;
         m_pauseOverlay->hide();
@@ -511,5 +515,6 @@ void OverworldWidget::buildPauseOverlay()
     layout->addWidget(title);
     layout->addSpacing(12);
     layout->addWidget(resume);
+    layout->addWidget(save);
     layout->addWidget(menu);
 }

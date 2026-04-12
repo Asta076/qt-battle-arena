@@ -1,12 +1,12 @@
-// include/mainwindow.h
 #pragma once
 #include <QMainWindow>
 #include <QStackedWidget>
 #include "gameengine.h"
 #include "audiomanager.h"
-#include "character.h"   // for CharacterType
 #include "playerprofile.h"
-// Forward declarations
+#include "saveslotwidget.h"
+#include "character.h"
+
 class StartScreenWidget;
 class CharacterSelectWidget;
 class BattleWidget;
@@ -23,36 +23,52 @@ public:
     ~MainWindow() override;
 
 private slots:
-    // Driven by GameEngine::stateChanged (battle states)
+    // ── Engine ────────────────────────────────────────────────────────────────
     void onStateChanged(GameState newState);
 
-    // Driven by OverworldWidget / DungeonWidget signals
+    // ── Start screen ──────────────────────────────────────────────────────────
+    void onStartRequested();
+    void onLoadRequested();
+
+    // ── Slot screen ───────────────────────────────────────────────────────────
+    void onNewGameInSlot(int slotIndex);
+    void onLoadSlot(int slotIndex);
+    void onSlotBackRequested();
+
+    // ── Exploration ───────────────────────────────────────────────────────────
     void onDungeonEntered();
     void onExitedDungeon();
-    void onBattleTriggered(CharacterType enemyType, const QString &enemyName);
+    void onBattleTriggered(CharacterType enemyType, const QString& enemyName);
     void onBackToMenu();
+
+    // ── Profile events ────────────────────────────────────────────────────────
+    void onGoldEarned(int amount);
+    void onSaveRequested();       // from overworld pause SAVE button
+    void onReturnToOverworld();   // from game over EXPLORE MORE
 
 private:
     void buildUI();
     void buildMenuBar();
-    bool m_playerHasChosen = false;
 
-    GameEngine*            m_engine        = nullptr;
-    QStackedWidget*        m_stack         = nullptr;
-    AudioManager*          m_audio         = nullptr;
+    // ── Core ──────────────────────────────────────────────────────────────────
+    GameEngine*     m_engine          = nullptr;
+    AudioManager*   m_audio           = nullptr;
+    QStackedWidget* m_stack           = nullptr;
+    PlayerProfile   m_profile;
+    int             m_currentSlot     = -1;     // active save slot (-1 = none)
+    bool            m_playerHasChosen = false;
+    bool            m_hasPendingBattle= false;  // enemy waiting after charSelect
+
+    CharacterType   m_pendingEnemyType = CharacterType::Warrior;
+    QString         m_pendingEnemyName;
 
     // ── Screens ───────────────────────────────────────────────────────────────
-    StartScreenWidget*     m_startScreen   = nullptr;
-    CharacterSelectWidget* m_charSelect    = nullptr;
-    OverworldWidget*       m_overworld     = nullptr;
-    DungeonWidget*         m_dungeon       = nullptr;
-    BattleWidget*          m_battleWidget  = nullptr;
-    GameOverWidget*        m_gameOver      = nullptr;
-    ScoreboardWidget*      m_scoreboard    = nullptr;
-
-    // Remembered so MainWindow can start the fight after character select
-    CharacterType m_pendingEnemyType = CharacterType::Warrior;
-    QString       m_pendingEnemyName;
-
-    PlayerProfile m_profile;
+    StartScreenWidget*     m_startScreen  = nullptr;
+    SaveSlotWidget*        m_slotScreen   = nullptr;
+    CharacterSelectWidget* m_charSelect   = nullptr;
+    OverworldWidget*       m_overworld    = nullptr;
+    DungeonWidget*         m_dungeon      = nullptr;
+    BattleWidget*          m_battleWidget = nullptr;
+    GameOverWidget*        m_gameOver     = nullptr;
+    ScoreboardWidget*      m_scoreboard   = nullptr;
 };

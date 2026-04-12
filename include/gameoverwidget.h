@@ -19,4 +19,6 @@ private:
     QLabel* m_resultLabel;
     QLabel* m_scoreLabel;
     GameEngine* m_engine;
+signals:
+    void returnToOverworld();
 };

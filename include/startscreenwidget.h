@@ -19,4 +19,7 @@ private:
     QPushButton* m_startBtn;
     QPushButton* m_loadBtn;
     QComboBox*   m_difficultyBox;
+signals:
+    void startRequested();
+    void loadRequested();
 };

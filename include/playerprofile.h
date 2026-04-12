@@ -42,7 +42,7 @@ public:
 
     // ── Economy ───────────────────────────────────────────────────────────────
     int           gold          = 0;
-
+    int           dungeonRuns   = 0;
     // ── Inventory ─────────────────────────────────────────────────────────────
     // Maps each item type to how many the player owns.
     // Absent key = 0 quantity. Never goes negative.

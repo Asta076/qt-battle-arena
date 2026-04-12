@@ -13,27 +13,21 @@ PauseOverlayWidget::PauseOverlayWidget(GameEngine* engine, QWidget* parent)
     layout->setAlignment(Qt::AlignCenter);
     layout->setSpacing(16);
 
-    QLabel* title = new QLabel("— PAUSED —", this);
+    QLabel* title    = new QLabel("— PAUSED —",  this);
     title->setObjectName("titleLabel");
     title->setAlignment(Qt::AlignCenter);
 
     QPushButton* resumeBtn = new QPushButton("► RESUME",    this);
-    QPushButton* saveBtn   = new QPushButton("  SAVE GAME", this);  // ← ADD
     QPushButton* menuBtn   = new QPushButton("  MAIN MENU", this);
 
     connect(resumeBtn, &QPushButton::clicked, engine, &GameEngine::onPauseToggle);
-
-    connect(saveBtn, &QPushButton::clicked, this, [engine]{          // ← ADD
-        engine->onSaveGame("savegame.json");                          // ← ADD
-    });                                                               // ← ADD
-
-    connect(menuBtn, &QPushButton::clicked, engine, &GameEngine::onExitToMenu);
+    connect(menuBtn,   &QPushButton::clicked, engine, &GameEngine::onExitToMenu);
 
     layout->addWidget(title);
     layout->addSpacing(12);
     layout->addWidget(resumeBtn);
-    layout->addWidget(saveBtn);    // ← ADD
     layout->addWidget(menuBtn);
+    // No save button — saving only happens in overworld pause
 }
 
 void PauseOverlayWidget::paintEvent(QPaintEvent*)

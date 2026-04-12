@@ -127,7 +127,7 @@ public:
 signals:
     void dungeonEntered();
     void backToMenu();
-
+    void saveRequested();
 protected:
     void keyPressEvent(QKeyEvent   *e) override;
     void keyReleaseEvent(QKeyEvent *e) override;

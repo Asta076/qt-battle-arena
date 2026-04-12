@@ -31,7 +31,7 @@ qt_add_executable(CS2-Battle-Arena
     src/characterselectiondialog.ui
     include/gameoverwidget.h            src/gameoverwidget.cpp
     include/scoreboardwidget.h          src/scoreboardwidget.cpp
-
+    include/saveslotwidget.h            src/saveslotwidget.cpp
     # ── Battle scene widgets ───────────────────
     include/battlewidget.h      src/battlewidget.cpp
     include/battlemenuwidget.h  src/battlemenuwidget.cpp
@@ -73,6 +73,10 @@ qt_add_resources(CS2-Battle-Arena "assets"
         resources/sfx/hit.wav
         resources/sfx/faint.wav
         resources/sfx/special.wav
+        resources/sprites/house.png
+        resources/sprites/tree_round.png
+        resources/sprites/tree_pine.png
+        resources/sprites/dirt_wall.png
 )
 
 target_link_libraries(CS2-Battle-Arena

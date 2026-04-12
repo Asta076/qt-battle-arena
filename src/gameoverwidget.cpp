@@ -19,15 +19,17 @@ GameOverWidget::GameOverWidget(GameEngine* engine, QWidget* parent)
     m_scoreLabel->setObjectName("subtitleLabel");
     m_scoreLabel->setAlignment(Qt::AlignCenter);
 
-    QPushButton* playAgain = new QPushButton("► PLAY AGAIN", this);
-    QPushButton* mainMenu  = new QPushButton("  MAIN MENU",  this);
-    QPushButton* scores    = new QPushButton("  SCOREBOARD", this);
+    QPushButton* explore  = new QPushButton("► EXPLORE MORE", this);
+    QPushButton* scores   = new QPushButton("  SCOREBOARD",   this);
+    QPushButton* mainMenu = new QPushButton("  MAIN MENU",    this);
 
-    connect(playAgain, &QPushButton::clicked, engine, &GameEngine::onRestartGame);
-    connect(mainMenu,  &QPushButton::clicked, engine, &GameEngine::onExitToMenu);
-    connect(scores,    &QPushButton::clicked, this, [engine]{
-        engine->setState(GameState::Scoreboard);  // show scoreboard
+    connect(explore, &QPushButton::clicked, this, [this]{
+        emit returnToOverworld();
     });
+    connect(scores, &QPushButton::clicked, this, [engine]{
+        engine->setState(GameState::Scoreboard);
+    });
+    connect(mainMenu, &QPushButton::clicked, engine, &GameEngine::onExitToMenu);
 
     connect(engine, &GameEngine::gameOver,
             this,   &GameOverWidget::onGameOver);
@@ -36,7 +38,7 @@ GameOverWidget::GameOverWidget(GameEngine* engine, QWidget* parent)
     layout->addWidget(m_resultLabel);
     layout->addWidget(m_scoreLabel);
     layout->addSpacing(24);
-    layout->addWidget(playAgain);
+    layout->addWidget(explore);
     layout->addWidget(mainMenu);
     layout->addWidget(scores);
     layout->addStretch();
