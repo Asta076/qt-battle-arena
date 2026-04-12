@@ -14,6 +14,7 @@ class GameOverWidget;
 class ScoreboardWidget;
 class OverworldWidget;
 class DungeonWidget;
+class houseWidget;
 
 class MainWindow : public QMainWindow {
     Q_OBJECT
@@ -40,6 +41,8 @@ private slots:
     void onExitedDungeon();
     void onBattleTriggered(CharacterType enemyType, const QString& enemyName);
     void onBackToMenu();
+    void onHouseEntered();
+    void onHouseExited();
 
     // ── Profile events ────────────────────────────────────────────────────────
     void onGoldEarned(int amount);
@@ -70,6 +73,7 @@ private:
     CharacterSelectWidget* m_charSelect   = nullptr;
     OverworldWidget*       m_overworld    = nullptr;
     DungeonWidget*         m_dungeon      = nullptr;
+    houseWidget*           m_house        = nullptr;
     BattleWidget*          m_battleWidget = nullptr;
     GameOverWidget*        m_gameOver     = nullptr;
     ScoreboardWidget*      m_scoreboard   = nullptr;

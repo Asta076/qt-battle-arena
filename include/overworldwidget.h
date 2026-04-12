@@ -127,6 +127,7 @@ public:
     void setGold(int gold);
 signals:
     void dungeonEntered();
+    void houseEntered();
     void backToMenu();
     void saveRequested();
 protected:
@@ -153,7 +154,8 @@ private:
     QGraphicsView     *m_view          = nullptr;
     PlayerSprite      *m_player        = nullptr;
     QGraphicsRectItem *m_dungeonZone   = nullptr;
-    QGraphicsRectItem *m_houseCollider = nullptr;   // invisible collision box for the house
+    QGraphicsRectItem *m_houseCollider = nullptr; // invisible collision box for the house
+    QGraphicsRectItem* m_houseEntranceZone = nullptr;
     GoldHudWidget     *m_goldHud = nullptr;
 
     QTimer    m_ticker;

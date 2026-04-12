@@ -7,6 +7,7 @@
 #include "scoreboardwidget.h"
 #include "overworldwidget.h"
 #include "dungeonwidget.h"
+#include "housewidget.h"
 #include "audiomanager.h"
 #include <QMenuBar>
 #include <QAction>
@@ -49,6 +50,7 @@ void MainWindow::buildUI()
     m_charSelect   = new CharacterSelectWidget(m_engine, this);
     m_overworld    = new OverworldWidget(m_audio, this);
     m_dungeon      = new DungeonWidget(m_audio, this);
+    m_house        = new HouseWidget(m_audio, this);
     m_battleWidget = new BattleWidget(m_engine, m_audio, &m_profile, this);
     m_gameOver     = new GameOverWidget(m_engine, this);
     m_scoreboard   = new ScoreboardWidget(m_engine, this);
@@ -58,6 +60,7 @@ void MainWindow::buildUI()
     m_stack->addWidget(m_charSelect);
     m_stack->addWidget(m_overworld);
     m_stack->addWidget(m_dungeon);
+    m_stack->addWidget(m_house);
     m_stack->addWidget(m_battleWidget);
     m_stack->addWidget(m_gameOver);
     m_stack->addWidget(m_scoreboard);
@@ -86,6 +89,14 @@ void MainWindow::buildUI()
             this, &MainWindow::onBackToMenu);
     connect(m_overworld, &OverworldWidget::saveRequested,
             this, &MainWindow::onSaveRequested);
+
+
+    // ── House ──────────────────────────────────────────────────────────────
+
+    connect(m_overworld, &OverworldWidget::houseEntered,
+            this, &MainWindow::onHouseEntered);
+    connect(m_house, &HouseWidget::backToOverworld,
+            this, &MainWindow::onHouseExited);
 
     // ── Dungeon ──────────────────────────────────────────────────────────────
     connect(m_dungeon, &DungeonWidget::battleTriggered,
@@ -261,6 +272,16 @@ void MainWindow::onExitedDungeon()
     m_stack->setCurrentWidget(m_overworld);
 }
 
+void MainWindow::onHouseEntered()
+{
+    m_stack->setCurrentWidget(m_house);
+}
+
+void MainWindow::onHouseExited()
+{
+    m_overworld->activate();
+    m_stack->setCurrentWidget(m_overworld);
+}
 void MainWindow::onBattleTriggered(CharacterType enemyType, const QString& enemyName)
 {
     m_pendingEnemyType = enemyType;

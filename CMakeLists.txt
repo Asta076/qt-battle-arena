@@ -47,6 +47,7 @@ qt_add_executable(CS2-Battle-Arena
     # ── World widgets ───────────────────
     include/overworldwidget.h  src/overworldwidget.cpp
     include/dungeonwidget.h    src/dungeonwidget.cpp
+    include/housewidget.h      src/housewidget.cpp
 )
 
 # Tell the compiler where your headers live
