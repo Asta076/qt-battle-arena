@@ -46,6 +46,8 @@ private slots:
     void onSaveRequested();       // from overworld pause SAVE button
     void onReturnToOverworld();   // from game over EXPLORE MORE
 
+    //
+    void onBattleItemChosen(ItemType type);
 private:
     void buildUI();
     void buildMenuBar();

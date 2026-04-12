@@ -3,6 +3,7 @@
 #include "gameengine.h"
 #include "battleresult.h"
 #include "audiomanager.h"
+#include "playerprofile.h"
 class HealthBarWidget;
 class SpriteWidget;
 class BattleLogWidget;
@@ -11,12 +12,13 @@ class PauseOverlayWidget;
 class RoundOverWidget;
 class QLabel;
 class QKeyEvent;
-
+class ItemMenuWidget;
 
 class BattleWidget : public QWidget {
     Q_OBJECT
 public:
-    explicit BattleWidget(GameEngine* engine, AudioManager* audio, QWidget* parent = nullptr);
+    explicit BattleWidget(GameEngine* engine, AudioManager* audio,
+                          PlayerProfile* profile, QWidget* parent = nullptr);
 
 protected:
     void paintEvent(QPaintEvent*) override;
@@ -33,6 +35,8 @@ private slots:
 
 private:
     void layoutChildren();
+    void onItemMenuChosen(ItemType type);
+    void onItemMenuCancelled();
 
     GameEngine*      m_engine;
     AudioManager* m_audio;
@@ -49,6 +53,8 @@ private:
     HealthBarWidget* m_enemySP;
     QLabel*          m_playerSpLabel;  // (shows "SP" text)
     QLabel*          m_enemySpLabel;
+    ItemMenuWidget*  m_itemMenu  = nullptr;
+    PlayerProfile*   m_profile   = nullptr;
 
     // ── Bottom panel ──────────────────────────────
     BattleLogWidget* m_log;
@@ -59,4 +65,7 @@ private:
     RoundOverWidget*    m_roundOver;
 
     QPixmap m_background;
+
+signals:
+    void itemChosen(ItemType type);
 };

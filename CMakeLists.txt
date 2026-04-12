@@ -42,7 +42,9 @@ qt_add_executable(CS2-Battle-Arena
     include/pauseoverlaywidget.h src/pauseoverlaywidget.cpp
     include/roundoverwidget.h   src/roundoverwidget.cpp
     include/audiomanager.h      src/audiomanager.cpp
-    
+    include/itemmenuwidget.h    src/itemmenuwidget.cpp
+
+    # ── World widgets ───────────────────
     include/overworldwidget.h  src/overworldwidget.cpp
     include/dungeonwidget.h    src/dungeonwidget.cpp
 )

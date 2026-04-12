@@ -13,6 +13,11 @@
 #include <QApplication>
 #include <QFile>
 
+// ── Item effect constants ────────
+static constexpr int HEALTH_POTION_AMOUNT = 0;   // 0 = use 35% of max HP
+static constexpr int SP_POTION_AMOUNT     = 50;
+
+
 MainWindow::MainWindow(QWidget* parent)
     : QMainWindow(parent)
 {
@@ -44,7 +49,7 @@ void MainWindow::buildUI()
     m_charSelect   = new CharacterSelectWidget(m_engine, this);
     m_overworld    = new OverworldWidget(m_audio, this);
     m_dungeon      = new DungeonWidget(m_audio, this);
-    m_battleWidget = new BattleWidget(m_engine, m_audio, this);
+    m_battleWidget = new BattleWidget(m_engine, m_audio, &m_profile, this);
     m_gameOver     = new GameOverWidget(m_engine, this);
     m_scoreboard   = new ScoreboardWidget(m_engine, this);
 
@@ -93,6 +98,9 @@ void MainWindow::buildUI()
     // ── Game over ─────────────────────────────────────────────────────────────
     connect(m_gameOver, &GameOverWidget::returnToOverworld,
             this, &MainWindow::onReturnToOverworld);
+
+    connect(m_battleWidget, &BattleWidget::itemChosen,
+            this, &MainWindow::onBattleItemChosen);
 }
 
 void MainWindow::buildMenuBar()
@@ -131,6 +139,10 @@ void MainWindow::onNewGameInSlot(int slotIndex)
 
     m_currentSlot      = slotIndex;
     m_profile.reset();
+
+    // give the player their starting items
+    m_profile.addItem(ItemType::HealthPotion, 5);
+
     m_playerHasChosen  = false;
     m_hasPendingBattle = false;
 
@@ -309,4 +321,35 @@ void MainWindow::updateGoldHud()
 {
     m_overworld->setGold(m_profile.gold);
     m_dungeon->setGold(m_profile.gold);
+}
+
+void MainWindow::onBattleItemChosen(ItemType type)
+{
+    // Guard: make sure player actually has this item
+    if (!m_profile.hasItem(type)) return;
+
+    // Deduct from inventory first
+    m_profile.removeItem(type, 1);
+
+    // Then call the appropriate engine effect
+    switch (type) {
+    case ItemType::HealthPotion: {
+        // 35% of player's max HP — engine calculates internally
+        int maxHp = 0;
+        const auto& chars = m_engine->getAllCharacters();
+        if (!chars.isEmpty()) maxHp = chars[0]->getMaxHealth();
+        int healAmt = static_cast<int>(maxHp * 0.35f);
+        m_engine->onPlayerHealed(healAmt);
+        break;
+    }
+    case ItemType::SpPotion:
+        m_engine->onPlayerSpRestored(SP_POTION_AMOUNT);
+        break;
+    case ItemType::AttackBoost:
+        m_engine->onPlayerAttackBoosted();
+        break;
+    case ItemType::DefenseBoost:
+        m_engine->onPlayerDefenseActivated();
+        break;
+    }
 }

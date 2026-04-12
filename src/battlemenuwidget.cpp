@@ -21,7 +21,7 @@ BattleMenuWidget::BattleMenuWidget(GameEngine* engine, QWidget* parent)
     // Mouse clicks
     connect(m_buttons[0], &QPushButton::clicked, m_engine, &GameEngine::onPlayerChoseFight);
     connect(m_buttons[1], &QPushButton::clicked, m_engine, &GameEngine::onPlayerChoseSpecial);
-    connect(m_buttons[2], &QPushButton::clicked, m_engine, &GameEngine::onPlayerChoseItem);
+    connect(m_buttons[2], &QPushButton::clicked, this, &BattleMenuWidget::itemButtonPressed);
     connect(m_buttons[3], &QPushButton::clicked, m_engine, &GameEngine::onPlayerChoseRun);
 
     updateCursor();
@@ -41,7 +41,12 @@ void BattleMenuWidget::updateItemButton()
 {
     bool available = m_engine->itemAvailable();
     m_buttons[2]->setEnabled(available);
-    m_buttons[2]->setText(available ? "ITEM" : "ITEM ✗");
+    if (!available)
+        m_buttons[2]->setText("  ITEM ✗");
+    else {
+        int left = m_engine->maxItemsPerBattle() - m_engine->itemsUsedThisBattle();
+        m_buttons[2]->setText(QString("  ITEM (%1)").arg(left));
+    }
 }
 
 void BattleMenuWidget::moveCursor(int newIndex)
@@ -65,7 +70,7 @@ void BattleMenuWidget::confirmSelection()
     switch (m_cursorIndex) {
     case 0: m_engine->onPlayerChoseFight();   break;
     case 1: m_engine->onPlayerChoseSpecial(); break;
-    case 2: m_engine->onPlayerChoseItem();    break;
+    case 2: emit itemButtonPressed(); break;
     case 3: m_engine->onPlayerChoseRun();     break;
     }
 }

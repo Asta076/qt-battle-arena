@@ -68,7 +68,9 @@ void GameEngine::resetRound()
     m_allCharacters.clear();
     m_allCharacters.append(m_player);
     m_allCharacters.append(m_enemy);
-    m_itemUsed = false;
+    m_itemsUsedThisBattle = 0;
+    m_attackBoosted       = false;
+    m_defenseActive       = false;
     emit healthUpdated(m_player->getHealthPercent(), m_enemy->getHealthPercent());
 }
 
@@ -94,7 +96,9 @@ void GameEngine::onPlayerSelectedCharacter(CharacterType type, const QString& na
     m_playerScore  = 0;
     m_enemyScore   = 0;
     m_currentRound = 1;
-    m_itemUsed     = false;
+    m_itemsUsedThisBattle = 0;
+    m_attackBoosted       = false;
+    m_defenseActive       = false;
     m_playerMoveHistory.clear();
     m_roundHistory.clear();
     m_tracker.reset();
@@ -117,6 +121,14 @@ void GameEngine::resolvePlayerAction(bool useSpecial)
 
     setState(GameState::AnimatingAttack);
     int damage = useSpecial ? m_player->specialAbility() : m_player->attack();
+
+    // ── Apply attack boost if active ──────────────────────────────────────────
+    if (m_attackBoosted) {
+        damage = static_cast<int>(damage * 1.5f);
+        m_attackBoosted = false;   // consumed
+        emit battleLogMessage("Boosted attack!");
+    }
+
     // ── Update SP ─────────────────────────────────
     if (useSpecial)
         m_player->drainSp();
@@ -155,17 +167,62 @@ void GameEngine::resolvePlayerAction(bool useSpecial)
 void GameEngine::onPlayerChoseFight()   { resolvePlayerAction(false); }
 void GameEngine::onPlayerChoseSpecial() { resolvePlayerAction(true);  }
 
-void GameEngine::onPlayerChoseItem()
+// ── Item effect slots — called by MainWindow after deducting from inventory ──
+
+void GameEngine::onPlayerHealed(int amount)
 {
-    if (m_itemUsed || m_state != GameState::PlayerTurn) return;
+    if (m_itemsUsedThisBattle >= MAX_ITEMS_PER_BATTLE) return;
+    if (m_state != GameState::PlayerTurn) return;
+
     setState(GameState::AnimatingAttack);
-    m_itemUsed = true;
-    int healAmount = static_cast<int>(m_player->getMaxHealth() * 0.35f);
-    m_player->heal(healAmount);
+    m_itemsUsedThisBattle++;
+
+    m_player->heal(amount);
     emit healthUpdated(m_player->getHealthPercent(), m_enemy->getHealthPercent());
     emit energyUpdated(m_player->getSpPercent(), m_enemy->getSpPercent());
-    emit battleLogMessage(QString("%1 used a Potion! Recovered %2 HP!")
-                              .arg(m_player->getName()).arg(healAmount));
+    emit battleLogMessage(QString("%1 used a Health Potion! +%2 HP!")
+                              .arg(m_player->getName()).arg(amount));
+    m_roundTimer->start(900);   // enemy takes their turn after
+}
+
+void GameEngine::onPlayerSpRestored(int amount)
+{
+    if (m_itemsUsedThisBattle >= MAX_ITEMS_PER_BATTLE) return;
+    if (m_state != GameState::PlayerTurn) return;
+
+    setState(GameState::AnimatingAttack);
+    m_itemsUsedThisBattle++;
+
+    m_player->addSp(amount);
+    emit energyUpdated(m_player->getSpPercent(), m_enemy->getSpPercent());
+    emit battleLogMessage(QString("%1 restored %2 SP!")
+                              .arg(m_player->getName()).arg(amount));
+    m_roundTimer->start(900);
+}
+
+void GameEngine::onPlayerAttackBoosted()
+{
+    if (m_itemsUsedThisBattle >= MAX_ITEMS_PER_BATTLE) return;
+    if (m_state != GameState::PlayerTurn) return;
+
+    setState(GameState::AnimatingAttack);
+    m_itemsUsedThisBattle++;
+    m_attackBoosted = true;
+
+    emit battleLogMessage(m_player->getName() + "'s attack is boosted!");
+    m_roundTimer->start(900);
+}
+
+void GameEngine::onPlayerDefenseActivated()
+{
+    if (m_itemsUsedThisBattle >= MAX_ITEMS_PER_BATTLE) return;
+    if (m_state != GameState::PlayerTurn) return;
+
+    setState(GameState::AnimatingAttack);
+    m_itemsUsedThisBattle++;
+    m_defenseActive = true;
+
+    emit battleLogMessage(m_player->getName() + " raised a shield!");
     m_roundTimer->start(900);
 }
 
@@ -219,6 +276,11 @@ void GameEngine::enemyTakeTurn()
 
 
     emit energyUpdated(m_player->getSpPercent(), m_enemy->getSpPercent());
+    if (m_defenseActive) {
+        damage = static_cast<int>(damage * 0.7f);   // 30% reduction
+        m_defenseActive = false;   // consumed
+        emit battleLogMessage(m_player->getName() + "'s shield absorbed some damage!");
+    }
     m_player->takeDamage(damage);
     BattleResult result;
     result.attackerName    = m_enemy->getName();
@@ -303,7 +365,9 @@ void GameEngine::onRestartGame()
     m_playerScore  = 0;
     m_enemyScore   = 0;
     m_currentRound = 1;
-    m_itemUsed     = false;
+    m_itemsUsedThisBattle = 0;
+    m_attackBoosted       = false;
+    m_defenseActive       = false;
     m_playerMoveHistory.clear();
     m_roundHistory.clear();
     m_tracker.reset();
@@ -338,7 +402,6 @@ bool GameEngine::onSaveGame(const QString& path)
     obj["currentRound"]   = m_currentRound;
     obj["playerScore"]    = m_playerScore;
     obj["enemyScore"]     = m_enemyScore;
-    obj["itemUsed"]       = m_itemUsed;
     obj["difficulty"]     = static_cast<int>(m_difficulty);
 
     QFile file(path);
@@ -369,7 +432,6 @@ bool GameEngine::onLoadGame(const QString& path)
     m_currentRound = obj["currentRound"].toInt(1);
     m_playerScore  = obj["playerScore"].toInt(0);
     m_enemyScore   = obj["enemyScore"].toInt(0);
-    m_itemUsed     = obj["itemUsed"].toBool(false);
 
 
     // Recreate player at full health then apply saved damage

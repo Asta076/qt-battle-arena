@@ -1,5 +1,6 @@
 #include "battlewidget.h"
 #include "healthbarwidget.h"
+#include "itemmenuwidget.h"
 #include "spritewidget.h"
 #include "battlelogwidget.h"
 #include "battlemenuwidget.h"
@@ -9,10 +10,11 @@
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QPainter>
-#include <QTimer>               // ← ADD (for QTimer::singleShot)
+#include <QTimer>
 
-BattleWidget::BattleWidget(GameEngine* engine, AudioManager* audio, QWidget* parent)
-    : QWidget(parent), m_engine(engine), m_audio(audio)
+BattleWidget::BattleWidget(GameEngine* engine, AudioManager* audio,
+                           PlayerProfile* profile, QWidget* parent)
+    : QWidget(parent), m_engine(engine), m_audio(audio), m_profile(profile)
 {
     m_background = QPixmap(":/backgrounds/battle_bg.png");
 
@@ -72,6 +74,15 @@ BattleWidget::BattleWidget(GameEngine* engine, AudioManager* audio, QWidget* par
     m_roundOver    = new RoundOverWidget(this);
     m_pauseOverlay->hide();
     m_roundOver->hide();
+
+    // ── Item menu overlay ─────────────────────────────────────────────────────
+    m_itemMenu = new ItemMenuWidget(this);
+    m_itemMenu->hide();
+
+    connect(m_itemMenu, &ItemMenuWidget::itemChosen,
+            this, &BattleWidget::onItemMenuChosen);
+    connect(m_itemMenu, &ItemMenuWidget::cancelled,
+            this, &BattleWidget::onItemMenuCancelled);
 
     // ── Main layout (battle area + bottom panel) ──
     QVBoxLayout* root = new QVBoxLayout(this);
@@ -135,6 +146,15 @@ BattleWidget::BattleWidget(GameEngine* engine, AudioManager* audio, QWidget* par
     });
     connect(engine, &GameEngine::energyUpdated,
             this,   &BattleWidget::onEnergyUpdated);
+    connect(m_menu, &BattleMenuWidget::itemButtonPressed, this, [this]{
+        if (!m_engine->itemAvailable()) return;
+        m_itemMenu->refresh(m_profile,
+                            m_engine->itemsUsedThisBattle(),
+                            m_engine->maxItemsPerBattle());
+        m_itemMenu->show();
+        m_itemMenu->raise();
+        m_itemMenu->setFocus();
+    });
 }
 void BattleWidget::onEnergyUpdated(float playerPct, float enemyPct)
 {
@@ -224,6 +244,13 @@ void BattleWidget::resizeEvent(QResizeEvent* e)
     // Keep overlays fullscreen
     if (m_pauseOverlay) m_pauseOverlay->resize(size());
     if (m_roundOver)    m_roundOver->resize(size());
+
+    // Center item menu just above the bottom panel
+    if (m_itemMenu) {
+        int mx = (width()  - m_itemMenu->width())  / 2;
+        int my =  height() - 200 - m_itemMenu->height() - 8;
+        m_itemMenu->move(mx, my);
+    }
 }
 
 void BattleWidget::layoutChildren()
@@ -264,4 +291,17 @@ void BattleWidget::keyPressEvent(QKeyEvent* event)
         m_engine->onPauseToggle();
     else
         QWidget::keyPressEvent(event);
+}
+void BattleWidget::onItemMenuChosen(ItemType type)
+{
+    m_itemMenu->hide();
+    m_menu->setFocus();
+    emit itemChosen(type);   // MainWindow handles the rest
+}
+
+void BattleWidget::onItemMenuCancelled()
+{
+    m_itemMenu->hide();
+    m_menu->setFocus();
+    // No action taken — player is back at the main battle menu
 }

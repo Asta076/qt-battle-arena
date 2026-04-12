@@ -31,7 +31,9 @@ public:
     int          getEnemyScore()   const { return m_enemyScore; }
     int          getCurrentRound() const { return m_currentRound; }
     int          getMaxRounds()    const { return m_maxRounds; }
-    bool         itemAvailable()   const { return !m_itemUsed; }
+    bool         itemAvailable()       const { return m_itemsUsedThisBattle < MAX_ITEMS_PER_BATTLE; }
+    int          itemsUsedThisBattle() const { return m_itemsUsedThisBattle; }
+    int          maxItemsPerBattle()   const { return MAX_ITEMS_PER_BATTLE; }
     SessionStats getSessionStats() const { return m_tracker.getStats(); }
     QString      getPlayerName()   const { return m_playerName; }
     CharacterType getPlayerType()  const { return m_playerType; }
@@ -57,7 +59,10 @@ public slots:
     void onPlayerSelectedCharacter(CharacterType type, const QString& name);
     void onPlayerChoseFight();
     void onPlayerChoseSpecial();
-    void onPlayerChoseItem();
+    void onPlayerHealed(int amount);         // HealthPotion effect
+    void onPlayerSpRestored(int amount);     // SpPotion effect
+    void onPlayerAttackBoosted();            // AttackBoost effect
+    void onPlayerDefenseActivated();         // DefenseBoost effect
     void onPlayerChoseRun();
     void onPauseToggle();
     void onRestartGame();
@@ -69,6 +74,7 @@ private slots:
     void enemyTakeTurn();
 
 private:
+    static constexpr int MAX_ITEMS_PER_BATTLE = 2;
     void setState_internal(GameState s);
     void resolvePlayerAction(bool useSpecial);
     void spawnEnemy();
@@ -88,7 +94,9 @@ private:
     int           m_enemyScore   = 0;
     int           m_currentRound = 0;
     int           m_maxRounds    = 5;
-    bool          m_itemUsed     = false;
+    int  m_itemsUsedThisBattle = 0;
+    bool m_defenseActive       = false;   // set by DefenseBoost, consumed on next hit
+    bool m_attackBoosted       = false;
     QList<bool>   m_playerMoveHistory;
     ScoreTracker  m_tracker;
     CharacterType m_playerType   = CharacterType::Warrior;

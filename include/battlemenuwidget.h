@@ -26,4 +26,6 @@ private:
     void moveCursor(int newIndex);
     void confirmSelection();
     void updateCursor();
+signals:
+    void itemButtonPressed();
 };
