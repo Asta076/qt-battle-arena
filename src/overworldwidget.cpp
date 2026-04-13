@@ -328,7 +328,17 @@ void OverworldWidget::buildScene()
     );
     m_houseCollider->setZValue(1);
 
-    // --- trees scattered around the edges ---
+
+    // ── House entrance zone (triggers transition to house screen) ────────────
+    const qreal entranceW = HOUSE_W * 0.35;
+    const qreal entranceX = HOUSE_X + (HOUSE_W - entranceW) / 2.0;
+    const qreal entranceY = HOUSE_Y + HOUSE_H * 0.82;
+    m_houseEntranceZone = m_scene->addRect(
+        entranceX, entranceY, entranceW, 20,
+        Qt::NoPen, Qt::NoBrush);
+    m_houseEntranceZone->setZValue(1);
+
+    // ── Trees ────────────────────────────────────────────────────────────────
     QPixmap treeRoundPx(":/sprites/tree_round.png");
     QPixmap treePinePx (":/sprites/tree_pine.png");
 
@@ -479,6 +489,12 @@ void OverworldWidget::checkTriggers()
         }
 
         m_player->setPos(px, py);
+    }
+    // ── House entrance → enter house screen ──────────────────────────────────
+    if (m_houseEntranceZone && m_player->collidesWithItem(m_houseEntranceZone)) {
+        deactivate();
+        emit houseEntered();
+        return;
     }
 }
 

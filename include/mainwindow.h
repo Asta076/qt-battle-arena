@@ -14,7 +14,7 @@ class GameOverWidget;
 class ScoreboardWidget;
 class OverworldWidget;
 class DungeonWidget;
-class houseWidget;
+class HouseWidget;
 
 class MainWindow : public QMainWindow {
     Q_OBJECT
@@ -73,7 +73,7 @@ private:
     CharacterSelectWidget* m_charSelect   = nullptr;
     OverworldWidget*       m_overworld    = nullptr;
     DungeonWidget*         m_dungeon      = nullptr;
-    houseWidget*           m_house        = nullptr;
+    HouseWidget*           m_house        = nullptr;
     BattleWidget*          m_battleWidget = nullptr;
     GameOverWidget*        m_gameOver     = nullptr;
     ScoreboardWidget*      m_scoreboard   = nullptr;
