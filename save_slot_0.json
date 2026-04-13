@@ -1,0 +1,15 @@
+{
+    "characterName": "Warrior",
+    "characterType": 0,
+    "dungeonRuns": 0,
+    "gold": 60,
+    "inventory": {
+    },
+    "unlockedBuildings": [
+    ],
+    "upgrades": {
+        "bonusAttack": 0,
+        "bonusMaxHp": 0,
+        "bonusSpPerAtk": 0
+    }
+}

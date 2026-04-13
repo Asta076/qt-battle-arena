@@ -1,5 +1,6 @@
 #pragma once
 
+// Qt stuff we need
 #include <QWidget>
 #include <QGraphicsView>
 #include <QGraphicsScene>
@@ -9,160 +10,171 @@
 #include <QSet>
 #include <QPixmap>
 #include <QKeyEvent>
+
 #include "goldhudwidget.h"
 
+// forward declare so we dont have to include the whole header here
 class AudioManager;
 
-// ═════════════════════════════════════════════════════════════════════════════
+
+// ============================================================
 //  SpriteSheet
+//  Holds the player sprite sheet and lets us grab individual frames
 //
-//  Physical layout:  8 columns × 9 rows, each cell 68 × 68 px  (544 × 612 total)
-//
-//  Row 0        — Idle stances:  one static frame per column (8 directions)
-//  Rows 1 – 8  — Walk cycles:   6 animated frames (cols 0-5); cols 6-7 empty
-// ═════════════════════════════════════════════════════════════════════════════
+//  The sheet is 8 columns x 9 rows, each frame is 68x68 pixels
+//  Row 0 = idle poses, rows 1-8 = walking animations
+// ============================================================
 struct SpriteSheet
 {
     QPixmap pixmap;
+
+    // size of each frame on the sheet
     static constexpr int FRAME_W = 68;
     static constexpr int FRAME_H = 68;
+
+    // returns a single frame cropped from the sheet
     QPixmap frame(int col, int row) const
     {
         return pixmap.copy(col * FRAME_W, row * FRAME_H, FRAME_W, FRAME_H);
     }
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
-//  Direction enum
+
+// ============================================================
+//  Direction
+//  The 8 directions the player can face/walk
 //
-//  Each enumerator value N encodes:
-//    idle frame  → row 0, column N
-//    walk cycle  → row N+1, columns 0-5
-//
-//  Sheet rows (0-indexed):
-//    Row 0 → Idle (one frame per column, 8 directions)
-//    Row 1 → Right
-//    Row 2 → Up
-//    Row 3 → Forward-right (up-right diagonal)
-//    Row 4 → Forward-left  (up-left diagonal)
-//    Row 5 → Down
-//    Row 6 → Down-right
-//    Row 7 → Down-left
-//    Row 8 → Left
-// ─────────────────────────────────────────────────────────────────────────────
+//  The int value maps directly to which row/column to use on the sheet:
+//    idle frame  -> row 0, column = Direction value
+//    walk cycle  -> row = Direction value + 1, columns 0-5
+// ============================================================
 enum class Direction : int
 {
-    Right        = 0,   // walk row 1
-    Up           = 1,   // walk row 2
-    ForwardRight = 2,   // walk row 3
-    ForwardLeft  = 3,   // walk row 4
-    Down         = 4,   // walk row 5
-    DownRight    = 5,   // walk row 6
-    DownLeft     = 6,   // walk row 7
-    Left         = 7    // walk row 8
+    Right        = 0,
+    Up           = 1,
+    ForwardRight = 2,
+    ForwardLeft  = 3,
+    Down         = 4,
+    DownRight    = 5,
+    DownLeft     = 6,
+    Left         = 7
 };
 
-// Helper: walk row for a direction
+// helpers to get row/col from a direction (cleaner than casting everywhere)
 inline int walkRow(Direction d) { return static_cast<int>(d) + 1; }
-// Helper: idle column for a direction
 inline int idleCol(Direction d) { return static_cast<int>(d); }
 
-// ─────────────────────────────────────────────────────────────────────────────
-//  WASD → Direction mapping
-//
-//   D        → Right
-//   A        → Left
-//   W        → Up
-//   S        → Down
-//   W+D      → ForwardRight
-//   W+A      → ForwardLeft
-//   S+D      → DownRight
-//   S+A      → DownLeft
-// ─────────────────────────────────────────────────────────────────────────────
 
-// ─────────────────────────────────────────────────────────────────────────────
+// ============================================================
 //  PlayerSprite
-// ─────────────────────────────────────────────────────────────────────────────
+//  The player character on the overworld map
+//  Handles movement, animation, and the shadow underneath
+// ============================================================
 class PlayerSprite : public QGraphicsPixmapItem
 {
 public:
-    static constexpr qreal W     = 96.0;   // logical scene size (scaled from 68px)
+    // logical display size and movement speed (in scene units)
+    static constexpr qreal W     = 96.0;
     static constexpr qreal H     = 96.0;
     static constexpr qreal SPEED = 3.0;
 
-    explicit PlayerSprite(const SpriteSheet &sheet,
-                          QGraphicsItem     *parent = nullptr);
+    explicit PlayerSprite(const SpriteSheet &sheet, QGraphicsItem *parent = nullptr);
 
-    // Call once per physics tick from OverworldWidget::onTick()
+    // called once per game tick to move the player and update animation
     void step(const QSet<int> &heldKeys, const QRectF &worldBounds);
 
 private:
+    // animation helpers
     void setWalkAnim(Direction dir);
     void setIdleFrame(Direction dir);
     void applyFrame();
 
     const SpriteSheet &m_sheet;
 
+    // animation state
     bool      m_isIdle     = true;
-    Direction m_facing     = Direction::Down;   // start facing toward camera
+    Direction m_facing     = Direction::Down;
     int       m_frameIndex = 0;
     int       m_tickAccum  = 0;
 
-    static constexpr int TICKS_PER_FRAME = 5;   // animation speed (~12 fps @ 60)
-    static constexpr int WALK_FRAMES     = 6;   // frames per walk row (cols 0-5)
+    // how many ticks before we advance to the next animation frame (~12fps at 60hz)
+    static constexpr int TICKS_PER_FRAME = 5;
+    static constexpr int WALK_FRAMES     = 6;
+
+    // the shadow ellipse drawn under the player
     QGraphicsEllipseItem *m_shadow = nullptr;
 };
 
-// ═════════════════════════════════════════════════════════════════════════════
+
+// ============================================================
 //  OverworldWidget
-// ═════════════════════════════════════════════════════════════════════════════
+//  The main overworld/exploration screen
+//  Player can walk around, enter the dungeon, visit the house, or open the menu
+// ============================================================
 class OverworldWidget : public QWidget
 {
     Q_OBJECT
+
 public:
     explicit OverworldWidget(AudioManager *audio, QWidget *parent = nullptr);
 
+    // call these when switching to/from this screen
     void activate();
     void deactivate();
+
+    // updates the gold counter in the HUD
     void setGold(int gold);
+
 signals:
     void dungeonEntered();
     void houseEntered();
     void backToMenu();
     void saveRequested();
+
 protected:
+    // Qt event overrides
     void keyPressEvent(QKeyEvent   *e) override;
     void keyReleaseEvent(QKeyEvent *e) override;
     void resizeEvent(QResizeEvent  *e) override;
     void showEvent(QShowEvent      *e) override;
 
 private slots:
-    void onTick();
+    void onTick(); // runs every 16ms (roughly 60fps)
 
 private:
-    void buildScene();
-    void placePlayer();
-    void checkTriggers();
-    void fitView();
-    void togglePause();
-    void buildPauseOverlay();
+    // --- setup ---
+    void buildScene();       // creates all the tiles, trees, buildings etc.
+    void buildPauseOverlay(); // creates the pause menu widget
+    void placePlayer();      // puts player in the center of the map
 
+    // --- game loop ---
+    void checkTriggers();    // checks if player walked into a zone
+
+    // --- misc ---
+    void fitView();          // scales the view to fill the widget
+    void togglePause();      // shows/hides the pause overlay
+
+    // world size in scene units
     static constexpr qreal WORLD_W = 800;
     static constexpr qreal WORLD_H = 600;
 
-    QGraphicsScene    *m_scene         = nullptr;
-    QGraphicsView     *m_view          = nullptr;
-    PlayerSprite      *m_player        = nullptr;
-    QGraphicsRectItem *m_dungeonZone   = nullptr;
-    QGraphicsRectItem *m_houseCollider = nullptr; // invisible collision box for the house
-    QGraphicsRectItem* m_houseEntranceZone = nullptr;
-    GoldHudWidget     *m_goldHud = nullptr;
+    // --- scene objects ---
+    QGraphicsScene    *m_scene             = nullptr;
+    QGraphicsView     *m_view              = nullptr;
+    PlayerSprite      *m_player            = nullptr;
+    QGraphicsRectItem *m_dungeonZone       = nullptr;
+    QGraphicsRectItem *m_houseCollider     = nullptr;
+    QGraphicsRectItem *m_houseEntranceZone = nullptr;
+    GoldHudWidget     *m_goldHud           = nullptr;
 
+    // --- game loop stuff ---
     QTimer    m_ticker;
     QSet<int> m_heldKeys;
 
+    // --- assets ---
     SpriteSheet m_sheet;
 
+    // --- other ---
     AudioManager *m_audio        = nullptr;
     QWidget      *m_pauseOverlay = nullptr;
     bool          m_paused       = false;
