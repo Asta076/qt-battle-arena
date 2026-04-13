@@ -45,14 +45,18 @@ void HouseWidget::setProfile(PlayerProfile* profile)
     m_profile = profile;
     if (!m_profile) return;
 
-    // Stats section
+    // We use HTML tags to add colors, bolding, and clean sizing!
     QString statsText = QString(
-                            "Stats:\n\n"
-                            "Name: %1\n"
-                            "Gold: %2\n"
-                            "Dungeon Runs: %3\n"
-                            "Bonus HP: %4\n"
-                            "Bonus ATK: %5"
+                            "<div align='center'>"
+                            "<h2 style='color: #4da6ff;'>Player Stats</h2>"
+                            "<span style='font-size: 16px;'>"
+                            "<b>Name:</b> %1<br>"
+                            "<b>Gold:</b> <span style='color: #FFD700;'>%2 G</span><br>"
+                            "<b>Dungeon Runs:</b> %3<br>"
+                            "<b>Bonus HP:</b> <span style='color: #ff4d4d;'>+%4</span><br>"
+                            "<b>Bonus ATK:</b> <span style='color: #ff9933;'>+%5</span>"
+                            "</span>"
+                            "</div>"
                             ).arg(m_profile->characterName)
                             .arg(m_profile->gold)
                             .arg(m_profile->dungeonRuns)
@@ -61,15 +65,16 @@ void HouseWidget::setProfile(PlayerProfile* profile)
 
     m_statsLabel->setText(statsText);
 
-    // Inventory section
-    QString invText = "Inventory:\n\n";
+    // Style the inventory section similarly
+    QString invText = "<div align='center'>"
+                      "<h2 style='color: #66cc66;'>Inventory</h2>"
+                      "<span style='font-size: 16px;'>";
     bool hasItems = false;
 
     for (auto it = m_profile->inventory.begin(); it != m_profile->inventory.end(); ++it) {
         if (it.value() > 0) {
             hasItems = true;
 
-            // We moved the switch statement directly into the loop!
             QString itemName;
             switch (it.key()) {
             case ItemType::HealthPotion: itemName = "Health Potion"; break;
@@ -79,15 +84,18 @@ void HouseWidget::setProfile(PlayerProfile* profile)
             default:                     itemName = "Unknown Item"; break;
             }
 
-            invText += QString("- %1 x%2\n")
+            invText += QString("<b>%1:</b> x%2<br>")
                            .arg(itemName)
                            .arg(it.value());
         }
     }
 
     if (!hasItems) {
-        invText += " (Your pockets are empty!)";
+        // Make the empty message italic and gray so it looks intentional
+        invText += "<i style='color: gray;'>(Your pockets are empty!)</i>";
     }
+
+    invText += "</span></div>";
 
     m_inventoryLabel->setText(invText);
 }
