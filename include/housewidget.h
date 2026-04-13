@@ -1,7 +1,7 @@
 #pragma once
 
 #include <QWidget>
-
+#include "playerprofile.h"
 class QLabel;
 class QPushButton;
 class AudioManager;
@@ -17,6 +17,7 @@ signals:
     void backToOverworld();
 
 private:
+    QString getItemName(ItemType type) const;
     AudioManager* m_audio = nullptr;
     PlayerProfile* m_profile = nullptr;
 

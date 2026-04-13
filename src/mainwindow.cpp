@@ -274,6 +274,7 @@ void MainWindow::onExitedDungeon()
 
 void MainWindow::onHouseEntered()
 {
+    m_house->setProfile(&m_profile);
     m_stack->setCurrentWidget(m_house);
 }
 
