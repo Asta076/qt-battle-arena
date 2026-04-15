@@ -338,17 +338,112 @@ void OverworldWidget::buildScene()
         Qt::NoPen, Qt::NoBrush);
     m_houseEntranceZone->setZValue(1);
     // ── Shop zone ────────────────────────────────────────────────────────────────
-    m_shopZone = m_scene->addRect(
-    620, 220, 80, 60,
-    QPen(Qt::NoPen),
-    QBrush(QColor(255, 215, 0, 80))
-    );
-    m_shopZone->setZValue(2);
+    // ── Shop stall (bazaar style) ─────────────────────────────────────────────
+    const qreal SHOP_X = 600;
+    const qreal SHOP_Y = 165;
+    const qreal SHOP_W = 120;
+    const qreal SHOP_H = 95;
 
-    auto *shopLabel = m_scene->addText("SHOP", QFont("Arial", 8, QFont::Bold));
-    shopLabel->setDefaultTextColor(QColor("#FFD700"));
-    shopLabel->setPos(628, 198);
-    shopLabel->setZValue(3);
+    // back wall
+    auto *shopBack = m_scene->addRect(
+    SHOP_X, SHOP_Y, SHOP_W, SHOP_H,
+    QPen(QColor("#4E342E"), 2),
+    QBrush(QColor("#8D6E63"))
+    );
+    shopBack->setZValue(4);
+
+    // left wooden post
+    auto *shopPostL = m_scene->addRect(
+    SHOP_X + 8, SHOP_Y + 8, 8, SHOP_H - 16,
+    QPen(Qt::NoPen),
+    QBrush(QColor("#5D4037"))
+    );
+    shopPostL->setZValue(5);
+    // right wooden post
+    auto *shopPostR = m_scene->addRect(
+    SHOP_X + SHOP_W - 16, SHOP_Y + 8, 8, SHOP_H - 16,
+    QPen(Qt::NoPen),
+    QBrush(QColor("#5D4037"))
+    );
+    shopPostR->setZValue(5);
+    // counter
+    auto *shopCounter = m_scene->addRect(
+    SHOP_X + 10, SHOP_Y + 52, SHOP_W - 20, 22,
+    QPen(QColor("#4E342E"), 1),
+    QBrush(QColor("#6D4C41"))
+    );
+    shopCounter->setZValue(6);
+    // awning background
+    auto *shopAwning = m_scene->addRect(
+    SHOP_X - 6, SHOP_Y - 18, SHOP_W + 12, 20,
+    QPen(QColor("#4E342E"), 1),
+    QBrush(QColor("#C62828"))
+    );
+    shopAwning->setZValue(7);
+   // awning stripes
+   for (int i = 0; i < 6; ++i) {
+    auto *stripe = m_scene->addRect(
+        SHOP_X - 6 + i * 22, SHOP_Y - 18, 11, 20,
+        Qt::NoPen,
+        QBrush(QColor("#FBE9E7"))
+    );
+    stripe->setZValue(8);
+   }
+
+   // hanging shop sign 
+   auto *shopSign = m_scene->addRect(
+    SHOP_X + 28, SHOP_Y + 10, 64, 18,
+    QPen(QColor("#3E2723"), 1),
+    QBrush(QColor("#D7B899"))
+    );
+    shopSign->setZValue(8);
+
+    auto *shopLabel = m_scene->addText("BAZAAR", QFont("Arial", 7, QFont::Bold));
+    shopLabel->setDefaultTextColor(QColor("#3E2723"));
+    shopLabel->setPos(SHOP_X + 35, SHOP_Y + 12);
+    shopLabel->setZValue(9);
+
+    // little crates in front
+    auto *crate1 = m_scene->addRect(
+    SHOP_X + 8, SHOP_Y + SHOP_H - 10, 18, 14,
+    QPen(QColor("#4E342E"), 1),
+    QBrush(QColor("#A1887F"))
+    );
+    crate1->setZValue(6);
+
+    auto *crate2 = m_scene->addRect(
+    SHOP_X + SHOP_W - 26, SHOP_Y + SHOP_H - 10, 18, 14,
+    QPen(QColor("#4E342E"), 1),
+    QBrush(QColor("#A1887F"))
+    );
+    crate2->setZValue(6);
+
+   // objects  on counter
+    auto *jar1 = m_scene->addEllipse(
+    SHOP_X + 26, SHOP_Y + 58, 8, 8,
+    Qt::NoPen, QBrush(QColor("#FFD54F"))
+    );
+    jar1->setZValue(7);
+
+    auto *jar2 = m_scene->addEllipse(
+    SHOP_X + 44, SHOP_Y + 58, 8, 8,
+    Qt::NoPen, QBrush(QColor("#81C784"))
+    );
+    jar2->setZValue(7);
+
+    auto *jar3 = m_scene->addEllipse(
+    SHOP_X + 62, SHOP_Y + 58, 8, 8,
+    Qt::NoPen, QBrush(QColor("#4FC3F7")) 
+    );
+    jar3->setZValue(7);
+
+    // invisible trigger zone in front of the stall
+    m_shopZone = m_scene->addRect(
+    SHOP_X + 20, SHOP_Y + SHOP_H + 2, SHOP_W - 40, 18,
+    Qt::NoPen,
+    Qt::NoBrush
+    );
+    m_shopZone->setZValue(1);
     // ── Trees ────────────────────────────────────────────────────────────────
     QPixmap treeRoundPx(":/sprites/tree_round.png");
     QPixmap treePinePx (":/sprites/tree_pine.png");
