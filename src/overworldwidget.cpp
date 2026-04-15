@@ -337,7 +337,18 @@ void OverworldWidget::buildScene()
         entranceX, entranceY, entranceW, 20,
         Qt::NoPen, Qt::NoBrush);
     m_houseEntranceZone->setZValue(1);
+    // ── Shop zone ────────────────────────────────────────────────────────────────
+    m_shopZone = m_scene->addRect(
+    620, 220, 80, 60,
+    QPen(Qt::NoPen),
+    QBrush(QColor(255, 215, 0, 80))
+    );
+    m_shopZone->setZValue(2);
 
+    auto *shopLabel = m_scene->addText("SHOP", QFont("Arial", 8, QFont::Bold));
+    shopLabel->setDefaultTextColor(QColor("#FFD700"));
+    shopLabel->setPos(628, 198);
+    shopLabel->setZValue(3);
     // ── Trees ────────────────────────────────────────────────────────────────
     QPixmap treeRoundPx(":/sprites/tree_round.png");
     QPixmap treePinePx (":/sprites/tree_pine.png");
@@ -496,6 +507,12 @@ void OverworldWidget::checkTriggers()
         emit houseEntered();
         return;
     }
+   //--shop------------------------------------------------------------------ 
+    if (m_shopZone && m_player->collidesWithItem(m_shopZone)) {
+    deactivate();
+    emit shopEntered();
+    return;
+}
 }
 
 

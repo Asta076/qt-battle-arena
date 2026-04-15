@@ -1,0 +1,16 @@
+{
+    "characterName": "Maya",
+    "characterType": 0,
+    "dungeonRuns": 0,
+    "gold": 0,
+    "inventory": {
+        "HealthPotion": 5
+    },
+    "unlockedBuildings": [
+    ],
+    "upgrades": {
+        "bonusAttack": 0,
+        "bonusMaxHp": 0,
+        "bonusSpPerAtk": 0
+    }
+}

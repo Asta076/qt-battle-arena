@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>ShopWidget</class>
+ <widget class="QWidget" name="ShopWidget">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>600</width>
+    <height>400</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>ShopWidget</string>
+  </property>
+  <layout class="QVBoxLayout" name="verticalLayout_2">
+   <item>
+    <layout class="QVBoxLayout" name="verticalLayout">
+     <item>
+      <widget class="QLabel" name="titleLabel">
+       <property name="text">
+        <string>SHOP</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QLabel" name="goldLabel">
+       <property name="text">
+        <string>Gold: 0</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QListWidget" name="itemListWidget"/>
+     </item>
+     <item>
+      <widget class="QLabel" name="descriptionLabel">
+       <property name="text">
+        <string>Select an item to see details.</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <layout class="QHBoxLayout" name="horizontalLayout"/>
+     </item>
+     <item>
+      <layout class="QHBoxLayout" name="horizontalLayout_2"/>
+     </item>
+     <item>
+      <widget class="QPushButton" name="buyButton">
+       <property name="text">
+        <string>BUY</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="backButton">
+       <property name="text">
+        <string>BACK</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QLabel" name="TITLELABEL">
+       <property name="text">
+        <string/>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

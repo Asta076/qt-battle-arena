@@ -18,6 +18,7 @@ qt_add_executable(CS2-Battle-Arena
     include/battleresult.h
     include/scoretracker.h      src/scoretracker.cpp
     include/playerprofile.h     src/playerprofile.cpp
+    
     # ── Game engine (Qt Core) ──────────────────
     include/gameengine.h        src/gameengine.cpp
 
@@ -48,6 +49,8 @@ qt_add_executable(CS2-Battle-Arena
     include/overworldwidget.h  src/overworldwidget.cpp
     include/dungeonwidget.h    src/dungeonwidget.cpp
     include/housewidget.h      src/housewidget.cpp
+    include/shopwidget.h       src/shopwidget.cpp
+    src/shopwidget.ui
 )
 
 # Tell the compiler where your headers live

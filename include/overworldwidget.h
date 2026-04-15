@@ -128,6 +128,7 @@ public:
 signals:
     void dungeonEntered();
     void houseEntered();
+    void shopEntered();
     void backToMenu();
     void saveRequested();
 
@@ -164,6 +165,7 @@ private:
     PlayerSprite      *m_player            = nullptr;
     QGraphicsRectItem *m_dungeonZone       = nullptr;
     QGraphicsRectItem *m_houseCollider     = nullptr;
+    QGraphicsRectItem *m_shopZone          = nullptr;
     QGraphicsRectItem *m_houseEntranceZone = nullptr;
     GoldHudWidget     *m_goldHud           = nullptr;
 
