@@ -47,6 +47,7 @@ void BattleMenuWidget::updateItemButton()
         int left = m_engine->maxItemsPerBattle() - m_engine->itemsUsedThisBattle();
         m_buttons[2]->setText(QString("  ITEM (%1)").arg(left));
     }
+    updateCursor();
 }
 
 void BattleMenuWidget::moveCursor(int newIndex)

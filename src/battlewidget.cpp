@@ -151,6 +151,7 @@ BattleWidget::BattleWidget(GameEngine* engine, AudioManager* audio,
         m_itemMenu->refresh(m_profile,
                             m_engine->itemsUsedThisBattle(),
                             m_engine->maxItemsPerBattle());
+        m_menu->setMenuEnabled(false);
         m_itemMenu->show();
         m_itemMenu->raise();
         m_itemMenu->setFocus();
@@ -295,13 +296,14 @@ void BattleWidget::keyPressEvent(QKeyEvent* event)
 void BattleWidget::onItemMenuChosen(ItemType type)
 {
     m_itemMenu->hide();
-    m_menu->setFocus();
-    emit itemChosen(type);   // MainWindow handles the rest
+    m_menu->setMenuEnabled(false);
+    emit itemChosen(type);
+    m_menu->updateItemButton();
 }
 
 void BattleWidget::onItemMenuCancelled()
 {
     m_itemMenu->hide();
+    m_menu->setMenuEnabled(true);
     m_menu->setFocus();
-    // No action taken — player is back at the main battle menu
 }

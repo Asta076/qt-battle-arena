@@ -1,7 +1,7 @@
 #include "itemmenuwidget.h"
 #include <QPainter>
 #include <QKeyEvent>
-
+#include <QMouseEvent>
 // ── Item display metadata — add a new row here when you add a new ItemType ──
 struct ItemMeta {
     ItemType type;
@@ -188,5 +188,26 @@ void ItemMenuWidget::paintEvent(QPaintEvent*)
         p.setFont(QFont("Press Start 2P", 7));
         QRect qtyRect(x + SLOT_W - 36, y + 4, 32, 16);
         p.drawText(qtyRect, Qt::AlignRight | Qt::AlignVCenter, qtyText);
+    }
+}
+void ItemMenuWidget::mousePressEvent(QMouseEvent* event)
+{
+    if (event->button() != Qt::LeftButton) return;
+
+    const int startY = 40;
+    for (int i = 0; i < TOTAL_SLOTS; ++i) {
+        const int col = i % COLS;
+        const int row = i / COLS;
+        const int x   = PADDING + col * (SLOT_W + SLOT_GAP);
+        const int y   = startY  + row * (SLOT_H + SLOT_GAP);
+
+        QRect slotRect(x, y, SLOT_W, SLOT_H);
+        if (slotRect.contains(event->pos())) {
+            if (m_slots[i].isEmpty) return;
+            m_cursorIndex = i;   // move cursor to clicked slot
+            update();
+            confirmSelection();  // attempt to use it
+            return;
+        }
     }
 }
