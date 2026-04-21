@@ -339,11 +339,13 @@ void MainWindow::onBattleTriggered(CharacterType enemyType, const QString& enemy
 
 void MainWindow::onBackToMenu()
 {
+    if (m_currentSlot >= 0)
+        m_profile.saveToFile(SaveSlotWidget::slotPath(m_currentSlot));
     m_playerHasChosen  = false;
     m_hasPendingBattle = false;
     m_currentSlot      = -1;
     m_profile.reset();
-    m_engine->onRestartGame();   // emits stateChanged(MainMenu)
+    m_engine->onRestartGame();
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -368,6 +370,7 @@ void MainWindow::onSaveRequested()
 void MainWindow::onReturnToOverworld()
 {
     // Game over → "EXPLORE MORE": save gold earned this run then go to overworld
+    m_profile.dungeonRuns++;
     if (m_currentSlot >= 0)
         m_profile.saveToFile(SaveSlotWidget::slotPath(m_currentSlot));
     updateGoldHud();

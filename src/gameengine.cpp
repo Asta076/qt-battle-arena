@@ -73,6 +73,7 @@ void GameEngine::resetRound()
     m_attackBoosted       = false;
     m_defenseActive       = false;
     emit healthUpdated(m_player->getHealthPercent(), m_enemy->getHealthPercent());
+    emit energyUpdated(m_player->getSpPercent(), m_enemy->getSpPercent());
 }
 
 void GameEngine::onStartGame()  { setState(GameState::CharacterSelect); }
@@ -105,6 +106,7 @@ void GameEngine::onPlayerSelectedCharacter(CharacterType type, const QString& na
     m_roundHistory.clear();
     m_tracker.reset();
     emit healthUpdated(m_player->getHealthPercent(), m_enemy->getHealthPercent());
+    emit energyUpdated(m_player->getSpPercent(), m_enemy->getSpPercent());
     emit battleLogMessage(QString("Round %1 — %2 vs %3!")
                               .arg(m_currentRound)
                               .arg(m_player->getName())
