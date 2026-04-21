@@ -80,3 +80,7 @@ CMakeLists.txt.user*
 .rcc/
 .uic/
 /build*/
+
+save_slot_0.json
+save_slot_1.json
+save_slot_2.json
