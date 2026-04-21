@@ -81,7 +81,8 @@ public:
     explicit PlayerSprite(const SpriteSheet &sheet, QGraphicsItem *parent = nullptr);
 
     // called once per game tick to move the player and update animation
-    void step(const QSet<int> &heldKeys, const QRectF &worldBounds);
+    void step(const QSet<int> &heldKeys, const QRectF &worldBounds,
+              const QRectF &solidCollider = QRectF());
 
 private:
     // animation helpers

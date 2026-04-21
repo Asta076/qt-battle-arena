@@ -106,31 +106,26 @@ void PlayerSprite::applyFrame()
 //  PlayerSprite  — movement (called every tick)
 // ============================================================
 
-void PlayerSprite::step(const QSet<int> &heldKeys, const QRectF &worldBounds)
+void PlayerSprite::step(const QSet<int> &heldKeys,
+                        const QRectF    &worldBounds,
+                        const QRectF    &solidCollider)
 {
-    // figure out which directions are pressed
     const bool goUp    = heldKeys.contains(Qt::Key_W) || heldKeys.contains(Qt::Key_Up);
     const bool goDown  = heldKeys.contains(Qt::Key_S) || heldKeys.contains(Qt::Key_Down);
     const bool goLeft  = heldKeys.contains(Qt::Key_A) || heldKeys.contains(Qt::Key_Left);
     const bool goRight = heldKeys.contains(Qt::Key_D) || heldKeys.contains(Qt::Key_Right);
 
-    // calculate raw movement delta
     qreal dx = 0, dy = 0;
     if (goUp)    dy -= SPEED;
     if (goDown)  dy += SPEED;
     if (goLeft)  dx -= SPEED;
     if (goRight) dx += SPEED;
 
-    // normalize diagonal movement so you dont go faster diagonally
-    if (dx != 0 && dy != 0) {
-        dx *= 0.7071;
-        dy *= 0.7071;
-    }
+    if (dx != 0 && dy != 0) { dx *= 0.7071; dy *= 0.7071; }
 
     const bool moving = (dx != 0 || dy != 0);
 
     if (moving) {
-        // pick direction based on which keys are held
         Direction dir;
         if      (goUp   && goRight) dir = Direction::ForwardRight;
         else if (goUp   && goLeft)  dir = Direction::ForwardLeft;
@@ -143,7 +138,6 @@ void PlayerSprite::step(const QSet<int> &heldKeys, const QRectF &worldBounds)
 
         setWalkAnim(dir);
 
-        // advance animation frame every TICKS_PER_FRAME ticks
         ++m_tickAccum;
         if (m_tickAccum >= TICKS_PER_FRAME) {
             m_tickAccum  = 0;
@@ -151,15 +145,44 @@ void PlayerSprite::step(const QSet<int> &heldKeys, const QRectF &worldBounds)
             applyFrame();
         }
     } else {
-        // no keys held — switch to idle if we werent already
-        if (!m_isIdle) {
-            setIdleFrame(m_facing);
-        }
+        if (!m_isIdle) setIdleFrame(m_facing);
     }
 
-    // clamp position so player cant walk off the edge of the world
-    qreal nx = qBound(worldBounds.left(),  x() + dx, worldBounds.right()  - W);
-    qreal ny = qBound(worldBounds.top(),   y() + dy, worldBounds.bottom() - H);
+    // ── Per-axis collision resolution ────────────────────────────────────────
+    // Try X first, then Y independently.
+    // This lets the player slide along walls instead of getting stuck on corners.
+
+    // The player's bounding box in scene coords after applying movement
+    auto playerRect = [&](qreal px, qreal py) -> QRectF {
+        return QRectF(px, py, W, H);
+    };
+
+    auto overlaps = [&](const QRectF &a, const QRectF &b) -> bool {
+        return solidCollider.isValid() && a.intersects(b);
+    };
+
+    // Step X
+    qreal nx = qBound(worldBounds.left(), x() + dx, worldBounds.right() - W);
+    if (solidCollider.isValid() && playerRect(nx, y()).intersects(solidCollider)) {
+        // X movement blocked — snap to the collider edge instead
+        if (dx > 0)
+            nx = solidCollider.left() - W;   // coming from left, stop at left edge
+        else
+            nx = solidCollider.right();       // coming from right, stop at right edge
+        nx = qBound(worldBounds.left(), nx, worldBounds.right() - W);
+    }
+
+    // Step Y
+    qreal ny = qBound(worldBounds.top(), y() + dy, worldBounds.bottom() - H);
+    if (solidCollider.isValid() && playerRect(nx, ny).intersects(solidCollider)) {
+        // Y movement blocked — snap to the collider edge instead
+        if (dy > 0)
+            ny = solidCollider.top() - H;    // coming from above, stop at top edge
+        else
+            ny = solidCollider.bottom();     // coming from below, stop at bottom edge
+        ny = qBound(worldBounds.top(), ny, worldBounds.bottom() - H);
+    }
+
     setPos(nx, ny);
 }
 
@@ -317,24 +340,27 @@ void OverworldWidget::buildScene()
         qWarning("Could not load resources/sprites/house.png");
     }
 
-    // invisible collision box for the house body (so player cant walk through it)
-    const qreal colliderInset = HOUSE_W * 0.10;
-    const qreal colliderY     = HOUSE_Y + HOUSE_H * 0.60;
-    const qreal colliderH     = HOUSE_H * 0.25;
+    // ── House solid collider — covers the whole house body ───────────────────
+    // Slightly inset on the sides so the player can walk right up to the wall.
+    // Tall enough that the player can never jump over it from the south.
+    const qreal colliderInset = HOUSE_W * 0.05;
+    const qreal colliderY     = HOUSE_Y + HOUSE_H * 0.45;  // starts higher up
+    const qreal colliderH     = HOUSE_H * 0.50;             // taller — covers more
     m_houseCollider = m_scene->addRect(
         HOUSE_X + colliderInset, colliderY,
         HOUSE_W - colliderInset * 2, colliderH,
         Qt::NoPen, Qt::NoBrush
-    );
+        );
     m_houseCollider->setZValue(1);
 
-
-    // ── House entrance zone (triggers transition to house screen) ────────────
-    const qreal entranceW = HOUSE_W * 0.35;
+    // ── House entrance zone — sits BELOW the collider, no overlap ────────────
+    // The collider bottom is at colliderY + colliderH.
+    // The entrance zone starts 2px below that so they never overlap.
+    const qreal entranceW = HOUSE_W * 0.30;
     const qreal entranceX = HOUSE_X + (HOUSE_W - entranceW) / 2.0;
-    const qreal entranceY = HOUSE_Y + HOUSE_H * 0.82;
+    const qreal entranceY = colliderY + colliderH + 2.0;   // flush below collider
     m_houseEntranceZone = m_scene->addRect(
-        entranceX, entranceY, entranceW, 20,
+        entranceX, entranceY, entranceW, 16,
         Qt::NoPen, Qt::NoBrush);
     m_houseEntranceZone->setZValue(1);
     // ── Shop zone ────────────────────────────────────────────────────────────────
@@ -556,7 +582,10 @@ void OverworldWidget::placePlayer()
 // called every tick by the timer
 void OverworldWidget::onTick()
 {
-    m_player->step(m_heldKeys, QRectF(0, 0, WORLD_W, WORLD_H));
+    QRectF solid = m_houseCollider
+                       ? m_houseCollider->sceneBoundingRect()
+                       : QRectF();
+    m_player->step(m_heldKeys, QRectF(0, 0, WORLD_W, WORLD_H), solid);
     checkTriggers();
 }
 
@@ -570,37 +599,18 @@ void OverworldWidget::checkTriggers()
         return;
     }
 
-    // house collision — push player out so they cant walk through the wall
-    if (m_houseCollider && m_player->collidesWithItem(m_houseCollider)) {
-        const QRectF playerRect   = m_player->mapToScene(m_player->boundingRect()).boundingRect();
-        const QRectF colliderRect = m_houseCollider->sceneBoundingRect();
 
-        // how much overlap on each side
-        const qreal overlapLeft  = playerRect.right()   - colliderRect.left();
-        const qreal overlapRight = colliderRect.right()  - playerRect.left();
-        const qreal overlapTop   = playerRect.bottom()   - colliderRect.top();
-        const qreal overlapBot   = colliderRect.bottom() - playerRect.top();
-
-        const qreal minX = qMin(overlapLeft,  overlapRight);
-        const qreal minY = qMin(overlapTop,   overlapBot);
-
-        qreal px = m_player->x();
-        qreal py = m_player->y();
-
-        // push out on the axis with least overlap
-        if (minX < minY) {
-            px += (overlapLeft < overlapRight) ? -overlapLeft : overlapRight;
-        } else {
-            py += (overlapTop  < overlapBot)   ? -overlapTop  : overlapBot;
-        }
-
-        m_player->setPos(px, py);
-    }
     // ── House entrance → enter house screen ──────────────────────────────────
+    // Only trigger when the player is pressing up/W — stops accidental entry
+    // when the collider pushes them into the zone from the side.
     if (m_houseEntranceZone && m_player->collidesWithItem(m_houseEntranceZone)) {
-        deactivate();
-        emit houseEntered();
-        return;
+        const bool movingUp = m_heldKeys.contains(Qt::Key_W)
+        || m_heldKeys.contains(Qt::Key_Up);
+        if (movingUp) {
+            deactivate();
+            emit houseEntered();
+            return;
+        }
     }
    //--shop------------------------------------------------------------------ 
     if (m_shopZone && m_player->collidesWithItem(m_shopZone)) {
