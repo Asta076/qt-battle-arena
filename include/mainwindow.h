@@ -46,6 +46,7 @@ private slots:
     void onHouseExited();
     void onShopEntered();
     void onShopExited();
+    void onBuyItemRequested(ItemType type, int cost);
 
     // ── Profile events ────────────────────────────────────────────────────────
     void onGoldEarned(int amount);

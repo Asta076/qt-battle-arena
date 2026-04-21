@@ -111,10 +111,11 @@ void MainWindow::buildUI()
 
     // --Shop---------------------------------------------------------------
     connect(m_overworld, &OverworldWidget::shopEntered,
-        this, &MainWindow::onShopEntered);
-
+            this, &MainWindow::onShopEntered);
     connect(m_shop, &ShopWidget::backToOverworld,
-        this, &MainWindow::onShopExited);
+            this, &MainWindow::onShopExited);
+    connect(m_shop, &ShopWidget::buyItemRequested,
+            this, &MainWindow::onBuyItemRequested);
 
     // ── Game over ─────────────────────────────────────────────────────────────
     connect(m_gameOver, &GameOverWidget::returnToOverworld,
@@ -295,7 +296,7 @@ void MainWindow::onHouseExited()
 }
 void MainWindow::onShopEntered()
 {
-    m_shop->setGold(m_profile.gold);
+    m_shop->setProfile(&m_profile);
     m_stack->setCurrentWidget(m_shop);
 }
 
@@ -358,6 +359,26 @@ void MainWindow::onReturnToOverworld()
     updateGoldHud();
     m_overworld->activate();
     m_stack->setCurrentWidget(m_overworld);
+}
+
+void MainWindow::onBuyItemRequested(ItemType type, int cost)
+{
+    // Guard: can the player still afford it? (shop already checks, but be safe)
+    if (m_profile.gold < cost) return;
+
+    // Deduct gold and add item
+    m_profile.spendGold(cost);
+    m_profile.addItem(type, 1);
+
+    // Persist immediately — buying is a save-worthy event
+    if (m_currentSlot >= 0)
+        m_profile.saveToFile(SaveSlotWidget::slotPath(m_currentSlot));
+
+    // Tell the shop to refresh its display (gold changed, owned count changed)
+    m_shop->setProfile(&m_profile);
+
+    // Keep gold HUD in sync for when the player returns to the overworld
+    updateGoldHud();
 }
 
 void MainWindow::updateGoldHud()
