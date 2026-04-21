@@ -186,6 +186,11 @@ void MainWindow::onLoadSlot(int slotIndex)
         static_cast<CharacterType>(m_profile.characterType),
         m_profile.characterName);
 
+    m_engine->setStatBonuses(
+        m_profile.upgrades.bonusMaxHp,
+        m_profile.upgrades.bonusAttack,
+        m_profile.upgrades.bonusSpPerAtk);
+
     updateGoldHud();
     m_overworld->activate();
     m_stack->setCurrentWidget(m_overworld);
@@ -226,9 +231,14 @@ void MainWindow::onStateChanged(GameState newState)
             if (m_hasPendingBattle) {
                 // Was sent to charSelect because of dungeon collision
                 m_hasPendingBattle = false;
+                m_engine->setStatBonuses(
+                    m_profile.upgrades.bonusMaxHp,
+                    m_profile.upgrades.bonusAttack,
+                    m_profile.upgrades.bonusSpPerAtk);
                 m_stack->setCurrentWidget(m_battleWidget);
                 m_audio->playMusic("/music/battle.ogg");
             } else {
+                m_engine->setStatBonuses(0, 0, 0);
                 // Normal new-game flow — save initial profile and go to overworld
                 if (m_currentSlot >= 0)
                     m_profile.saveToFile(SaveSlotWidget::slotPath(m_currentSlot));
@@ -315,6 +325,10 @@ void MainWindow::onBattleTriggered(CharacterType enemyType, const QString& enemy
         m_hasPendingBattle = true;
         m_stack->setCurrentWidget(m_charSelect);
     } else {
+        m_engine->setStatBonuses(
+            m_profile.upgrades.bonusMaxHp,
+            m_profile.upgrades.bonusAttack,
+            m_profile.upgrades.bonusSpPerAtk);
         // Character already chosen — jump straight to battle
         m_engine->onPlayerSelectedCharacter(
             m_engine->getPlayerType(),

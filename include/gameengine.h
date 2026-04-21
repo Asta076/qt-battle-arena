@@ -70,6 +70,7 @@ public slots:
     bool onSaveGame(const QString& path);
     bool onLoadGame(const QString& path);
     void setPlayerIdentity(CharacterType type, const QString& name);
+    void setStatBonuses(int bonusHp, int bonusAttack, int bonusSpPerAtk);
 private slots:
     void enemyTakeTurn();
 
@@ -101,5 +102,11 @@ private:
     ScoreTracker  m_tracker;
     CharacterType m_playerType   = CharacterType::Warrior;
     QString       m_playerName   = "Player";
+
+    int m_bonusHp       = 0;
+    int m_bonusAttack   = 0;
+    int m_bonusSpPerAtk = 0;
+
+    void applyPlayerBonuses();
 };
 Q_DECLARE_METATYPE(Difficulty)

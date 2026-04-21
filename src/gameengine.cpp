@@ -64,6 +64,7 @@ void GameEngine::resetRound()
 {
     delete m_player;
     m_player = createCharacter(m_playerType, m_playerName);
+    applyPlayerBonuses();
     spawnEnemy();
     m_allCharacters.clear();
     m_allCharacters.append(m_player);
@@ -90,6 +91,7 @@ void GameEngine::onPlayerSelectedCharacter(CharacterType type, const QString& na
     m_playerName = name;
     cleanupCharacters();
     m_player = createCharacter(type, name);
+    applyPlayerBonuses();
     spawnEnemy();
     m_allCharacters.append(m_player);
     m_allCharacters.append(m_enemy);
@@ -465,4 +467,17 @@ bool GameEngine::onLoadGame(const QString& path)
     // Jump directly into the battle — no character select needed
     setState(GameState::PlayerTurn);
     return true;
+}
+void GameEngine::setStatBonuses(int bonusHp, int bonusAttack, int bonusSpPerAtk)
+{
+    m_bonusHp       = bonusHp;
+    m_bonusAttack   = bonusAttack;
+    m_bonusSpPerAtk = bonusSpPerAtk;
+}
+void GameEngine::applyPlayerBonuses()
+{
+    if (!m_player) return;
+    m_player->applyBonusHealth   (m_bonusHp);
+    m_player->applyBonusAttack   (m_bonusAttack);
+    m_player->applyBonusSpPerAtk (m_bonusSpPerAtk);
 }

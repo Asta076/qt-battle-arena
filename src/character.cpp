@@ -55,6 +55,25 @@ void Character::resetHealth()
     m_health = m_maxHealth;
 }
 
+void Character::applyBonusHealth(int bonus)
+{
+    if (bonus <= 0) return;
+    m_maxHealth += bonus;
+    m_health    += bonus;
+}
+
+void Character::applyBonusAttack(int bonus)
+{
+    if (bonus <= 0) return;
+    m_attackPower += bonus;
+}
+
+void Character::applyBonusSpPerAtk(int bonus)
+{
+    if (bonus <= 0) return;
+    m_spPerAttack += bonus;
+}
+
 // ── Energy (SP) ───────────────────────────────────────────────────────────
 
 int   Character::getSp()        const { return m_sp; }

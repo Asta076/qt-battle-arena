@@ -17,6 +17,7 @@ public:
     void    takeDamage(int damage);
     void    heal(int amount);
     void    resetHealth();
+    void    applyBonusHealth(int bonus);
 
     // ── Energy (SP) ───────────────────────────────
     int     getSp()            const;
@@ -26,12 +27,13 @@ public:
     void    addSp(int amount);          // called after basic attack
     void    drainSp();                  // called when special is used
     void    addSpFromAttack();   // adds m_spPerAttack — called after basic attack
+    void applyBonusSpPerAtk(int bonus);
 
     // ── Combat interface ──────────────────────────
     virtual CharacterType getType()        const = 0;
     virtual int           attack()         const = 0;
     virtual int           specialAbility() const = 0;
-
+    void          applyBonusAttack(int bonus);
     // ── Static ────────────────────────────────────
     static int getCharacterCount();
 
