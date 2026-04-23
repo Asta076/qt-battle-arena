@@ -388,10 +388,9 @@ void OverworldWidget::buildScene()
     // right wooden post
     auto *shopPostR = m_scene->addRect(
     SHOP_X + SHOP_W - 16, SHOP_Y + 8, 8, SHOP_H - 16,
-    QPen(Qt::NoPen),
+    QPen(Qt::NoPen),        // ← has "x    QPen" in your file
     QBrush(QColor("#5D4037"))
     );
-    shopPostR->setZValue(5);
     // counter
     auto *shopCounter = m_scene->addRect(
     SHOP_X + 10, SHOP_Y + 52, SHOP_W - 20, 22,
