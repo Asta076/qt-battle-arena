@@ -145,6 +145,8 @@ private slots:
     void onTick(); // runs every 16ms (roughly 60fps)
 
 private:
+    
+    PlayerController m_controller;
     // --- setup ---
     void buildScene();       // creates all the tiles, trees, buildings etc.
     void buildPauseOverlay(); // creates the pause menu widget
