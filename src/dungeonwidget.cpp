@@ -323,5 +323,174 @@ void DungeonWidget::buildScene() {
 
     // Player sprite
     m_player = new DungeonPlayerSprite(m_sheet);
+    m_scene->addItem(m_player);
     m_player->setZValue(9);
+}
+
+void DungeonWidget::setGold(int gold)
+{
+    if (m_goldHud)
+        m_goldHud->setGold(gold);
+}
+
+void DungeonWidget::placePlayer()
+{
+    if (!m_player)
+        return;
+
+    m_player->setPos((WORLD_W - DungeonPlayerSprite::W) / 2.0,
+                     WORLD_H - DungeonPlayerSprite::H - 90);
+}
+
+void DungeonWidget::spawnEnemies()
+{
+    for (EnemySprite* enemy : m_enemies) {
+        m_scene->removeItem(enemy);
+        delete enemy;
+    }
+    m_enemies.clear();
+
+    struct EnemyInfo {
+        CharacterType type;
+        QString name;
+        QPointF pos;
+    };
+
+    const QList<EnemyInfo> enemies = {
+        { CharacterType::Warrior, "Guard",  QPointF(120, 130) },
+        { CharacterType::Mage,    "Mage",   QPointF(380, 210) },
+        { CharacterType::Archer,  "Archer", QPointF(620, 150) }
+    };
+
+    for (const EnemyInfo& info : enemies) {
+        EnemySprite* enemy = new EnemySprite(info.type, info.name);
+        enemy->setPos(info.pos);
+        enemy->setZValue(8);
+        m_scene->addItem(enemy);
+        m_enemies.append(enemy);
+    }
+}
+
+void DungeonWidget::keyPressEvent(QKeyEvent* e)
+{
+    if (e->key() == Qt::Key_Escape) {
+        togglePause();
+        return;
+    }
+
+    if (!e->isAutoRepeat())
+        m_heldKeys.insert(e->key());
+
+    QWidget::keyPressEvent(e);
+}
+
+void DungeonWidget::keyReleaseEvent(QKeyEvent* e)
+{
+    if (!e->isAutoRepeat())
+        m_heldKeys.remove(e->key());
+
+    QWidget::keyReleaseEvent(e);
+}
+
+void DungeonWidget::resizeEvent(QResizeEvent* e)
+{
+    QWidget::resizeEvent(e);
+    fitView();
+
+    if (m_pauseOverlay)
+        m_pauseOverlay->setGeometry(rect());
+
+    if (m_goldHud)
+        m_goldHud->move(width() - m_goldHud->width() - 16, 16);
+}
+
+void DungeonWidget::onTick()
+{
+    if (m_paused)
+        return;
+
+    movePlayer();
+    patrolEnemies();
+    checkCollisions();
+}
+
+void DungeonWidget::movePlayer()
+{
+    if (!m_player)
+        return;
+
+    m_controller.setSpeed(SPEED);
+
+    QPointF velocity = m_controller.computeVelocity(m_heldKeys);
+    QPointF nextPos = m_player->pos() + velocity;
+
+    nextPos = m_controller.clampToWorld(
+        nextPos,
+        DungeonPlayerSprite::W,
+        DungeonPlayerSprite::H,
+        WORLD_W,
+        WORLD_H
+    );
+
+    m_player->setPos(nextPos);
+
+    bool moving = m_controller.isMoving(m_heldKeys);
+    Direction dir = m_controller.computeDirection(m_heldKeys);
+    m_player->updateAnimation(moving, dir);
+}
+
+void DungeonWidget::patrolEnemies()
+{
+    QRectF bounds(0, 0, WORLD_W, WORLD_H);
+
+    for (EnemySprite* enemy : m_enemies) {
+        enemy->patrol(bounds);
+        enemy->updateAnimation();
+    }
+}
+
+void DungeonWidget::checkCollisions()
+{
+    if (!m_player)
+        return;
+
+    if (m_exitZone && m_player->collidesWithItem(m_exitZone)) {
+        deactivate();
+        emit exitedDungeon();
+        return;
+    }
+
+    for (EnemySprite* enemy : m_enemies) {
+        if (m_player->collidesWithItem(enemy)) {
+            deactivate();
+            emit battleTriggered(enemy->enemyType(), enemy->enemyName());
+            return;
+        }
+    }
+}
+
+void DungeonWidget::fitView()
+{
+    if (!m_view)
+        return;
+
+    m_view->fitInView(m_scene->sceneRect(), Qt::KeepAspectRatio);
+}
+
+void DungeonWidget::togglePause()
+{
+    m_paused = !m_paused;
+
+    if (!m_pauseOverlay)
+        return;
+
+    m_pauseOverlay->setGeometry(rect());
+
+    if (m_paused) {
+        m_pauseOverlay->show();
+        m_pauseOverlay->raise();
+    } else {
+        m_pauseOverlay->hide();
+        setFocus();
+    }
 }
