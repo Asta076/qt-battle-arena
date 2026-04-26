@@ -17,6 +17,7 @@
 #include "direction.h"
 
 class AudioManager;
+class PauseOverlayWidget;
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  SpriteSheet for dungeon (same pattern as overworld)
