@@ -703,45 +703,6 @@ void OverworldWidget::togglePause()
     }
 }
 
-// build the pause overlay widget (only called once in the constructor)
-void OverworldWidget::buildPauseOverlay()
-{
-    m_pauseOverlay = new QWidget(this);
-    m_pauseOverlay->setAttribute(Qt::WA_TranslucentBackground);
-    m_pauseOverlay->hide();
-
-    auto *layout = new QVBoxLayout(m_pauseOverlay);
-    layout->setAlignment(Qt::AlignCenter);
-    layout->setSpacing(16);
-
-    auto *title  = new QLabel("— PAUSED —",   m_pauseOverlay);
-    auto *resume = new QPushButton("► RESUME",    m_pauseOverlay);
-    auto *save   = new QPushButton("  SAVE GAME", m_pauseOverlay);
-    auto *menu   = new QPushButton("  MAIN MENU", m_pauseOverlay);
-
-    title->setObjectName("titleLabel");
-    title->setAlignment(Qt::AlignCenter);
-
-    connect(resume, &QPushButton::clicked, this, &OverworldWidget::togglePause);
-
-    connect(save, &QPushButton::clicked, this, [this] {
-        emit saveRequested();
-    });
-
-    connect(menu, &QPushButton::clicked, this, [this] {
-        m_paused = false;
-        m_pauseOverlay->hide();
-        deactivate();
-        emit backToMenu();
-    });
-
-    layout->addWidget(title);
-    layout->addSpacing(12);
-    layout->addWidget(resume);
-    layout->addWidget(save);
-    layout->addWidget(menu);
-}
-
 
 // ============================================================
 //  OverworldWidget  — misc public methods
