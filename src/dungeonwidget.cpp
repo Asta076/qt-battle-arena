@@ -340,36 +340,6 @@ void DungeonWidget::togglePause()
     }
 }
 
-void DungeonWidget::buildPauseOverlay()
-{
-    m_pauseOverlay = new QWidget(this);
-    m_pauseOverlay->setAttribute(Qt::WA_TranslucentBackground);
-    m_pauseOverlay->hide();
-
-    auto *layout = new QVBoxLayout(m_pauseOverlay);
-    layout->setAlignment(Qt::AlignCenter);
-    layout->setSpacing(16);
-
-    auto *title  = new QLabel("— PAUSED —", m_pauseOverlay);
-    auto *resume = new QPushButton("► RESUME",    m_pauseOverlay);
-    auto *menu   = new QPushButton("  MAIN MENU", m_pauseOverlay);
-
-    title->setObjectName("titleLabel");
-    title->setAlignment(Qt::AlignCenter);
-
-    connect(resume, &QPushButton::clicked, this, &DungeonWidget::togglePause);
-    connect(menu,   &QPushButton::clicked, this, [this]{
-        m_paused = false;
-        m_pauseOverlay->hide();
-        deactivate();
-        emit backToMenu();
-    });
-
-    layout->addWidget(title);
-    layout->addSpacing(12);
-    layout->addWidget(resume);
-    layout->addWidget(menu);
-}
 
 void DungeonWidget::setGold(int gold)
 {
