@@ -254,20 +254,13 @@ void DungeonWidget::onTick()
     checkCollisions();
 }
 
-void DungeonWidget::movePlayer()
-{
-    qreal dx = 0, dy = 0;
-
-    if (m_heldKeys.contains(Qt::Key_W) || m_heldKeys.contains(Qt::Key_Up))    dy -= SPEED;
-    if (m_heldKeys.contains(Qt::Key_S) || m_heldKeys.contains(Qt::Key_Down))  dy += SPEED;
-    if (m_heldKeys.contains(Qt::Key_A) || m_heldKeys.contains(Qt::Key_Left))  dx -= SPEED;
-    if (m_heldKeys.contains(Qt::Key_D) || m_heldKeys.contains(Qt::Key_Right)) dx += SPEED;
-
-    if (dx != 0 && dy != 0) { dx *= 0.7071; dy *= 0.7071; }
-
-    qreal nx = qBound(0.0,           m_player->x() + dx, (qreal)(WORLD_W) - PW);
-    qreal ny = qBound(60.0,          m_player->y() + dy, (qreal)(WORLD_H) - PH);
-    m_player->setPos(nx, ny);
+void DungeonWidget::movePlayer() {
+    QPointF vel = m_controller.computeVelocity(m_heldKeys);
+    QPointF proposed(m_player->x() + vel.x(), m_player->y() + vel.y());
+    QPointF clamped = m_controller.clampToWorld(proposed, PW, PH, WORLD_W, WORLD_H);
+    // enforce top boundary for HUD
+    clamped.setY(qMax(60.0, clamped.y()));
+    m_player->setPos(clamped);
 }
 
 void DungeonWidget::patrolEnemies()
