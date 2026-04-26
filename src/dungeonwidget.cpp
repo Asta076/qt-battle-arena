@@ -6,6 +6,7 @@
 #include <QPen>
 #include <QFont>
 #include <QRandomGenerator>
+#include <QGraphicsEllipseItem>
 #include <QRadialGradient>
 #include "audiomanager.h"
 #include "spritecache.h"
@@ -255,8 +256,7 @@ void DungeonWidget::deactivate()
     m_heldKeys.clear();
 }
 
-void DungeonWidget::buildScene()
-{
+void DungeonWidget::buildScene() {
     // Dark stone floor
     m_scene->setBackgroundBrush(QColor("#1a1a2e"));
 
@@ -289,7 +289,7 @@ void DungeonWidget::buildScene()
         {100, 480},{440, 480},{720, 480},
     };
     for (const QPointF &t : torches) {
-        auto *glow = m_scene->addEllipseItem(t.x() - 8, t.y() - 8, 20, 20,
+        auto *glow = m_scene->addEllipse(t.x() - 8, t.y() - 8, 20, 20,
                                          Qt::NoPen, QBrush(QColor("#ff6f0080")));
         glow->setZValue(1);
         m_scene->addEllipse(t.x() - 2, t.y() - 2, 8, 8,
@@ -324,3 +324,4 @@ void DungeonWidget::buildScene()
     // Player sprite
     m_player = new DungeonPlayerSprite(m_sheet);
     m_player->setZValue(9);
+}

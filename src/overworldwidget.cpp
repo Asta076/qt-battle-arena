@@ -18,6 +18,7 @@
 #include <QPushButton>
 
 #include "audiomanager.h"
+#include "pauseoverlaywidget.h"
 #include "spritecache.h"
 
 
@@ -27,8 +28,7 @@
 
 PlayerSprite::PlayerSprite(const SpriteSheet &sheet, QGraphicsItem *parent)
     : QGraphicsPixmapItem(parent)
-    , m_sheet(sheet)
-{
+    , m_sheet(sheet) {
     setTransformationMode(Qt::FastTransformation);
     setTransformOriginPoint(W / 2.0, H / 2.0);
 
@@ -50,8 +50,7 @@ PlayerSprite::PlayerSprite(const SpriteSheet &sheet, QGraphicsItem *parent)
     m_shadow->setPen(Qt::NoPen);
     m_shadow->setPos((W - shadowW) / 2.0, H * 0.78);
     m_shadow->setZValue(-1);
-
-
+}
 // ============================================================
 //  PlayerSprite  — animation helpers
 // ============================================================
@@ -543,15 +542,7 @@ void OverworldWidget::onTick() {
     m_player->updateAnimation(moving, dir);
     
     checkTriggers();
-}
-    
-    m_player->setPos(nx, ny);
-    
-    bool moving = m_controller.isMoving(m_heldKeys);
-    Direction dir = m_controller.computeDirection(m_heldKeys);
-    m_player->updateAnimation(moving, dir);
-    
-    checkTriggers();
+
 }
 
 // check if the player has walked into any trigger zones
