@@ -82,7 +82,14 @@ DungeonWidget::DungeonWidget(AudioManager *audio, QWidget *parent)
     m_view->setTransform(QTransform());
     m_view->setSceneRect(0, 0, 800, 600);
 
-    buildPauseOverlay();
+    m_pauseOverlay = new PauseOverlayWidget(false, this);  // false = no save
+    connect(m_pauseOverlay, &PauseOverlayWidget::resumeRequested, this, &DungeonWidget::togglePause);
+    connect(m_pauseOverlay, &PauseOverlayWidget::menuRequested, this, [this] {
+    m_paused = false;
+    m_pauseOverlay->hide();
+    deactivate();
+    emit backToMenu();
+});
     // ── Gold HUD ─────────────────────────────────────────────────────────────
     m_goldHud = new GoldHudWidget(this);
     m_goldHud->raise();
