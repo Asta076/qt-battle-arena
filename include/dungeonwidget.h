@@ -81,6 +81,8 @@ private slots:
     void onTick();
 
 private:
+    
+    PlayerController m_controller;
     // ── Scene ────────────────────────────────────────────────────────────────
     QGraphicsScene    *m_scene     = nullptr;
     QGraphicsView     *m_view      = nullptr;
