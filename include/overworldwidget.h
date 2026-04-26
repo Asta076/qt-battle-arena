@@ -13,6 +13,7 @@
 
 #include "goldhudwidget.h"
 #include "playercontroller.h"
+#include "direction.h"
 
 // forward declare so we dont have to include the whole header here
 class AudioManager;
