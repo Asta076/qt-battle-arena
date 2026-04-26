@@ -25,20 +25,31 @@
 //  PlayerSprite  — constructor
 // ============================================================
 
-void PlayerSprite::updateAnimation(bool isMoving, Direction facingDir)
+PlayerSprite::PlayerSprite(const SpriteSheet &sheet, QGraphicsItem *parent)
+    : QGraphicsPixmapItem(parent)
+    , m_sheet(sheet)
 {
-    if (isMoving) {
-        setWalkAnim(facingDir);
-        ++m_tickAccum;
-        if (m_tickAccum >= TICKS_PER_FRAME) {
-            m_tickAccum  = 0;
-            m_frameIndex = (m_frameIndex + 1) % WALK_FRAMES;
-            applyFrame();
-        }
-    } else {
-        if (!m_isIdle) setIdleFrame(m_facing);
-    }
-}
+    setTransformationMode(Qt::FastTransformation);
+    setTransformOriginPoint(W / 2.0, H / 2.0);
+
+    // start facing down (toward the camera)
+    setIdleFrame(Direction::Down);
+
+    // build the shadow ellipse that sits under the player's feet
+    const qreal shadowW = W * 0.65;
+    const qreal shadowH = H * 0.30;
+
+    m_shadow = new QGraphicsEllipseItem(0, 0, shadowW, shadowH, this);
+
+    QRadialGradient grad(shadowW / 2.0, shadowH / 2.0, shadowW / 2.0);
+    grad.setColorAt(0.0, QColor(0, 0, 0, 140));
+    grad.setColorAt(0.6, QColor(0, 0, 0, 80));
+    grad.setColorAt(1.0, QColor(0, 0, 0, 0));
+
+    m_shadow->setBrush(grad);
+    m_shadow->setPen(Qt::NoPen);
+    m_shadow->setPos((W - shadowW) / 2.0, H * 0.78);
+    m_shadow->setZValue(-1);
 
 
 // ============================================================
@@ -95,38 +106,10 @@ void PlayerSprite::applyFrame()
 //  PlayerSprite  — movement (called every tick)
 // ============================================================
 
-void PlayerSprite::step(const QSet<int> &heldKeys,
-                        const QRectF    &worldBounds,
-                        const QRectF    &solidCollider)
+void PlayerSprite::updateAnimation(bool isMoving, Direction facingDir)
 {
-    const bool goUp    = heldKeys.contains(Qt::Key_W) || heldKeys.contains(Qt::Key_Up);
-    const bool goDown  = heldKeys.contains(Qt::Key_S) || heldKeys.contains(Qt::Key_Down);
-    const bool goLeft  = heldKeys.contains(Qt::Key_A) || heldKeys.contains(Qt::Key_Left);
-    const bool goRight = heldKeys.contains(Qt::Key_D) || heldKeys.contains(Qt::Key_Right);
-
-    qreal dx = 0, dy = 0;
-    if (goUp)    dy -= SPEED;
-    if (goDown)  dy += SPEED;
-    if (goLeft)  dx -= SPEED;
-    if (goRight) dx += SPEED;
-
-    if (dx != 0 && dy != 0) { dx *= 0.7071; dy *= 0.7071; }
-
-    const bool moving = (dx != 0 || dy != 0);
-
-    if (moving) {
-        Direction dir;
-        if      (goUp   && goRight) dir = Direction::ForwardRight;
-        else if (goUp   && goLeft)  dir = Direction::ForwardLeft;
-        else if (goDown && goRight) dir = Direction::DownRight;
-        else if (goDown && goLeft)  dir = Direction::DownLeft;
-        else if (goRight)           dir = Direction::Right;
-        else if (goLeft)            dir = Direction::Left;
-        else if (goUp)              dir = Direction::Up;
-        else                        dir = Direction::Down;
-
-        setWalkAnim(dir);
-
+    if (isMoving) {
+        setWalkAnim(facingDir);
         ++m_tickAccum;
         if (m_tickAccum >= TICKS_PER_FRAME) {
             m_tickAccum  = 0;
@@ -136,45 +119,7 @@ void PlayerSprite::step(const QSet<int> &heldKeys,
     } else {
         if (!m_isIdle) setIdleFrame(m_facing);
     }
-
-    // ── Per-axis collision resolution ────────────────────────────────────────
-    // Try X first, then Y independently.
-    // This lets the player slide along walls instead of getting stuck on corners.
-
-    // The player's bounding box in scene coords after applying movement
-    auto playerRect = [&](qreal px, qreal py) -> QRectF {
-        return QRectF(px, py, W, H);
-    };
-
-    auto overlaps = [&](const QRectF &a, const QRectF &b) -> bool {
-        return solidCollider.isValid() && a.intersects(b);
-    };
-
-    // Step X
-    qreal nx = qBound(worldBounds.left(), x() + dx, worldBounds.right() - W);
-    if (solidCollider.isValid() && playerRect(nx, y()).intersects(solidCollider)) {
-        // X movement blocked — snap to the collider edge instead
-        if (dx > 0)
-            nx = solidCollider.left() - W;   // coming from left, stop at left edge
-        else
-            nx = solidCollider.right();       // coming from right, stop at right edge
-        nx = qBound(worldBounds.left(), nx, worldBounds.right() - W);
-    }
-
-    // Step Y
-    qreal ny = qBound(worldBounds.top(), y() + dy, worldBounds.bottom() - H);
-    if (solidCollider.isValid() && playerRect(nx, ny).intersects(solidCollider)) {
-        // Y movement blocked — snap to the collider edge instead
-        if (dy > 0)
-            ny = solidCollider.top() - H;    // coming from above, stop at top edge
-        else
-            ny = solidCollider.bottom();     // coming from below, stop at bottom edge
-        ny = qBound(worldBounds.top(), ny, worldBounds.bottom() - H);
-    }
-
-    setPos(nx, ny);
 }
-
 
 // ============================================================
 //  OverworldWidget  — constructor
