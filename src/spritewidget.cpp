@@ -2,7 +2,8 @@
 #include <QPainter>
 #include <QPropertyAnimation>
 #include <QSequentialAnimationGroup>
-#include <QTimer>               // ← ADD THIS
+#include <QTimer>             
+#include "spritecache.h"
 
 SpriteWidget::SpriteWidget(QWidget* parent)
     : QWidget(parent)
