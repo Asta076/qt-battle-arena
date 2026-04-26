@@ -122,6 +122,6 @@ private:
     void buildPauseOverlay();
 
     AudioManager *m_audio        = nullptr;
-    QWidget      *m_pauseOverlay = nullptr;
+    PauseOverlayWidget* m_pauseOverlay = nullptr;
     bool          m_paused       = false;
 };
