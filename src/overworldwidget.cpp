@@ -25,31 +25,19 @@
 //  PlayerSprite  — constructor
 // ============================================================
 
-PlayerSprite::PlayerSprite(const SpriteSheet &sheet, QGraphicsItem *parent)
-    : QGraphicsPixmapItem(parent)
-    , m_sheet(sheet)
+void PlayerSprite::updateAnimation(bool isMoving, Direction facingDir)
 {
-    setTransformationMode(Qt::FastTransformation);
-    setTransformOriginPoint(W / 2.0, H / 2.0);
-
-    // start facing down (toward the camera)
-    setIdleFrame(Direction::Down);
-
-    // build the shadow ellipse that sits under the player's feet
-    const qreal shadowW = W * 0.65;
-    const qreal shadowH = H * 0.30;
-
-    m_shadow = new QGraphicsEllipseItem(0, 0, shadowW, shadowH, this);
-
-    QRadialGradient grad(shadowW / 2.0, shadowH / 2.0, shadowW / 2.0);
-    grad.setColorAt(0.0, QColor(0, 0, 0, 140));
-    grad.setColorAt(0.6, QColor(0, 0, 0, 80));
-    grad.setColorAt(1.0, QColor(0, 0, 0, 0));
-
-    m_shadow->setBrush(grad);
-    m_shadow->setPen(Qt::NoPen);
-    m_shadow->setPos((W - shadowW) / 2.0, H * 0.78);
-    m_shadow->setZValue(-1);
+    if (isMoving) {
+        setWalkAnim(facingDir);
+        ++m_tickAccum;
+        if (m_tickAccum >= TICKS_PER_FRAME) {
+            m_tickAccum  = 0;
+            m_frameIndex = (m_frameIndex + 1) % WALK_FRAMES;
+            applyFrame();
+        }
+    } else {
+        if (!m_isIdle) setIdleFrame(m_facing);
+    }
 }
 
 
