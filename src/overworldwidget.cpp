@@ -234,7 +234,15 @@ OverworldWidget::OverworldWidget(AudioManager *audio, QWidget *parent)
     setFocusPolicy(Qt::StrongFocus);
     m_view->setSceneRect(0, 0, WORLD_W, WORLD_H);
 
-    buildPauseOverlay();
+    m_pauseOverlay = new PauseOverlayWidget(true, this);  // true = show save
+    connect(m_pauseOverlay, &PauseOverlayWidget::resumeRequested, this, &OverworldWidget::togglePause);
+    connect(m_pauseOverlay, &PauseOverlayWidget::saveRequested, this, &OverworldWidget::saveRequested);
+    connect(m_pauseOverlay, &PauseOverlayWidget::menuRequested, this, [this] {
+    m_paused = false;
+    m_pauseOverlay->hide();
+    deactivate();
+    emit backToMenu();
+});
 
     // gold HUD goes in the top-right corner
     m_goldHud = new GoldHudWidget(this);
