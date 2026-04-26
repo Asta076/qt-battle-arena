@@ -515,11 +515,42 @@ void OverworldWidget::placePlayer()
 void OverworldWidget::onTick() {
     QPointF vel = m_controller.computeVelocity(m_heldKeys);
     QPointF proposed(m_player->x() + vel.x(), m_player->y() + vel.y());
-    QPointF clamped = m_controller.clampToWorld(proposed,
-        PlayerSprite::W, PlayerSprite::H, WORLD_W, WORLD_H);
-    // still pass to step() for animation only
-    m_player->step(m_heldKeys, QRectF(0,0,WORLD_W,WORLD_H),
-                   m_houseCollider ? m_houseCollider->sceneBoundingRect() : QRectF());
+    
+    QRectF solid = m_houseCollider ? m_houseCollider->sceneBoundingRect() : QRectF();
+    
+    // Apply collision manually
+    qreal nx = qBound(0.0, proposed.x(), WORLD_W - PlayerSprite::W);
+    qreal ny = qBound(0.0, proposed.y(), WORLD_H - PlayerSprite::H);
+    
+    if (solid.isValid()) {
+        QRectF playerRect(nx, ny, PlayerSprite::W, PlayerSprite::H);
+        if (playerRect.intersects(solid)) {
+            if (vel.x() > 0) nx = solid.left() - PlayerSprite::W;
+            else if (vel.x() < 0) nx = solid.right();
+            
+            playerRect = QRectF(nx, ny, PlayerSprite::W, PlayerSprite::H);
+            if (playerRect.intersects(solid)) {
+                if (vel.y() > 0) ny = solid.top() - PlayerSprite::H;
+                else if (vel.y() < 0) ny = solid.bottom();
+            }
+        }
+    }
+    
+    m_player->setPos(nx, ny);
+    
+    bool moving = m_controller.isMoving(m_heldKeys);
+    Direction dir = m_controller.computeDirection(m_heldKeys);
+    m_player->updateAnimation(moving, dir);
+    
+    checkTriggers();
+}
+    
+    m_player->setPos(nx, ny);
+    
+    bool moving = m_controller.isMoving(m_heldKeys);
+    Direction dir = m_controller.computeDirection(m_heldKeys);
+    m_player->updateAnimation(moving, dir);
+    
     checkTriggers();
 }
 
