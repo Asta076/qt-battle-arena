@@ -18,6 +18,7 @@
 #include <QPushButton>
 
 #include "audiomanager.h"
+#include "spritecache.h"
 
 
 // ============================================================
@@ -196,16 +197,7 @@ OverworldWidget::OverworldWidget(AudioManager *audio, QWidget *parent)
     , m_audio(audio)
 {
     // load the player sprite sheet from resources
-    QString spritePath = ":/sprites/player.png";
-    qDebug() << "Working directory:" << QDir::currentPath();
-    qDebug() << "Absolute sprite path:" << QFileInfo(spritePath).absoluteFilePath();
-    qDebug() << "File exists on disk:" << QFileInfo(spritePath).exists();
-
-    m_sheet.pixmap = QPixmap(spritePath);
-
-    if (m_sheet.pixmap.isNull()) {
-        qFatal("Could not load resources/sprites/player.png");
-    }
+    m_sheet.pixmap = SpriteCache::instance().get(":/sprites/player.png");
 
     // set up layout — no margins so the view fills the whole widget
     auto *layout = new QVBoxLayout(this);
