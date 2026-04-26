@@ -579,12 +579,14 @@ void OverworldWidget::placePlayer()
 // ============================================================
 
 // called every tick by the timer
-void OverworldWidget::onTick()
-{
-    QRectF solid = m_houseCollider
-                       ? m_houseCollider->sceneBoundingRect()
-                       : QRectF();
-    m_player->step(m_heldKeys, QRectF(0, 0, WORLD_W, WORLD_H), solid);
+void OverworldWidget::onTick() {
+    QPointF vel = m_controller.computeVelocity(m_heldKeys);
+    QPointF proposed(m_player->x() + vel.x(), m_player->y() + vel.y());
+    QPointF clamped = m_controller.clampToWorld(proposed,
+        PlayerSprite::W, PlayerSprite::H, WORLD_W, WORLD_H);
+    // still pass to step() for animation only
+    m_player->step(m_heldKeys, QRectF(0,0,WORLD_W,WORLD_H),
+                   m_houseCollider ? m_houseCollider->sceneBoundingRect() : QRectF());
     checkTriggers();
 }
 
