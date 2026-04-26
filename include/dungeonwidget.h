@@ -14,6 +14,7 @@
 #include "character.h"
 #include "goldhudwidget.h"
 #include "playercontroller.h"
+#include "direction.h"
 
 class AudioManager;
 
