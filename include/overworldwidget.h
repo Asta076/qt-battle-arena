@@ -74,36 +74,29 @@ inline int idleCol(Direction d) { return static_cast<int>(d); }
 class PlayerSprite : public QGraphicsPixmapItem
 {
 public:
-    // logical display size and movement speed (in scene units)
     static constexpr qreal W     = 96.0;
     static constexpr qreal H     = 96.0;
     static constexpr qreal SPEED = 3.0;
 
     explicit PlayerSprite(const SpriteSheet &sheet, QGraphicsItem *parent = nullptr);
 
-    // called once per game tick to move the player and update animation
-    void step(const QSet<int> &heldKeys, const QRectF &worldBounds,
-              const QRectF &solidCollider = QRectF());
+
+    void updateAnimation(bool isMoving, Direction facingDir);
 
 private:
-    // animation helpers
     void setWalkAnim(Direction dir);
     void setIdleFrame(Direction dir);
     void applyFrame();
 
     const SpriteSheet &m_sheet;
-
-    // animation state
     bool      m_isIdle     = true;
     Direction m_facing     = Direction::Down;
     int       m_frameIndex = 0;
     int       m_tickAccum  = 0;
 
-    // how many ticks before we advance to the next animation frame (~12fps at 60hz)
     static constexpr int TICKS_PER_FRAME = 5;
     static constexpr int WALK_FRAMES     = 6;
 
-    // the shadow ellipse drawn under the player
     QGraphicsEllipseItem *m_shadow = nullptr;
 };
 
