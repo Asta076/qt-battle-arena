@@ -3,8 +3,7 @@
 #include <QSet>
 
 
-//  PlayerController
-//  Used by both OverworldWidget and DungeonWidget.
+enum class Direction : int;
 
 class PlayerController {
 public:
@@ -20,8 +19,13 @@ public:
                          qreal objectW, qreal objectH,
                          qreal worldW,  qreal worldH) const;
 
+    Direction computeDirection(const QSet<int>& heldKeys) const;
+    bool isMoving(const QSet<int>& heldKeys) const;
+
     void setSpeed(qreal speed) { m_speed = speed; }
     qreal speed() const        { return m_speed;  }
+
+    
 
 private:
     qreal m_speed = 3.0;
