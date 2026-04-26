@@ -1,33 +1,40 @@
 #include "pauseoverlaywidget.h"
-#include <QPushButton>
-#include <QLabel>
 #include <QVBoxLayout>
+#include <QLabel>
+#include <QPushButton>
 #include <QPainter>
 
-PauseOverlayWidget::PauseOverlayWidget(GameEngine* engine, QWidget* parent)
+PauseOverlayWidget::PauseOverlayWidget(bool showSave, QWidget* parent)
     : QWidget(parent)
 {
     setAttribute(Qt::WA_TranslucentBackground);
+    hide();
 
-    QVBoxLayout* layout = new QVBoxLayout(this);
+    auto* layout = new QVBoxLayout(this);
     layout->setAlignment(Qt::AlignCenter);
     layout->setSpacing(16);
 
-    QLabel* title    = new QLabel("— PAUSED —",  this);
+    auto* title  = new QLabel("— PAUSED —", this);
+    auto* resume = new QPushButton("► RESUME", this);
+    
     title->setObjectName("titleLabel");
     title->setAlignment(Qt::AlignCenter);
 
-    QPushButton* resumeBtn = new QPushButton("► RESUME",    this);
-    QPushButton* menuBtn   = new QPushButton("  MAIN MENU", this);
-
-    connect(resumeBtn, &QPushButton::clicked, engine, &GameEngine::onPauseToggle);
-    connect(menuBtn,   &QPushButton::clicked, engine, &GameEngine::onExitToMenu);
+    connect(resume, &QPushButton::clicked, this, &PauseOverlayWidget::resumeRequested);
 
     layout->addWidget(title);
     layout->addSpacing(12);
-    layout->addWidget(resumeBtn);
-    layout->addWidget(menuBtn);
-    // No save button — saving only happens in overworld pause
+    layout->addWidget(resume);
+
+    if (showSave) {
+        auto* save = new QPushButton("  SAVE GAME", this);
+        connect(save, &QPushButton::clicked, this, &PauseOverlayWidget::saveRequested);
+        layout->addWidget(save);
+    }
+
+    auto* menu = new QPushButton("  MAIN MENU", this);
+    connect(menu, &QPushButton::clicked, this, &PauseOverlayWidget::menuRequested);
+    layout->addWidget(menu);
 }
 
 void PauseOverlayWidget::paintEvent(QPaintEvent*)

@@ -12,9 +12,12 @@
 #include <QKeyEvent>
 
 #include "goldhudwidget.h"
+#include "playercontroller.h"
+#include "direction.h"
 
 // forward declare so we dont have to include the whole header here
 class AudioManager;
+class PauseOverlayWidget;
 
 
 // ============================================================
@@ -48,17 +51,7 @@ struct SpriteSheet
 //    idle frame  -> row 0, column = Direction value
 //    walk cycle  -> row = Direction value + 1, columns 0-5
 // ============================================================
-enum class Direction : int
-{
-    Right        = 0,
-    Up           = 1,
-    ForwardRight = 2,
-    ForwardLeft  = 3,
-    Down         = 4,
-    DownRight    = 5,
-    DownLeft     = 6,
-    Left         = 7
-};
+
 
 // helpers to get row/col from a direction (cleaner than casting everywhere)
 inline int walkRow(Direction d) { return static_cast<int>(d) + 1; }
@@ -73,36 +66,29 @@ inline int idleCol(Direction d) { return static_cast<int>(d); }
 class PlayerSprite : public QGraphicsPixmapItem
 {
 public:
-    // logical display size and movement speed (in scene units)
     static constexpr qreal W     = 96.0;
     static constexpr qreal H     = 96.0;
     static constexpr qreal SPEED = 3.0;
 
     explicit PlayerSprite(const SpriteSheet &sheet, QGraphicsItem *parent = nullptr);
 
-    // called once per game tick to move the player and update animation
-    void step(const QSet<int> &heldKeys, const QRectF &worldBounds,
-              const QRectF &solidCollider = QRectF());
+
+    void updateAnimation(bool isMoving, Direction facingDir);
 
 private:
-    // animation helpers
     void setWalkAnim(Direction dir);
     void setIdleFrame(Direction dir);
     void applyFrame();
 
     const SpriteSheet &m_sheet;
-
-    // animation state
     bool      m_isIdle     = true;
     Direction m_facing     = Direction::Down;
     int       m_frameIndex = 0;
     int       m_tickAccum  = 0;
 
-    // how many ticks before we advance to the next animation frame (~12fps at 60hz)
     static constexpr int TICKS_PER_FRAME = 5;
     static constexpr int WALK_FRAMES     = 6;
 
-    // the shadow ellipse drawn under the player
     QGraphicsEllipseItem *m_shadow = nullptr;
 };
 
@@ -144,6 +130,8 @@ private slots:
     void onTick(); // runs every 16ms (roughly 60fps)
 
 private:
+    
+    PlayerController m_controller;
     // --- setup ---
     void buildScene();       // creates all the tiles, trees, buildings etc.
     void buildPauseOverlay(); // creates the pause menu widget
@@ -179,6 +167,6 @@ private:
 
     // --- other ---
     AudioManager *m_audio        = nullptr;
-    QWidget      *m_pauseOverlay = nullptr;
+    PauseOverlayWidget* m_pauseOverlay = nullptr;
     bool          m_paused       = false;
 };

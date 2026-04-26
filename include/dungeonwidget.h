@@ -3,111 +3,144 @@
 #include <QWidget>
 #include <QGraphicsView>
 #include <QGraphicsScene>
+#include <QGraphicsPixmapItem>
 #include <QGraphicsRectItem>
+#include <QGraphicsEllipseItem>
 #include <QGraphicsTextItem>
 #include <QTimer>
 #include <QKeyEvent>
 #include <QSet>
 #include <QList>
-#include "character.h"   // for CharacterType
-#include "goldhudwidget.h"
-class AudioManager; // Forward Declaration
+#include <QPixmap>
 
-// ─────────────────────────────────────────────────────────────────────────────
-//  EnemySprite  –  a roaming enemy the player can bump into to start a battle.
-// ─────────────────────────────────────────────────────────────────────────────
-class EnemySprite : public QGraphicsRectItem
+#include "character.h"
+#include "goldhudwidget.h"
+#include "playercontroller.h"
+#include "overworldwidget.h"   // Direction, walkRow(), idleCol()
+
+class AudioManager;
+class PauseOverlayWidget;
+
+struct DungeonSpriteSheet
+{
+    QPixmap pixmap;
+
+    static constexpr int FRAME_W = 68;
+    static constexpr int FRAME_H = 68;
+
+    QPixmap frame(int col, int row) const
+    {
+        return pixmap.copy(col * FRAME_W, row * FRAME_H, FRAME_W, FRAME_H);
+    }
+};
+
+class DungeonPlayerSprite : public QGraphicsPixmapItem
 {
 public:
-    explicit EnemySprite(CharacterType type, const QString &name,
-                         QGraphicsItem *parent = nullptr);
+    explicit DungeonPlayerSprite(const DungeonSpriteSheet& sheet,
+                                 QGraphicsItem* parent = nullptr);
+
+    static constexpr qreal W = 96.0;
+    static constexpr qreal H = 96.0;
+
+    void updateAnimation(bool isMoving, Direction facingDir);
+
+private:
+    void setWalkAnim(Direction dir);
+    void setIdleFrame(Direction dir);
+    void applyFrame();
+
+    const DungeonSpriteSheet& m_sheet;
+    bool m_isIdle = true;
+    Direction m_facing = Direction::Down;
+    int m_frameIndex = 0;
+    int m_tickAccum = 0;
+
+    static constexpr int TICKS_PER_FRAME = 5;
+    static constexpr int WALK_FRAMES = 6;
+
+    QGraphicsEllipseItem* m_shadow = nullptr;
+};
+
+class EnemySprite : public QGraphicsPixmapItem
+{
+public:
+    explicit EnemySprite(CharacterType type, const QString& name,
+                         QGraphicsItem* parent = nullptr);
 
     static constexpr qreal W = 28;
     static constexpr qreal H = 28;
 
     CharacterType enemyType() const { return m_type; }
-    QString       enemyName() const { return m_name; }
+    QString enemyName() const { return m_name; }
 
-    // Patrol back-and-forth each frame, clamped to worldBounds.
-    void patrol(const QRectF &worldBounds);
+    void patrol(const QRectF& worldBounds);
+    void updateAnimation();
 
 private:
     CharacterType m_type;
-    QString       m_name;
+    QString m_name;
 
-    qreal m_vx;   // current horizontal velocity (pixels/frame)
-    qreal m_vy;   // current vertical velocity
+    QPixmap m_sprite;
+    QGraphicsEllipseItem* m_shadow = nullptr;
+    QGraphicsTextItem* m_nameLabel = nullptr;
+
+    qreal m_vx = 0;
+    qreal m_vy = 0;
+
+    int m_frameIndex = 0;
+    int m_tickAccum = 0;
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
-//  DungeonWidget  –  dark dungeon exploration; touching an enemy starts a fight.
-//
-//  Signals
-//  ───────
-//    battleTriggered(CharacterType, QString)
-//        Emitted when the player collides with an enemy.
-//        Pass these straight to GameEngine::onPlayerSelectedCharacter() after
-//        the player has chosen their own character (or store them so MainWindow
-//        can forward them).
-//
-//    exitedDungeon()   player reached the exit portal back to the overworld
-//    backToMenu()      player pressed Escape
-// ─────────────────────────────────────────────────────────────────────────────
 class DungeonWidget : public QWidget
 {
     Q_OBJECT
 
 public:
-    explicit DungeonWidget(AudioManager *audio, QWidget *parent = nullptr);
+    explicit DungeonWidget(AudioManager* audio, QWidget* parent = nullptr);
     ~DungeonWidget() override = default;
 
-    // Call every time this screen becomes visible.
     void activate();
-    // Call when navigating away so the timer stops in the background.
     void deactivate();
     void setGold(int gold);
+
 signals:
-    void battleTriggered(CharacterType enemyType, const QString &enemyName);
+    void battleTriggered(CharacterType enemyType, const QString& enemyName);
     void exitedDungeon();
     void backToMenu();
 
 protected:
-    void keyPressEvent  (QKeyEvent   *e) override;
-    void keyReleaseEvent(QKeyEvent   *e) override;
-    void resizeEvent    (QResizeEvent *e) override;
+    void keyPressEvent(QKeyEvent* e) override;
+    void keyReleaseEvent(QKeyEvent* e) override;
+    void resizeEvent(QResizeEvent* e) override;
 
 private slots:
     void onTick();
 
 private:
-    // ── Scene ────────────────────────────────────────────────────────────────
-    QGraphicsScene    *m_scene     = nullptr;
-    QGraphicsView     *m_view      = nullptr;
-    GoldHudWidget     *m_goldHud   = nullptr;  // Gold HUD
-    // Player reuses the same PlayerSprite from the overworld concept but we
-    // keep it self-contained here with a plain QGraphicsRectItem.
-    QGraphicsRectItem *m_player    = nullptr;
+    PlayerController m_controller;
 
-    // Exit portal back to the overworld
-    QGraphicsRectItem *m_exitZone  = nullptr;
+    QGraphicsScene* m_scene = nullptr;
+    QGraphicsView* m_view = nullptr;
+    GoldHudWidget* m_goldHud = nullptr;
 
-    // Roaming enemies
-    QList<EnemySprite *> m_enemies;
+    DungeonPlayerSprite* m_player = nullptr;
+    QGraphicsRectItem* m_exitZone = nullptr;
 
-    // ── Game loop ────────────────────────────────────────────────────────────
-    QTimer    m_ticker;
+    QList<EnemySprite*> m_enemies;
+
+    QTimer m_ticker;
     QSet<int> m_heldKeys;
 
-    // ── World dimensions ─────────────────────────────────────────────────────
     static constexpr int WORLD_W = 800;
     static constexpr int WORLD_H = 600;
 
-    // ── Player size ──────────────────────────────────────────────────────────
-    static constexpr qreal PW    = 28;
-    static constexpr qreal PH    = 36;
-    static constexpr int   SPEED = 3;
+    static constexpr qreal PW = DungeonPlayerSprite::W;
+    static constexpr qreal PH = DungeonPlayerSprite::H;
+    static constexpr int SPEED = 3;
 
-    // ── Helpers ──────────────────────────────────────────────────────────────
+    DungeonSpriteSheet m_sheet;
+
     void buildScene();
     void placePlayer();
     void spawnEnemies();
@@ -116,9 +149,8 @@ private:
     void checkCollisions();
     void fitView();
     void togglePause();
-    void buildPauseOverlay();
 
-    AudioManager *m_audio        = nullptr;
-    QWidget      *m_pauseOverlay = nullptr;
-    bool          m_paused       = false;
+    AudioManager* m_audio = nullptr;
+    PauseOverlayWidget* m_pauseOverlay = nullptr;
+    bool m_paused = false;
 };

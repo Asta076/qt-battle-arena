@@ -2,7 +2,8 @@
 #include <QPainter>
 #include <QPropertyAnimation>
 #include <QSequentialAnimationGroup>
-#include <QTimer>               // ← ADD THIS
+#include <QTimer>             
+#include "spritecache.h"
 
 SpriteWidget::SpriteWidget(QWidget* parent)
     : QWidget(parent)
@@ -13,10 +14,10 @@ SpriteWidget::SpriteWidget(QWidget* parent)
 
 void SpriteWidget::setSprite(const QString& path)
 {
-    m_pixmap   = QPixmap(path);
-    m_opacity  = 1.0f;       // ← reset from faint
-    m_fainting = false;      // ← reset faint flag
-    m_offset   = {0, 0};     // ← reset any leftover animation offset
+    m_pixmap = SpriteCache::instance().get(path); 
+    m_opacity  = 1.0f;
+    m_fainting = false;
+    m_offset   = {0, 0};
     update();
 }
 

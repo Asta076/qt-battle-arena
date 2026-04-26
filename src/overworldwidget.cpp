@@ -18,6 +18,8 @@
 #include <QPushButton>
 
 #include "audiomanager.h"
+#include "pauseoverlaywidget.h"
+#include "spritecache.h"
 
 
 // ============================================================
@@ -26,8 +28,7 @@
 
 PlayerSprite::PlayerSprite(const SpriteSheet &sheet, QGraphicsItem *parent)
     : QGraphicsPixmapItem(parent)
-    , m_sheet(sheet)
-{
+    , m_sheet(sheet) {
     setTransformationMode(Qt::FastTransformation);
     setTransformOriginPoint(W / 2.0, H / 2.0);
 
@@ -50,8 +51,6 @@ PlayerSprite::PlayerSprite(const SpriteSheet &sheet, QGraphicsItem *parent)
     m_shadow->setPos((W - shadowW) / 2.0, H * 0.78);
     m_shadow->setZValue(-1);
 }
-
-
 // ============================================================
 //  PlayerSprite  — animation helpers
 // ============================================================
@@ -106,38 +105,10 @@ void PlayerSprite::applyFrame()
 //  PlayerSprite  — movement (called every tick)
 // ============================================================
 
-void PlayerSprite::step(const QSet<int> &heldKeys,
-                        const QRectF    &worldBounds,
-                        const QRectF    &solidCollider)
+void PlayerSprite::updateAnimation(bool isMoving, Direction facingDir)
 {
-    const bool goUp    = heldKeys.contains(Qt::Key_W) || heldKeys.contains(Qt::Key_Up);
-    const bool goDown  = heldKeys.contains(Qt::Key_S) || heldKeys.contains(Qt::Key_Down);
-    const bool goLeft  = heldKeys.contains(Qt::Key_A) || heldKeys.contains(Qt::Key_Left);
-    const bool goRight = heldKeys.contains(Qt::Key_D) || heldKeys.contains(Qt::Key_Right);
-
-    qreal dx = 0, dy = 0;
-    if (goUp)    dy -= SPEED;
-    if (goDown)  dy += SPEED;
-    if (goLeft)  dx -= SPEED;
-    if (goRight) dx += SPEED;
-
-    if (dx != 0 && dy != 0) { dx *= 0.7071; dy *= 0.7071; }
-
-    const bool moving = (dx != 0 || dy != 0);
-
-    if (moving) {
-        Direction dir;
-        if      (goUp   && goRight) dir = Direction::ForwardRight;
-        else if (goUp   && goLeft)  dir = Direction::ForwardLeft;
-        else if (goDown && goRight) dir = Direction::DownRight;
-        else if (goDown && goLeft)  dir = Direction::DownLeft;
-        else if (goRight)           dir = Direction::Right;
-        else if (goLeft)            dir = Direction::Left;
-        else if (goUp)              dir = Direction::Up;
-        else                        dir = Direction::Down;
-
-        setWalkAnim(dir);
-
+    if (isMoving) {
+        setWalkAnim(facingDir);
         ++m_tickAccum;
         if (m_tickAccum >= TICKS_PER_FRAME) {
             m_tickAccum  = 0;
@@ -147,45 +118,7 @@ void PlayerSprite::step(const QSet<int> &heldKeys,
     } else {
         if (!m_isIdle) setIdleFrame(m_facing);
     }
-
-    // ── Per-axis collision resolution ────────────────────────────────────────
-    // Try X first, then Y independently.
-    // This lets the player slide along walls instead of getting stuck on corners.
-
-    // The player's bounding box in scene coords after applying movement
-    auto playerRect = [&](qreal px, qreal py) -> QRectF {
-        return QRectF(px, py, W, H);
-    };
-
-    auto overlaps = [&](const QRectF &a, const QRectF &b) -> bool {
-        return solidCollider.isValid() && a.intersects(b);
-    };
-
-    // Step X
-    qreal nx = qBound(worldBounds.left(), x() + dx, worldBounds.right() - W);
-    if (solidCollider.isValid() && playerRect(nx, y()).intersects(solidCollider)) {
-        // X movement blocked — snap to the collider edge instead
-        if (dx > 0)
-            nx = solidCollider.left() - W;   // coming from left, stop at left edge
-        else
-            nx = solidCollider.right();       // coming from right, stop at right edge
-        nx = qBound(worldBounds.left(), nx, worldBounds.right() - W);
-    }
-
-    // Step Y
-    qreal ny = qBound(worldBounds.top(), y() + dy, worldBounds.bottom() - H);
-    if (solidCollider.isValid() && playerRect(nx, ny).intersects(solidCollider)) {
-        // Y movement blocked — snap to the collider edge instead
-        if (dy > 0)
-            ny = solidCollider.top() - H;    // coming from above, stop at top edge
-        else
-            ny = solidCollider.bottom();     // coming from below, stop at bottom edge
-        ny = qBound(worldBounds.top(), ny, worldBounds.bottom() - H);
-    }
-
-    setPos(nx, ny);
 }
-
 
 // ============================================================
 //  OverworldWidget  — constructor
@@ -196,16 +129,7 @@ OverworldWidget::OverworldWidget(AudioManager *audio, QWidget *parent)
     , m_audio(audio)
 {
     // load the player sprite sheet from resources
-    QString spritePath = ":/sprites/player.png";
-    qDebug() << "Working directory:" << QDir::currentPath();
-    qDebug() << "Absolute sprite path:" << QFileInfo(spritePath).absoluteFilePath();
-    qDebug() << "File exists on disk:" << QFileInfo(spritePath).exists();
-
-    m_sheet.pixmap = QPixmap(spritePath);
-
-    if (m_sheet.pixmap.isNull()) {
-        qFatal("Could not load resources/sprites/player.png");
-    }
+    m_sheet.pixmap = SpriteCache::instance().get(":/sprites/player.png");
 
     // set up layout — no margins so the view fills the whole widget
     auto *layout = new QVBoxLayout(this);
@@ -234,7 +158,15 @@ OverworldWidget::OverworldWidget(AudioManager *audio, QWidget *parent)
     setFocusPolicy(Qt::StrongFocus);
     m_view->setSceneRect(0, 0, WORLD_W, WORLD_H);
 
-    buildPauseOverlay();
+    m_pauseOverlay = new PauseOverlayWidget(true, this);  // true = show save
+    connect(m_pauseOverlay, &PauseOverlayWidget::resumeRequested, this, &OverworldWidget::togglePause);
+    connect(m_pauseOverlay, &PauseOverlayWidget::saveRequested, this, &OverworldWidget::saveRequested);
+    connect(m_pauseOverlay, &PauseOverlayWidget::menuRequested, this, [this] {
+    m_paused = false;
+    m_pauseOverlay->hide();
+    deactivate();
+    emit backToMenu();
+});
 
     // gold HUD goes in the top-right corner
     m_goldHud = new GoldHudWidget(this);
@@ -579,13 +511,38 @@ void OverworldWidget::placePlayer()
 // ============================================================
 
 // called every tick by the timer
-void OverworldWidget::onTick()
-{
-    QRectF solid = m_houseCollider
-                       ? m_houseCollider->sceneBoundingRect()
-                       : QRectF();
-    m_player->step(m_heldKeys, QRectF(0, 0, WORLD_W, WORLD_H), solid);
+void OverworldWidget::onTick() {
+    QPointF vel = m_controller.computeVelocity(m_heldKeys);
+    QPointF proposed(m_player->x() + vel.x(), m_player->y() + vel.y());
+    
+    QRectF solid = m_houseCollider ? m_houseCollider->sceneBoundingRect() : QRectF();
+    
+    // Apply collision manually
+    qreal nx = qBound(0.0, proposed.x(), WORLD_W - PlayerSprite::W);
+    qreal ny = qBound(0.0, proposed.y(), WORLD_H - PlayerSprite::H);
+    
+    if (solid.isValid()) {
+        QRectF playerRect(nx, ny, PlayerSprite::W, PlayerSprite::H);
+        if (playerRect.intersects(solid)) {
+            if (vel.x() > 0) nx = solid.left() - PlayerSprite::W;
+            else if (vel.x() < 0) nx = solid.right();
+            
+            playerRect = QRectF(nx, ny, PlayerSprite::W, PlayerSprite::H);
+            if (playerRect.intersects(solid)) {
+                if (vel.y() > 0) ny = solid.top() - PlayerSprite::H;
+                else if (vel.y() < 0) ny = solid.bottom();
+            }
+        }
+    }
+    
+    m_player->setPos(nx, ny);
+    
+    bool moving = m_controller.isMoving(m_heldKeys);
+    Direction dir = m_controller.computeDirection(m_heldKeys);
+    m_player->updateAnimation(moving, dir);
+    
     checkTriggers();
+
 }
 
 // check if the player has walked into any trigger zones
@@ -691,45 +648,6 @@ void OverworldWidget::togglePause()
         m_ticker.start();
         setFocus();
     }
-}
-
-// build the pause overlay widget (only called once in the constructor)
-void OverworldWidget::buildPauseOverlay()
-{
-    m_pauseOverlay = new QWidget(this);
-    m_pauseOverlay->setAttribute(Qt::WA_TranslucentBackground);
-    m_pauseOverlay->hide();
-
-    auto *layout = new QVBoxLayout(m_pauseOverlay);
-    layout->setAlignment(Qt::AlignCenter);
-    layout->setSpacing(16);
-
-    auto *title  = new QLabel("— PAUSED —",   m_pauseOverlay);
-    auto *resume = new QPushButton("► RESUME",    m_pauseOverlay);
-    auto *save   = new QPushButton("  SAVE GAME", m_pauseOverlay);
-    auto *menu   = new QPushButton("  MAIN MENU", m_pauseOverlay);
-
-    title->setObjectName("titleLabel");
-    title->setAlignment(Qt::AlignCenter);
-
-    connect(resume, &QPushButton::clicked, this, &OverworldWidget::togglePause);
-
-    connect(save, &QPushButton::clicked, this, [this] {
-        emit saveRequested();
-    });
-
-    connect(menu, &QPushButton::clicked, this, [this] {
-        m_paused = false;
-        m_pauseOverlay->hide();
-        deactivate();
-        emit backToMenu();
-    });
-
-    layout->addWidget(title);
-    layout->addSpacing(12);
-    layout->addWidget(resume);
-    layout->addWidget(save);
-    layout->addWidget(menu);
 }
 
 
