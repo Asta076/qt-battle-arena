@@ -412,6 +412,7 @@ void DungeonWidget::onTick()
     movePlayer();
     patrolEnemies();
     checkCollisions();
+    fitView();
 }
 
 void DungeonWidget::movePlayer()
@@ -471,10 +472,16 @@ void DungeonWidget::checkCollisions()
 
 void DungeonWidget::fitView()
 {
-    if (!m_view)
+    if (!m_view || !m_player)
         return;
 
-    m_view->fitInView(m_scene->sceneRect(), Qt::KeepAspectRatio);
+    m_view->resetTransform();
+
+    // Zoom in
+    m_view->scale(2.0, 2.0);
+
+    // Camera follows player
+    m_view->centerOn(m_player);
 }
 
 void DungeonWidget::togglePause()
