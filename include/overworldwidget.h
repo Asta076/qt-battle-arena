@@ -17,6 +17,7 @@
 
 // forward declare so we dont have to include the whole header here
 class AudioManager;
+class PauseOverlayWidget;
 
 
 // ============================================================
