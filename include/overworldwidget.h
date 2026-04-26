@@ -12,6 +12,7 @@
 #include <QKeyEvent>
 
 #include "goldhudwidget.h"
+#include "playercontroller.h"
 
 // forward declare so we dont have to include the whole header here
 class AudioManager;
