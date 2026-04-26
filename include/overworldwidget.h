@@ -49,17 +49,7 @@ struct SpriteSheet
 //    idle frame  -> row 0, column = Direction value
 //    walk cycle  -> row = Direction value + 1, columns 0-5
 // ============================================================
-enum class Direction : int
-{
-    Right        = 0,
-    Up           = 1,
-    ForwardRight = 2,
-    ForwardLeft  = 3,
-    Down         = 4,
-    DownRight    = 5,
-    DownLeft     = 6,
-    Left         = 7
-};
+
 
 // helpers to get row/col from a direction (cleaner than casting everywhere)
 inline int walkRow(Direction d) { return static_cast<int>(d) + 1; }
