@@ -11,6 +11,7 @@
 #include <QList>
 #include "character.h"   // for CharacterType
 #include "goldhudwidget.h"
+#include "playercontroller.h"
 class AudioManager; // Forward Declaration
 
 // ─────────────────────────────────────────────────────────────────────────────
