@@ -295,111 +295,39 @@ void OverworldWidget::buildScene()
         entranceX, entranceY, entranceW, 16,
         Qt::NoPen, Qt::NoBrush);
     m_houseEntranceZone->setZValue(1);
-    // ── Shop zone ────────────────────────────────────────────────────────────────
-    // ── Shop stall (bazaar style) ─────────────────────────────────────────────
+    // ── Shop ────────────────────────────────────────────────────────────────
     const qreal SHOP_X = 600;
     const qreal SHOP_Y = 165;
     const qreal SHOP_W = 120;
     const qreal SHOP_H = 95;
 
-    // back wall
-    auto *shopBack = m_scene->addRect(
-    SHOP_X, SHOP_Y, SHOP_W, SHOP_H,
-    QPen(QColor("#4E342E"), 2),
-    QBrush(QColor("#8D6E63"))
-    );
-    shopBack->setZValue(4);
+    // 1. Load the shop image from your resources
+    QPixmap shopPixmap(":/sprites/shop.png");
 
-    // left wooden post
-    auto *shopPostL = m_scene->addRect(
-    SHOP_X + 8, SHOP_Y + 8, 8, SHOP_H - 16,
-    QPen(Qt::NoPen),
-    QBrush(QColor("#5D4037"))
-    );
-    shopPostL->setZValue(5);
-    // right wooden post
-    auto *shopPostR = m_scene->addRect(
-    SHOP_X + SHOP_W - 16, SHOP_Y + 8, 8, SHOP_H - 16,
-    QPen(Qt::NoPen),        // ← has "x    QPen" in your file
-    QBrush(QColor("#5D4037"))
-    );
-    // counter
-    auto *shopCounter = m_scene->addRect(
-    SHOP_X + 10, SHOP_Y + 52, SHOP_W - 20, 22,
-    QPen(QColor("#4E342E"), 1),
-    QBrush(QColor("#6D4C41"))
-    );
-    shopCounter->setZValue(6);
-    // awning background
-    auto *shopAwning = m_scene->addRect(
-    SHOP_X - 6, SHOP_Y - 18, SHOP_W + 12, 20,
-    QPen(QColor("#4E342E"), 1),
-    QBrush(QColor("#C62828"))
-    );
-    shopAwning->setZValue(7);
-   // awning stripes
-   for (int i = 0; i < 6; ++i) {
-    auto *stripe = m_scene->addRect(
-        SHOP_X - 6 + i * 22, SHOP_Y - 18, 11, 20,
-        Qt::NoPen,
-        QBrush(QColor("#FBE9E7"))
-    );
-    stripe->setZValue(8);
-   }
+    // FIX: Scale the image to perfectly match SHOP_W and SHOP_H
+    // Qt::KeepAspectRatio ensures the image doesn't look stretched or squished.
+    // If it still doesn't fit your box perfectly, change Qt::KeepAspectRatio to Qt::IgnoreAspectRatio
+    shopPixmap = shopPixmap.scaled(SHOP_W, SHOP_H, Qt::KeepAspectRatio, Qt::SmoothTransformation);
 
-   // hanging shop sign 
-   auto *shopSign = m_scene->addRect(
-    SHOP_X + 28, SHOP_Y + 10, 64, 18,
-    QPen(QColor("#3E2723"), 1),
-    QBrush(QColor("#D7B899"))
-    );
-    shopSign->setZValue(8);
+    // Add the scaled image to the scene
+    QGraphicsPixmapItem* shopItem = m_scene->addPixmap(shopPixmap);
+    shopItem->setPos(SHOP_X, SHOP_Y);
+    shopItem->setZValue(4); // Sets it above the ground, adjust if needed
 
-    auto *shopLabel = m_scene->addText("BAZAAR", QFont("Arial", 7, QFont::Bold));
-    shopLabel->setDefaultTextColor(QColor("#3E2723"));
-    shopLabel->setPos(SHOP_X + 35, SHOP_Y + 12);
-    shopLabel->setZValue(9);
+    // 2. Add the physical collision box (Collider)
+    QGraphicsRectItem* shopCollider = m_scene->addRect(
+        SHOP_X, SHOP_Y, SHOP_W, SHOP_H,
+        Qt::NoPen, Qt::NoBrush // Keep it invisible
+        );
+    // Optional: If your game uses data tags to identify solid objects
+    // shopCollider->setData(0, "Solid");
 
-    // little crates in front
-    auto *crate1 = m_scene->addRect(
-    SHOP_X + 8, SHOP_Y + SHOP_H - 10, 18, 14,
-    QPen(QColor("#4E342E"), 1),
-    QBrush(QColor("#A1887F"))
-    );
-    crate1->setZValue(6);
-
-    auto *crate2 = m_scene->addRect(
-    SHOP_X + SHOP_W - 26, SHOP_Y + SHOP_H - 10, 18, 14,
-    QPen(QColor("#4E342E"), 1),
-    QBrush(QColor("#A1887F"))
-    );
-    crate2->setZValue(6);
-
-   // objects  on counter
-    auto *jar1 = m_scene->addEllipse(
-    SHOP_X + 26, SHOP_Y + 58, 8, 8,
-    Qt::NoPen, QBrush(QColor("#FFD54F"))
-    );
-    jar1->setZValue(7);
-
-    auto *jar2 = m_scene->addEllipse(
-    SHOP_X + 44, SHOP_Y + 58, 8, 8,
-    Qt::NoPen, QBrush(QColor("#81C784"))
-    );
-    jar2->setZValue(7);
-
-    auto *jar3 = m_scene->addEllipse(
-    SHOP_X + 62, SHOP_Y + 58, 8, 8,
-    Qt::NoPen, QBrush(QColor("#4FC3F7")) 
-    );
-    jar3->setZValue(7);
-
-    // invisible trigger zone in front of the stall
+    // 3. Invisible trigger zone in front of the stall
     m_shopZone = m_scene->addRect(
-    SHOP_X + 20, SHOP_Y + SHOP_H + 2, SHOP_W - 40, 18,
-    Qt::NoPen,
-    Qt::NoBrush
-    );
+        SHOP_X + 20, SHOP_Y + SHOP_H + 2, SHOP_W - 40, 18,
+        Qt::NoPen,
+        Qt::NoBrush
+        );
     m_shopZone->setZValue(1);
     // ── Trees ────────────────────────────────────────────────────────────────
     QPixmap treeRoundPx(":/sprites/tree_round.png");
