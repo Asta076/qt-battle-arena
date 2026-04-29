@@ -248,9 +248,6 @@ void MainWindow::onStateChanged(GameState newState)
     case GameState::Playing:
     case GameState::AnimatingAttack:
     case GameState::Paused:
-    case GameState::RoundOver:
-        m_stack->setCurrentWidget(m_battleWidget);
-        break;
 
     case GameState::GameOver:
         m_stack->setCurrentWidget(m_gameOver);
