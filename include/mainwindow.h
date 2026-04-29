@@ -39,7 +39,6 @@ private slots:
     // ── Exploration ───────────────────────────────────────────────────────────
     void onDungeonEntered();
     void onExitedDungeon();
-    void onBattleTriggered(CharacterType enemyType, const QString& enemyName);
     void onBackToMenu();
     void onHouseEntered();
     void onHouseExited();
