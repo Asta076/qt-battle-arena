@@ -105,7 +105,6 @@ public:
     void setGold(int gold);
 
 signals:
-    void battleTriggered(CharacterType enemyType, const QString& enemyName);
     void exitedDungeon();
     void backToMenu();
 
