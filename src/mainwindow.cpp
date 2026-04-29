@@ -99,8 +99,6 @@ void MainWindow::buildUI()
             this, &MainWindow::onHouseExited);
 
     // ── Dungeon ──────────────────────────────────────────────────────────────
-    connect(m_dungeon, &DungeonWidget::battleTriggered,
-            this, &MainWindow::onBattleTriggered);
     connect(m_dungeon, &DungeonWidget::exitedDungeon,
             this, &MainWindow::onExitedDungeon);
     connect(m_dungeon, &DungeonWidget::backToMenu,
@@ -214,11 +212,6 @@ void MainWindow::onStateChanged(GameState newState)
         m_stack->setCurrentWidget(m_charSelect);
         break;
 
-    case GameState::PlayerTurn:
-        if (m_stack->currentWidget() == m_charSelect) {
-            // Player just confirmed their character
-            m_playerHasChosen = true;
-
             // Save identity to profile immediately
             m_profile.characterName = m_engine->getPlayerName();
             m_profile.characterType = static_cast<int>(m_engine->getPlayerType());
@@ -246,7 +239,6 @@ void MainWindow::onStateChanged(GameState newState)
         break;
 
     case GameState::Playing:
-    case GameState::AnimatingAttack:
     case GameState::Paused:
 
     case GameState::GameOver:
@@ -304,27 +296,6 @@ void MainWindow::onShopExited()
 {
     m_overworld->activate();
     m_stack->setCurrentWidget(m_overworld);
-}
-void MainWindow::onBattleTriggered(CharacterType enemyType, const QString& enemyName)
-{
-    m_pendingEnemyType = enemyType;
-    m_pendingEnemyName = enemyName;
-
-    if (!m_playerHasChosen) {
-        // First encounter — need character select first
-        m_hasPendingBattle = true;
-        m_stack->setCurrentWidget(m_charSelect);
-    } else {
-        m_engine->setStatBonuses(
-            m_profile.upgrades.bonusMaxHp,
-            m_profile.upgrades.bonusAttack,
-            m_profile.upgrades.bonusSpPerAtk);
-        // Character already chosen — jump straight to battle
-        m_engine->onPlayerSelectedCharacter(
-            m_engine->getPlayerType(),
-            m_engine->getPlayerName());
-        // Engine emits PlayerTurn → onStateChanged shows battleWidget
-    }
 }
 
 void MainWindow::onBackToMenu()
