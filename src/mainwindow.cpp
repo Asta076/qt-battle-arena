@@ -200,50 +200,26 @@ void MainWindow::onSlotBackRequested()
 
 void MainWindow::onStateChanged(GameState newState)
 {
-    switch (newState) {
-
+    switch (newState)
+    {
     case GameState::MainMenu:
         m_stack->setCurrentWidget(m_startScreen);
-        m_audio->playMusic("/music/menu.ogg");
         break;
 
     case GameState::CharacterSelect:
-        // Handled directly by onNewGameInSlot — guard only
         m_stack->setCurrentWidget(m_charSelect);
         break;
 
-            // Save identity to profile immediately
-            m_profile.characterName = m_engine->getPlayerName();
-            m_profile.characterType = static_cast<int>(m_engine->getPlayerType());
-
-            if (m_hasPendingBattle) {
-                // Was sent to charSelect because of dungeon collision
-                m_hasPendingBattle = false;
-                m_engine->setStatBonuses(
-                    m_profile.upgrades.bonusMaxHp,
-                    m_profile.upgrades.bonusAttack,
-                    m_profile.upgrades.bonusSpPerAtk);
-                m_audio->playMusic("/music/battle.ogg");
-            } else {
-                m_engine->setStatBonuses(0, 0, 0);
-                // Normal new-game flow — save initial profile and go to overworld
-                if (m_currentSlot >= 0)
-                    m_profile.saveToFile(SaveSlotWidget::slotPath(m_currentSlot));
-                m_overworld->activate();
-                m_stack->setCurrentWidget(m_overworld);
-            }
-        } else {
-            // Mid-battle: back to player's turn
-            m_audio->playMusic("/music/battle.ogg");
-        }
+    case GameState::Playing:
+        m_stack->setCurrentWidget(m_overworld); // or dungeon depending on your flow
         break;
 
-    case GameState::Playing:
     case GameState::Paused:
+        // optional: keep current screen or show overlay
+        break;
 
     case GameState::GameOver:
         m_stack->setCurrentWidget(m_gameOver);
-        m_audio->stopMusic();
         break;
 
     case GameState::Scoreboard:
