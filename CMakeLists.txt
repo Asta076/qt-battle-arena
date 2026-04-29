@@ -10,25 +10,23 @@ qt_add_executable(CS2-Battle-Arena
     # ── Entry point ────────────────────────────
     src/main.cpp
 
-    # ── Pure C++ logic (no Qt) ─────────────────
     include/character.h         src/character.cpp
     include/warrior.h           src/warrior.cpp
     include/mage.h              src/mage.cpp
     include/archer.h            src/archer.cpp
-    include/battleresult.h
     include/scoretracker.h      src/scoretracker.cpp
     include/playerprofile.h     src/playerprofile.cpp
-    
-    # ── Game engine (Qt Core) ──────────────────
+    include/enemy.h             src/enemy.cpp
+    include/projectile.h        src/projectile.cpp
+    include/worldcombatmanager.h src/worldcombatmanager.cpp
+
     include/gameengine.h        src/gameengine.cpp
     include/spritecache.h       src/spritecache.cpp
     include/playercontroller.h  src/playercontroller.cpp
 
-    # ── Main window shell ──────────────────────
     include/mainwindow.h        src/mainwindow.cpp
     src/mainwindow.ui
 
-    # ── Screens ────────────────────────────────
     include/startscreenwidget.h         src/startscreenwidget.cpp
     include/characterselectiondialog.h  src/characterselectiondialog.cpp
     src/characterselectiondialog.ui
@@ -36,18 +34,11 @@ qt_add_executable(CS2-Battle-Arena
     include/scoreboardwidget.h          src/scoreboardwidget.cpp
     include/saveslotwidget.h            src/saveslotwidget.cpp
     include/goldhudwidget.h             src/goldhudwidget.cpp
-    # ── Battle scene widgets ───────────────────
-    include/battlewidget.h      src/battlewidget.cpp
-    include/battlemenuwidget.h  src/battlemenuwidget.cpp
-    include/battlelogwidget.h   src/battlelogwidget.cpp
-    include/spritewidget.h      src/spritewidget.cpp
-    include/healthbarwidget.h   src/healthbarwidget.cpp
-    include/pauseoverlaywidget.h src/pauseoverlaywidget.cpp
-    include/roundoverwidget.h   src/roundoverwidget.cpp
-    include/audiomanager.h      src/audiomanager.cpp
-    include/itemmenuwidget.h    src/itemmenuwidget.cpp
+    include/healthbarwidget.h           src/healthbarwidget.cpp
+    include/pauseoverlaywidget.h        src/pauseoverlaywidget.cpp
+    include/audiomanager.h              src/audiomanager.cpp
+    include/itemmenuwidget.h            src/itemmenuwidget.cpp
 
-    # ── World widgets ───────────────────
     include/overworldwidget.h  src/overworldwidget.cpp
     include/dungeonwidget.h    src/dungeonwidget.cpp
     include/housewidget.h      src/housewidget.cpp
