@@ -148,8 +148,14 @@ private:
     void checkCollisions();
     void fitView();
     void togglePause();
+    void handleClassAttack();
+    void checkAttackCollisions();
 
     AudioManager* m_audio = nullptr;
     PauseOverlayWidget* m_pauseOverlay = nullptr;
     bool m_paused = false;
+
+    WorldCombatManager m_combat;
+    QHash<EnemySprite*, Enemy*> m_enemyLogic;
+    Direction m_facing = Direction::Down;
 };
