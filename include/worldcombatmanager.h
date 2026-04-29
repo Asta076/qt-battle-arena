@@ -2,9 +2,31 @@
 
 #include <QObject>
 #include <QHash>
+#include <QList>
+#include <QRectF>
+#include <QPointF>
+#include <QGraphicsScene>
+#include <QGraphicsItem>
 
 #include "character.h"
 #include "enemy.h"
+#include "direction.h"
+
+enum class AttackType {
+    Sword,
+    Arrow,
+    Fireball
+};
+
+struct ActiveAttack {
+    AttackType type;
+    QRectF bounds;
+    QPointF velocity;
+    int damage = 0;
+    float lifetime = 0.0f;
+    bool expired = false;
+    QGraphicsItem* visual = nullptr;
+};
 
 class WorldCombatManager : public QObject
 {
@@ -14,6 +36,7 @@ public:
     explicit WorldCombatManager(QObject* parent = nullptr);
 
     void setPlayer(Character* player);
+    void setScene(QGraphicsScene* scene);
 
     void registerEnemy(Enemy* enemy);
     void unregisterEnemy(Enemy* enemy);
@@ -25,15 +48,19 @@ public:
     bool canPlayerShoot() const;
     bool canEnemyAttack(Enemy* enemy) const;
 
-    int playerSwordDamage();
-    int playerProjectileDamage();
+    ActiveAttack* createSwordSwing(const QRectF& playerBounds, Direction facing);
+    ActiveAttack* shootArrow(const QRectF& playerBounds, Direction facing);
+    ActiveAttack* shootFireball(const QRectF& playerBounds, Direction facing);
+
+    const QList<ActiveAttack*>& activeAttacks() const;
+
+    void expireAttack(ActiveAttack* attack);
+
     int enemyAttackDamage(Enemy* enemy) const;
 
     void damageEnemy(Enemy* enemy, int amount);
     void damagePlayer(int amount);
 
-    void startPlayerSwordCooldown();
-    void startPlayerShootCooldown();
     void startEnemyAttackCooldown(Enemy* enemy);
 
     bool isPlayerAlive() const;
@@ -47,16 +74,15 @@ signals:
 
 private:
     Character* m_player = nullptr;
+    QGraphicsScene* m_scene = nullptr;
 
     QHash<Enemy*, float> m_enemyAttackCooldowns;
+    QList<ActiveAttack*> m_activeAttacks;
 
-    float m_playerSwordCooldown = 0.0f;
-    float m_playerShootCooldown = 0.0f;
+    QPointF directionVector(Direction facing) const;
+    QRectF swordBounds(const QRectF& playerBounds, Direction facing) const;
 
-    static constexpr float PLAYER_SWORD_COOLDOWN = 0.35f;
-    static constexpr float PLAYER_SHOOT_COOLDOWN = 0.45f;
-    static constexpr float ENEMY_ATTACK_COOLDOWN = 0.80f;
-
-    static constexpr int PLAYER_SWORD_BASE_DAMAGE = 25;
-    static constexpr int PLAYER_PROJECTILE_BASE_DAMAGE = 18;
+    void updateCooldowns(float deltaTime);
+    void updateAttacks(float deltaTime);
+    void removeExpiredAttacks();
 };
