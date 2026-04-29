@@ -1,485 +1,278 @@
 #include "gameengine.h"
+
 #include "warrior.h"
 #include "mage.h"
 #include "archer.h"
-#include <QRandomGenerator>
+
 #include <QFile>
 #include <QJsonDocument>
 #include <QJsonObject>
 
-static constexpr int GOLD_PER_ROUND_EASY   = 10;
-static constexpr int GOLD_PER_ROUND_NORMAL = 20;
-static constexpr int GOLD_PER_ROUND_HARD   = 35;
-
 GameEngine::GameEngine(QObject* parent)
     : QObject(parent)
 {
-    m_roundTimer = new QTimer(this);
-    m_roundTimer->setSingleShot(true);
-    connect(m_roundTimer, &QTimer::timeout, this, &GameEngine::enemyTakeTurn);
 }
 
-GameEngine::~GameEngine() { cleanupCharacters(); }
+GameEngine::~GameEngine()
+{
+    cleanupCharacters();
+}
 
 void GameEngine::setState(GameState s)
 {
+    if (m_state == s)
+        return;
+
     m_state = s;
     emit stateChanged(s);
 }
 
-// kept for internal use — same as setState, just an alias so old call sites compile
-void GameEngine::setState_internal(GameState s) { setState(s); }
-
 void GameEngine::cleanupCharacters()
 {
-    delete m_player; m_player = nullptr;
-    delete m_enemy;  m_enemy  = nullptr;
+    delete m_player;
+    m_player = nullptr;
     m_allCharacters.clear();
 }
 
 Character* GameEngine::createCharacter(CharacterType type, const QString& name)
 {
     switch (type) {
-    case CharacterType::Warrior: return new Warrior(name);
-    case CharacterType::Mage:    return new Mage(name);
-    case CharacterType::Archer:  return new Archer(name);
+    case CharacterType::Warrior:
+        return new Warrior(name);
+    case CharacterType::Mage:
+        return new Mage(name);
+    case CharacterType::Archer:
+        return new Archer(name);
     }
+
     return new Warrior(name);
 }
 
-void GameEngine::spawnEnemy()
+void GameEngine::applyPlayerBonuses()
 {
-    const QStringList names = {
-        "Shadow Warrior", "Dark Mage", "Black Arrow",
-        "Iron Fist", "Void Caster", "Silent Hunter"
-    };
-    CharacterType type = static_cast<CharacterType>(
-        QRandomGenerator::global()->bounded(3));
-    QString name = names[QRandomGenerator::global()->bounded(names.size())];
-    delete m_enemy;
-    m_enemy = createCharacter(type, name);
+    if (!m_player)
+        return;
+
+    m_player->applyBonusHealth(m_bonusHp);
+    m_player->applyBonusAttack(m_bonusAttack);
+    m_player->applyBonusSpPerAtk(m_bonusSpPerAtk);
 }
 
-void GameEngine::resetRound()
+void GameEngine::onStartGame()
 {
-    delete m_player;
-    m_player = createCharacter(m_playerType, m_playerName);
-    applyPlayerBonuses();
-    spawnEnemy();
-    m_allCharacters.clear();
-    m_allCharacters.append(m_player);
-    m_allCharacters.append(m_enemy);
+    cleanupCharacters();
+
+    m_playerScore = 0;
+    m_enemyScore = 0;
+    m_currentRound = 0;
     m_itemsUsedThisBattle = 0;
-    m_attackBoosted       = false;
-    m_defenseActive       = false;
-    emit healthUpdated(m_player->getHealthPercent(), m_enemy->getHealthPercent());
-    emit energyUpdated(m_player->getSpPercent(), m_enemy->getSpPercent());
+    m_roundHistory.clear();
+    m_tracker.reset();
+
+    setState(GameState::CharacterSelect);
 }
 
-void GameEngine::onStartGame()  { setState(GameState::CharacterSelect); }
-void GameEngine::onDifficultyChanged(Difficulty d) { m_difficulty = d; }
-void GameEngine::setPlayerIdentity(CharacterType type, const QString& name)
+void GameEngine::onDifficultyChanged(Difficulty d)
 {
-    // Sets who the player is WITHOUT creating characters or changing state.
-    // Used when loading a profile so the engine knows the class for next battle.
-    m_playerType = type;
-    m_playerName = name;
+    m_difficulty = d;
 }
 
 void GameEngine::onPlayerSelectedCharacter(CharacterType type, const QString& name)
 {
-    m_playerType = type;
-    m_playerName = name;
     cleanupCharacters();
-    m_player = createCharacter(type, name);
+
+    m_playerType = type;
+    m_playerName = name.trimmed().isEmpty() ? "Player" : name.trimmed();
+
+    m_player = createCharacter(m_playerType, m_playerName);
     applyPlayerBonuses();
-    spawnEnemy();
-    m_allCharacters.append(m_player);
-    m_allCharacters.append(m_enemy);
-    m_playerScore  = 0;
-    m_enemyScore   = 0;
-    m_currentRound = 1;
-    m_itemsUsedThisBattle = 0;
-    m_attackBoosted       = false;
-    m_defenseActive       = false;
-    m_playerMoveHistory.clear();
-    m_roundHistory.clear();
-    m_tracker.reset();
-    emit healthUpdated(m_player->getHealthPercent(), m_enemy->getHealthPercent());
-    emit energyUpdated(m_player->getSpPercent(), m_enemy->getSpPercent());
-    emit battleLogMessage(QString("Round %1 — %2 vs %3!")
-                              .arg(m_currentRound)
-                              .arg(m_player->getName())
-                              .arg(m_enemy->getName()));
-    setState(GameState::PlayerTurn);
+
+    if (m_player)
+        m_allCharacters.append(m_player);
+
+    setState(GameState::Playing);
 }
 
-void GameEngine::resolvePlayerAction(bool useSpecial)
+void GameEngine::setPlayerIdentity(CharacterType type, const QString& name)
 {
-    if (m_state != GameState::PlayerTurn) return;
+    m_playerType = type;
+    m_playerName = name.trimmed().isEmpty() ? "Player" : name.trimmed();
 
-    if (useSpecial && !m_player->canUseSpecial()) {
-        emit battleLogMessage("Not enough SP for Special!");
-        return;   // don't even leave PlayerTurn state
-    }
-
-    setState(GameState::AnimatingAttack);
-    int damage = useSpecial ? m_player->specialAbility() : m_player->attack();
-
-    // ── Apply attack boost if active ──────────────────────────────────────────
-    if (m_attackBoosted) {
-        damage = static_cast<int>(damage * 1.5f);
-        m_attackBoosted = false;   // consumed
-        emit battleLogMessage("Boosted attack!");
-    }
-
-    // ── Update SP ─────────────────────────────────
-    if (useSpecial)
-        m_player->drainSp();
-    else
-        m_player->addSpFromAttack();   // ← clean, no magic number here
-
-    emit energyUpdated(m_player->getSpPercent(), m_enemy->getSpPercent());
-
-
-    emit energyUpdated(m_player->getSpPercent(), m_enemy->getSpPercent());
-    m_playerMoveHistory.append(useSpecial);
-    if (m_playerMoveHistory.size() > 5) m_playerMoveHistory.removeFirst();
-    m_enemy->takeDamage(damage);
-    BattleResult result;
-    result.attackerName    = m_player->getName();
-    result.defenderName    = m_enemy->getName();
-    result.damageDone      = damage;
-    result.usedSpecial     = useSpecial;
-    result.defenderFainted = !m_enemy->isAlive();
-    emit battleActionResolved(result);
-    emit healthUpdated(m_player->getHealthPercent(), m_enemy->getHealthPercent());
-    emit battleLogMessage(
-        useSpecial
-            ? QString("%1 unleashes Special for %2 dmg!").arg(m_player->getName()).arg(damage)
-            : QString("%1 attacks for %2 dmg!").arg(m_player->getName()).arg(damage));
-    if (!m_enemy->isAlive()) {
-        emit battleLogMessage(m_enemy->getName() + " fainted!");
-        QTimer::singleShot(1400, this, [this]{ endRound(true); });
-    } else {
-        int delay = (m_difficulty == Difficulty::Hard) ? 550
-                    : (m_difficulty == Difficulty::Easy) ? 1300 : 900;
-        m_roundTimer->start(delay);
+    if (m_player) {
+        cleanupCharacters();
+        m_player = createCharacter(m_playerType, m_playerName);
+        applyPlayerBonuses();
+        m_allCharacters.append(m_player);
     }
 }
 
-void GameEngine::onPlayerChoseFight()   { resolvePlayerAction(false); }
-void GameEngine::onPlayerChoseSpecial() { resolvePlayerAction(true);  }
+void GameEngine::setStatBonuses(int bonusHp, int bonusAttack, int bonusSpPerAtk)
+{
+    m_bonusHp = bonusHp;
+    m_bonusAttack = bonusAttack;
+    m_bonusSpPerAtk = bonusSpPerAtk;
 
-// ── Item effect slots — called by MainWindow after deducting from inventory ──
+    if (m_player) {
+        CharacterType type = m_playerType;
+        QString name = m_playerName;
+
+        cleanupCharacters();
+
+        m_player = createCharacter(type, name);
+        applyPlayerBonuses();
+        m_allCharacters.append(m_player);
+    }
+}
 
 void GameEngine::onPlayerHealed(int amount)
 {
-    if (m_itemsUsedThisBattle >= MAX_ITEMS_PER_BATTLE) return;
-    if (m_state != GameState::PlayerTurn) return;
-
-    setState(GameState::AnimatingAttack);
-    m_itemsUsedThisBattle++;
+    if (!m_player || amount <= 0)
+        return;
 
     m_player->heal(amount);
-    emit healthUpdated(m_player->getHealthPercent(), m_enemy->getHealthPercent());
-    emit energyUpdated(m_player->getSpPercent(), m_enemy->getSpPercent());
-    emit battleLogMessage(QString("%1 used a Health Potion! +%2 HP!")
-                              .arg(m_player->getName()).arg(amount));
-    m_roundTimer->start(900);   // enemy takes their turn after
+    recordItemUse();
 }
 
 void GameEngine::onPlayerSpRestored(int amount)
 {
-    if (m_itemsUsedThisBattle >= MAX_ITEMS_PER_BATTLE) return;
-    if (m_state != GameState::PlayerTurn) return;
-
-    setState(GameState::AnimatingAttack);
-    m_itemsUsedThisBattle++;
+    if (!m_player || amount <= 0)
+        return;
 
     m_player->addSp(amount);
-    emit energyUpdated(m_player->getSpPercent(), m_enemy->getSpPercent());
-    emit battleLogMessage(QString("%1 restored %2 SP!")
-                              .arg(m_player->getName()).arg(amount));
-    m_roundTimer->start(900);
+    recordItemUse();
 }
 
 void GameEngine::onPlayerAttackBoosted()
 {
-    if (m_itemsUsedThisBattle >= MAX_ITEMS_PER_BATTLE) return;
-    if (m_state != GameState::PlayerTurn) return;
+    if (!m_player)
+        return;
 
-    setState(GameState::AnimatingAttack);
-    m_itemsUsedThisBattle++;
-    m_attackBoosted = true;
+    if (!m_attackBoosted) {
+        m_player->applyBonusAttack(10);
+        m_attackBoosted = true;
+    }
 
-    emit battleLogMessage(m_player->getName() + "'s attack is boosted!");
-    m_roundTimer->start(900);
+    recordItemUse();
 }
 
 void GameEngine::onPlayerDefenseActivated()
 {
-    if (m_itemsUsedThisBattle >= MAX_ITEMS_PER_BATTLE) return;
-    if (m_state != GameState::PlayerTurn) return;
-
-    setState(GameState::AnimatingAttack);
-    m_itemsUsedThisBattle++;
     m_defenseActive = true;
-
-    emit battleLogMessage(m_player->getName() + " raised a shield!");
-    m_roundTimer->start(900);
+    recordItemUse();
 }
 
-void GameEngine::onPlayerChoseRun()
+void GameEngine::resetItemUses()
 {
-    if (m_state != GameState::PlayerTurn) return;
-    m_roundTimer->stop();
-    emit battleLogMessage(m_player->getName() + " fled! Round forfeited.");
-    endRound(false);
+    m_itemsUsedThisBattle = 0;
+    m_attackBoosted = false;
+    m_defenseActive = false;
 }
 
-void GameEngine::enemyTakeTurn()
+void GameEngine::recordItemUse()
 {
-    if (!m_enemy->isAlive() || !m_player->isAlive()) return;
-    bool useSpecial = false;
-    int  damage     = 0;
-    switch (m_difficulty) {
-    case Difficulty::Easy:
-        damage = m_enemy->attack();
-        break;
-    case Difficulty::Normal:
-        useSpecial = QRandomGenerator::global()->bounded(100) < 25;
-        damage = useSpecial ? m_enemy->specialAbility() : m_enemy->attack();
-        break;
-    case Difficulty::Hard: {
-        bool lowHealth = m_enemy->getHealthPercent() < 0.4f;
-        bool playerPredictable = false;
-        if (m_playerMoveHistory.size() >= 3) {
-            playerPredictable =
-                !m_playerMoveHistory[m_playerMoveHistory.size()-1] &&
-                !m_playerMoveHistory[m_playerMoveHistory.size()-2] &&
-                !m_playerMoveHistory[m_playerMoveHistory.size()-3];
-        }
-        useSpecial = lowHealth || playerPredictable;
-        damage = useSpecial ? m_enemy->specialAbility() : m_enemy->attack();
-        break;
-    }
-    }
-    if (useSpecial) {
-        if (!m_enemy->canUseSpecial()) {
-            // Not enough SP — fall back to basic attack
-            useSpecial = false;
-            damage = m_enemy->attack();
-            m_enemy->addSpFromAttack();
-        } else {
-            m_enemy->drainSp();
-        }
-    } else {
-        m_enemy->addSpFromAttack();
-    }
-
-
-    emit energyUpdated(m_player->getSpPercent(), m_enemy->getSpPercent());
-    if (m_defenseActive) {
-        damage = static_cast<int>(damage * 0.7f);   // 30% reduction
-        m_defenseActive = false;   // consumed
-        emit battleLogMessage(m_player->getName() + "'s shield absorbed some damage!");
-    }
-    m_player->takeDamage(damage);
-    BattleResult result;
-    result.attackerName    = m_enemy->getName();
-    result.defenderName    = m_player->getName();
-    result.damageDone      = damage;
-    result.usedSpecial     = useSpecial;
-    result.defenderFainted = !m_player->isAlive();
-    emit battleActionResolved(result);
-    emit healthUpdated(m_player->getHealthPercent(), m_enemy->getHealthPercent());
-    emit battleLogMessage(
-        useSpecial
-            ? QString("%1 unleashes Special for %2 dmg!").arg(m_enemy->getName()).arg(damage)
-            : QString("%1 attacks for %2 dmg!").arg(m_enemy->getName()).arg(damage));
-    if (!m_player->isAlive()) {
-        emit battleLogMessage(m_player->getName() + " fainted!");
-        QTimer::singleShot(1400, this, [this]{ endRound(false); });
-    } else {
-        setState(GameState::PlayerTurn);
-    }
-}
-
-void GameEngine::endRound(bool playerWon)
-{
-    m_roundTimer->stop();
-    if (playerWon) {
-        ++m_playerScore;
-        m_tracker.recordWin();
-
-        // Award gold for this round win
-        int goldAmount = (m_difficulty == Difficulty::Hard)   ? GOLD_PER_ROUND_HARD
-                         : (m_difficulty == Difficulty::Easy)   ? GOLD_PER_ROUND_EASY
-                                                              : GOLD_PER_ROUND_NORMAL;
-        emit goldEarned(goldAmount);   // ← ADD
-    }
-    else { ++m_enemyScore; m_tracker.recordLoss(); }
-
-    // ── Record this round in history ──────────────
-    RoundRecord rec;
-    rec.roundNumber = m_currentRound;
-    rec.playerWon   = playerWon;
-    rec.enemyName   = m_enemy ? m_enemy->getName() : "???";
-    m_roundHistory.append(rec);
-
-    emit roundEnded(m_playerScore, m_enemyScore, playerWon);
-    setState(GameState::RoundOver);
-
-    bool isGameOver = (m_playerScore >= 3)
-                      || (m_enemyScore  >= 3)
-                      || (m_currentRound >= m_maxRounds);
-
-    if (isGameOver) {
-        QTimer::singleShot(2200, this, [this]{
-            setState(GameState::GameOver);
-            emit gameOver(m_playerScore > m_enemyScore,
-                          m_playerScore, m_enemyScore);
-        });
-    } else {
-        ++m_currentRound;
-        QTimer::singleShot(2500, this, [this]{
-            resetRound();
-            emit battleLogMessage(
-                QString("Round %1 — Fight!").arg(m_currentRound));
-            setState(GameState::PlayerTurn);
-        });
-    }
+    if (m_itemsUsedThisBattle < MAX_ITEMS_PER_BATTLE)
+        ++m_itemsUsedThisBattle;
 }
 
 void GameEngine::onPauseToggle()
 {
-    if (m_state == GameState::PlayerTurn || m_state == GameState::Playing) {
-        m_roundTimer->stop();
+    if (m_state == GameState::Paused) {
+        setState(GameState::Playing);
+    } else if (m_state == GameState::Playing) {
         setState(GameState::Paused);
-    } else if (m_state == GameState::Paused) {
-        setState(GameState::PlayerTurn);
     }
 }
 
 void GameEngine::onRestartGame()
 {
-    m_roundTimer->stop();
     cleanupCharacters();
-    m_playerScore  = 0;
-    m_enemyScore   = 0;
-    m_currentRound = 1;
+
+    m_playerScore = 0;
+    m_enemyScore = 0;
+    m_currentRound = 0;
     m_itemsUsedThisBattle = 0;
-    m_attackBoosted       = false;
-    m_defenseActive       = false;
-    m_playerMoveHistory.clear();
     m_roundHistory.clear();
     m_tracker.reset();
+
+    setState(GameState::CharacterSelect);
+}
+
+void GameEngine::onExitToMenu()
+{
+    cleanupCharacters();
+
+    m_playerScore = 0;
+    m_enemyScore = 0;
+    m_currentRound = 0;
+    m_itemsUsedThisBattle = 0;
+    m_roundHistory.clear();
+
     setState(GameState::MainMenu);
 }
 
-void GameEngine::onExitToMenu() { onRestartGame(); }
-
-// ── Save: stores full mid-battle state ────────────────────────────────────
 bool GameEngine::onSaveGame(const QString& path)
 {
-    // Only save when there is actually a battle in progress
-    if (!m_player || !m_enemy) return false;
-    if (m_state != GameState::PlayerTurn && m_state != GameState::Paused)
+    QFile file(path);
+    if (!file.open(QIODevice::WriteOnly))
         return false;
 
-    QJsonObject obj;
-    obj["playerName"]     = m_playerName;
-    obj["playerType"]     = static_cast<int>(m_playerType);
-    obj["playerHealth"]   = static_cast<int>(
-        m_player->getHealthPercent() * m_player->getMaxHealth());
-    obj["playerMaxHealth"]= m_player->getMaxHealth();
-    obj["playerSp"] = m_player->getSp();
+    QJsonObject root;
 
-    obj["enemyName"]      = m_enemy->getName();
-    obj["enemyType"]      = static_cast<int>(m_enemy->getType());
-    obj["enemyHealth"]    = static_cast<int>(
-        m_enemy->getHealthPercent() * m_enemy->getMaxHealth());
-    obj["enemyMaxHealth"] = m_enemy->getMaxHealth();
-    obj["enemySp"]  = m_enemy->getSp();
+    root["playerName"] = m_playerName;
+    root["playerType"] = static_cast<int>(m_playerType);
+    root["difficulty"] = static_cast<int>(m_difficulty);
 
-    obj["currentRound"]   = m_currentRound;
-    obj["playerScore"]    = m_playerScore;
-    obj["enemyScore"]     = m_enemyScore;
-    obj["difficulty"]     = static_cast<int>(m_difficulty);
+    root["playerScore"] = m_playerScore;
+    root["enemyScore"] = m_enemyScore;
+    root["currentRound"] = m_currentRound;
+    root["maxRounds"] = m_maxRounds;
 
-    QFile file(path);
-    if (!file.open(QIODevice::WriteOnly)) return false;
-    file.write(QJsonDocument(obj).toJson());
+    root["bonusHp"] = m_bonusHp;
+    root["bonusAttack"] = m_bonusAttack;
+    root["bonusSpPerAtk"] = m_bonusSpPerAtk;
+
+    QJsonDocument doc(root);
+    file.write(doc.toJson());
+
     return true;
 }
 
-// ── Load: restores mid-battle state and jumps straight to PlayerTurn ──────
 bool GameEngine::onLoadGame(const QString& path)
 {
     QFile file(path);
-    if (!file.open(QIODevice::ReadOnly)) return false;
-
-    QJsonObject obj = QJsonDocument::fromJson(file.readAll()).object();
-    // Basic validation — if key fields are missing the file is corrupt
-    if (!obj.contains("playerName") || !obj.contains("enemyName"))
+    if (!file.open(QIODevice::ReadOnly))
         return false;
 
-    m_roundTimer->stop();
+    const QByteArray data = file.readAll();
+    const QJsonDocument doc = QJsonDocument::fromJson(data);
+
+    if (!doc.isObject())
+        return false;
+
+    const QJsonObject root = doc.object();
+
+    m_playerName = root.value("playerName").toString("Player");
+    m_playerType = static_cast<CharacterType>(root.value("playerType").toInt(0));
+    m_difficulty = static_cast<Difficulty>(root.value("difficulty").toInt(1));
+
+    m_playerScore = root.value("playerScore").toInt(0);
+    m_enemyScore = root.value("enemyScore").toInt(0);
+    m_currentRound = root.value("currentRound").toInt(0);
+    m_maxRounds = root.value("maxRounds").toInt(5);
+
+    m_bonusHp = root.value("bonusHp").toInt(0);
+    m_bonusAttack = root.value("bonusAttack").toInt(0);
+    m_bonusSpPerAtk = root.value("bonusSpPerAtk").toInt(0);
+
     cleanupCharacters();
-    m_roundHistory.clear();
-    m_playerMoveHistory.clear();
 
-    m_playerName   = obj["playerName"].toString();
-    m_playerType   = static_cast<CharacterType>(obj["playerType"].toInt());
-    m_difficulty   = static_cast<Difficulty>(obj["difficulty"].toInt());
-    m_currentRound = obj["currentRound"].toInt(1);
-    m_playerScore  = obj["playerScore"].toInt(0);
-    m_enemyScore   = obj["enemyScore"].toInt(0);
-
-
-    // Recreate player at full health then apply saved damage
     m_player = createCharacter(m_playerType, m_playerName);
-    int savedPlayerHP  = obj["playerHealth"].toInt(m_player->getMaxHealth());
-    int playerDamage   = m_player->getMaxHealth() - savedPlayerHP;
-    if (playerDamage > 0) m_player->takeDamage(playerDamage);
-    int savedPlayerSp = obj["playerSp"].toInt(0);
-    m_player->addSp(savedPlayerSp);
+    applyPlayerBonuses();
 
-    // Recreate enemy
-    CharacterType enemyType = static_cast<CharacterType>(obj["enemyType"].toInt());
-    QString       enemyName = obj["enemyName"].toString();
-    m_enemy = createCharacter(enemyType, enemyName);
-    int savedEnemyHP = obj["enemyHealth"].toInt(m_enemy->getMaxHealth());
-    int enemyDamage  = m_enemy->getMaxHealth() - savedEnemyHP;
-    if (enemyDamage > 0) m_enemy->takeDamage(enemyDamage);
-    int savedEnemySp = obj["enemySp"].toInt(0);
-    m_enemy->addSp(savedEnemySp);
+    if (m_player)
+        m_allCharacters.append(m_player);
 
-    m_allCharacters.append(m_player);
-    m_allCharacters.append(m_enemy);
+    setState(GameState::Playing);
 
-    emit healthUpdated(m_player->getHealthPercent(), m_enemy->getHealthPercent());
-    emit battleLogMessage(
-        QString("Save loaded! Round %1 — %2 vs %3. Continue!")
-            .arg(m_currentRound)
-            .arg(m_playerName)
-            .arg(enemyName));
-
-    // Jump directly into the battle — no character select needed
-    setState(GameState::PlayerTurn);
     return true;
-}
-void GameEngine::setStatBonuses(int bonusHp, int bonusAttack, int bonusSpPerAtk)
-{
-    m_bonusHp       = bonusHp;
-    m_bonusAttack   = bonusAttack;
-    m_bonusSpPerAtk = bonusSpPerAtk;
-}
-void GameEngine::applyPlayerBonuses()
-{
-    if (!m_player) return;
-    m_player->applyBonusHealth   (m_bonusHp);
-    m_player->applyBonusAttack   (m_bonusAttack);
-    m_player->applyBonusSpPerAtk (m_bonusSpPerAtk);
 }
