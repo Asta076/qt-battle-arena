@@ -208,6 +208,10 @@ DungeonWidget::DungeonWidget(AudioManager *audio, QWidget *parent)
 
     m_scene = new QGraphicsScene(0, 0, WORLD_W, WORLD_H, this);
 
+    m_scene = new QGraphicsScene(0, 0, WORLD_W, WORLD_H, this);
+
+    m_combat.setScene(m_scene);
+  
     m_view = new QGraphicsView(m_scene, this);
     m_view->setFrameShape(QFrame::NoFrame);
     m_view->setAlignment(Qt::AlignLeft | Qt::AlignTop);
