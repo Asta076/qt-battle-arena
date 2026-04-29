@@ -461,13 +461,6 @@ void DungeonWidget::checkCollisions()
         return;
     }
 
-    for (EnemySprite* enemy : m_enemies) {
-        if (m_player->collidesWithItem(enemy)) {
-            deactivate();
-            emit battleTriggered(enemy->enemyType(), enemy->enemyName());
-            return;
-        }
-    }
 }
 
 void DungeonWidget::fitView()
