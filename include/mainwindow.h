@@ -9,7 +9,6 @@
 
 class StartScreenWidget;
 class CharacterSelectWidget;
-class BattleWidget;
 class GameOverWidget;
 class ScoreboardWidget;
 class OverworldWidget;
@@ -79,7 +78,6 @@ private:
     DungeonWidget*         m_dungeon      = nullptr;
     HouseWidget*           m_house        = nullptr;
     ShopWidget*            m_shop         = nullptr;
-    BattleWidget*          m_battleWidget = nullptr;
     GameOverWidget*        m_gameOver     = nullptr;
     ScoreboardWidget*      m_scoreboard   = nullptr;
 };
