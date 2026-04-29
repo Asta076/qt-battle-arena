@@ -382,6 +382,11 @@ void DungeonWidget::keyPressEvent(QKeyEvent* e)
         return;
     }
 
+    if (e->key() == Qt::Key_J && !e->isAutoRepeat()) {
+    handleClassAttack();
+    return;
+}
+
     if (!e->isAutoRepeat())
         m_heldKeys.insert(e->key());
 
@@ -442,6 +447,9 @@ void DungeonWidget::movePlayer()
     bool moving = m_controller.isMoving(m_heldKeys);
     Direction dir = m_controller.computeDirection(m_heldKeys);
     m_player->updateAnimation(moving, dir);
+    if (m_controller.isMoving(m_heldKeys))
+    m_facing = dir;
+  
 }
 
 void DungeonWidget::patrolEnemies()
