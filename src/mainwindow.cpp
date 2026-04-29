@@ -2,7 +2,6 @@
 #include "startscreenwidget.h"
 #include "saveslotwidget.h"
 #include "characterselectiondialog.h"
-#include "battlewidget.h"
 #include "gameoverwidget.h"
 #include "scoreboardwidget.h"
 #include "overworldwidget.h"
@@ -53,7 +52,6 @@ void MainWindow::buildUI()
     m_dungeon      = new DungeonWidget(m_audio, this);
     m_house        = new HouseWidget(m_audio, this);
     m_shop         = new ShopWidget(this);
-    m_battleWidget = new BattleWidget(m_engine, m_audio, &m_profile, this);
     m_gameOver     = new GameOverWidget(m_engine, this);
     m_scoreboard   = new ScoreboardWidget(m_engine, this);
 
@@ -64,7 +62,6 @@ void MainWindow::buildUI()
     m_stack->addWidget(m_dungeon);
     m_stack->addWidget(m_house);
     m_stack->addWidget(m_shop);
-    m_stack->addWidget(m_battleWidget);
     m_stack->addWidget(m_gameOver);
     m_stack->addWidget(m_scoreboard);
 
@@ -121,8 +118,6 @@ void MainWindow::buildUI()
     connect(m_gameOver, &GameOverWidget::returnToOverworld,
             this, &MainWindow::onReturnToOverworld);
 
-    connect(m_battleWidget, &BattleWidget::itemChosen,
-            this, &MainWindow::onBattleItemChosen);
 }
 
 void MainWindow::buildMenuBar()
@@ -235,7 +230,6 @@ void MainWindow::onStateChanged(GameState newState)
                     m_profile.upgrades.bonusMaxHp,
                     m_profile.upgrades.bonusAttack,
                     m_profile.upgrades.bonusSpPerAtk);
-                m_stack->setCurrentWidget(m_battleWidget);
                 m_audio->playMusic("/music/battle.ogg");
             } else {
                 m_engine->setStatBonuses(0, 0, 0);
@@ -247,7 +241,6 @@ void MainWindow::onStateChanged(GameState newState)
             }
         } else {
             // Mid-battle: back to player's turn
-            m_stack->setCurrentWidget(m_battleWidget);
             m_audio->playMusic("/music/battle.ogg");
         }
         break;
