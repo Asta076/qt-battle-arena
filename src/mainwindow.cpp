@@ -9,7 +9,7 @@
 #include "dungeonwidget.h"
 #include "shopwidget.h"
 #include "housewidget.h"
-#include "level1widget.h"      // ← NEW
+#include "level1widget.h"
 #include "audiomanager.h"
 #include <QMenuBar>
 #include <QAction>
@@ -52,7 +52,7 @@ void MainWindow::buildUI()
     m_charSelect   = new CharacterSelectWidget(m_engine, this);
     m_overworld    = new OverworldWidget(m_audio, this);
     m_dungeon      = new DungeonWidget(m_audio, this);
-    m_level1       = new Level1Widget(m_audio, this);   // ← NEW
+    m_level1       = new Level1Widget(m_audio, this);
     m_house        = new HouseWidget(m_audio, this);
     m_shop         = new ShopWidget(this);
     m_battleWidget = new BattleWidget(m_engine, m_audio, &m_profile, this);
@@ -92,15 +92,13 @@ void MainWindow::buildUI()
     connect(m_overworld, &OverworldWidget::dungeonEntered,
             this, &MainWindow::onDungeonEntered);
     connect(m_overworld, &OverworldWidget::level1Entered,
-            this, &MainWindow::onLevel1Entered);          // ← NEW
+            this, &MainWindow::onLevel1Entered);
     connect(m_overworld, &OverworldWidget::backToMenu,
             this, &MainWindow::onBackToMenu);
     connect(m_overworld, &OverworldWidget::saveRequested,
             this, &MainWindow::onSaveRequested);
 
-
-    // ── House ──────────────────────────────────────────────────────────────
-
+    // ── House ─────────────────────────────────────────────────────────────────
     connect(m_overworld, &OverworldWidget::houseEntered,
             this, &MainWindow::onHouseEntered);
     connect(m_house, &HouseWidget::backToOverworld,
@@ -133,7 +131,15 @@ void MainWindow::buildUI()
     connect(m_bossDialog, &BossDialogWidget::dialogDismissed,
             this, &MainWindow::onBossOutroDismissed);
 
-    // --Shop---------------------------------------------------------------
+    // ── Story slide overlay ───────────────────────────────────────────────────
+    // Parented to MainWindow so it covers the whole window
+    m_storySlide = new StorySlideDialog(this);
+    m_storySlide->hide();
+
+    connect(m_storySlide, &StorySlideDialog::finished,
+            this, &MainWindow::onStoryFinished);             // ← NEW
+
+    // ── Shop ──────────────────────────────────────────────────────────────────
     connect(m_overworld, &OverworldWidget::shopEntered,
             this, &MainWindow::onShopEntered);
     connect(m_shop, &ShopWidget::backToOverworld,
@@ -192,8 +198,7 @@ void MainWindow::onNewGameInSlot(int slotIndex)
     m_playerHasChosen  = false;
     m_hasPendingBattle = false;
 
-    m_engine->onRestartGame();   // reset engine to clean state silently
-    // Go to char select — engine emits no state change yet
+    m_engine->onRestartGame();
     m_stack->setCurrentWidget(m_charSelect);
 }
 
@@ -205,7 +210,6 @@ void MainWindow::onLoadSlot(int slotIndex)
     m_playerHasChosen  = true;
     m_hasPendingBattle = false;
 
-    // Tell the engine who the player is so future battles use the right class
     m_engine->setPlayerIdentity(
         static_cast<CharacterType>(m_profile.characterType),
         m_profile.characterName);
@@ -239,21 +243,17 @@ void MainWindow::onStateChanged(GameState newState)
         break;
 
     case GameState::CharacterSelect:
-        // Handled directly by onNewGameInSlot — guard only
         m_stack->setCurrentWidget(m_charSelect);
         break;
 
     case GameState::PlayerTurn:
         if (m_stack->currentWidget() == m_charSelect) {
-            // Player just confirmed their character
             m_playerHasChosen = true;
 
-            // Save identity to profile immediately
             m_profile.characterName = m_engine->getPlayerName();
             m_profile.characterType = static_cast<int>(m_engine->getPlayerType());
 
             if (m_hasPendingBattle) {
-                // Was sent to charSelect because of dungeon collision
                 m_hasPendingBattle = false;
                 m_engine->setStatBonuses(
                     m_profile.upgrades.bonusMaxHp,
@@ -263,14 +263,12 @@ void MainWindow::onStateChanged(GameState newState)
                 m_audio->playMusic("/music/battle.ogg");
             } else {
                 m_engine->setStatBonuses(0, 0, 0);
-                // Normal new-game flow — save initial profile and go to overworld
                 if (m_currentSlot >= 0)
                     m_profile.saveToFile(SaveSlotWidget::slotPath(m_currentSlot));
                 m_overworld->activate();
                 m_stack->setCurrentWidget(m_overworld);
             }
         } else {
-            // Mid-battle: back to player's turn
             m_stack->setCurrentWidget(m_battleWidget);
             m_audio->playMusic("/music/battle.ogg");
         }
@@ -298,8 +296,8 @@ void MainWindow::onStateChanged(GameState newState)
                 updateGoldHud();
             }
 
-            int levelId    = m_activeLevelId;
-            m_activeLevelId = 0;   // clear BEFORE showing outro
+            int levelId     = m_activeLevelId;
+            m_activeLevelId = 0;
 
             if (lvl) {
                 m_stack->setCurrentWidget(m_level1);
@@ -311,7 +309,6 @@ void MainWindow::onStateChanged(GameState newState)
                 m_bossDialog->setFocus();
             }
         } else {
-            // Regular fight (dungeon or level enemy) — show normal game over
             m_stack->setCurrentWidget(m_gameOver);
         }
         break;
@@ -330,13 +327,11 @@ void MainWindow::onDungeonEntered()
 {
     m_dungeon->activate();
     m_stack->setCurrentWidget(m_dungeon);
-    // Dungeon's activate() calls playMusic("/music/battle.ogg") internally
 }
 
 void MainWindow::onExitedDungeon()
 {
     m_battleOrigin = BattleOrigin::None;
-    // Clean exit via portal — count the run and auto-save
     m_profile.dungeonRuns++;
     if (m_currentSlot >= 0)
         m_profile.saveToFile(SaveSlotWidget::slotPath(m_currentSlot));
@@ -352,21 +347,41 @@ void MainWindow::onLevel1Entered()
     if (!lvl) return;
 
     if (!m_levelManager.isUnlocked(1, m_profile)) {
-        // Show a brief message and return — don't enter
-        // For now just do nothing; the overworld zone hint text explains it
         m_overworld->activate();
         return;
     }
 
-    m_inLevel = true;
-    m_activeLevelId = 0;  // ← clear — only set when boss fight starts
-    m_level1->activate(*lvl, m_profile);   // ← pass level + profile
+    m_inLevel       = true;
+    m_activeLevelId = 0;
+    m_pendingLevelId = 1;   // ← remember which level to activate after story
+
+    // ── Show story slide first if pages exist ─────────────────────────────────
+    if (!lvl->storyPages.isEmpty()) {
+        m_storySlide->resize(size());
+        m_storySlide->show(lvl->name, lvl->storyPages, lvl->enterPrompt);
+        m_storySlide->raise();
+    } else {
+        // No story — activate immediately
+        m_level1->activate(*lvl, m_profile);
+        m_stack->setCurrentWidget(m_level1);
+    }
+}
+
+// ── NEW: fires when player presses the enter button on the last story page ──
+void MainWindow::onStoryFinished()
+{
+    m_storySlide->hide();
+
+    const LevelDef* lvl = m_levelManager.level(m_pendingLevelId);
+    if (!lvl) return;
+
+    m_level1->activate(*lvl, m_profile);
     m_stack->setCurrentWidget(m_level1);
 }
 
 void MainWindow::onExitedLevel1()
 {
-    m_inLevel = false; 
+    m_inLevel = false;
     updateGoldHud();
     m_overworld->activate();
     m_stack->setCurrentWidget(m_overworld);
@@ -383,6 +398,7 @@ void MainWindow::onHouseExited()
     m_overworld->activate();
     m_stack->setCurrentWidget(m_overworld);
 }
+
 void MainWindow::onShopEntered()
 {
     m_shop->setProfile(&m_profile);
@@ -394,12 +410,12 @@ void MainWindow::onShopExited()
     m_overworld->activate();
     m_stack->setCurrentWidget(m_overworld);
 }
+
 void MainWindow::onBattleTriggered(CharacterType enemyType, const QString& enemyName)
 {
     m_pendingEnemyType = enemyType;
     m_pendingEnemyName = enemyName;
 
-    // Remember where this battle came from
     m_battleOrigin = m_inLevel ? BattleOrigin::Level : BattleOrigin::Dungeon;
 
     if (!m_playerHasChosen) {
@@ -433,22 +449,18 @@ void MainWindow::onBackToMenu()
 
 void MainWindow::onGoldEarned(int amount)
 {
-    // Accumulate in memory — written to disk only on dungeon exit or manual save.
-    // Gold from an incomplete dungeon run is intentionally lost on quit.
     m_profile.addGold(amount);
     updateGoldHud();
 }
 
 void MainWindow::onSaveRequested()
 {
-    // Called by overworld pause SAVE button
     if (m_currentSlot < 0) return;
     m_profile.saveToFile(SaveSlotWidget::slotPath(m_currentSlot));
 }
 
 void MainWindow::onReturnToOverworld()
 {
-    // Save gold earned this run
     if (m_currentSlot >= 0)
         m_profile.saveToFile(SaveSlotWidget::slotPath(m_currentSlot));
     updateGoldHud();
@@ -462,9 +474,8 @@ void MainWindow::onReturnToOverworld()
         m_level1->reactivate();
         m_stack->setCurrentWidget(m_level1);
     } else {
-        // Default — go to overworld
         m_battleOrigin = BattleOrigin::None;
-        m_inLevel = false;
+        m_inLevel      = false;
         m_overworld->activate();
         m_stack->setCurrentWidget(m_overworld);
     }
@@ -472,21 +483,15 @@ void MainWindow::onReturnToOverworld()
 
 void MainWindow::onBuyItemRequested(ItemType type, int cost)
 {
-    // Guard: can the player still afford it? (shop already checks, but be safe)
     if (m_profile.gold < cost) return;
 
-    // Deduct gold and add item
     m_profile.spendGold(cost);
     m_profile.addItem(type, 1);
 
-    // Persist immediately — buying is a save-worthy event
     if (m_currentSlot >= 0)
         m_profile.saveToFile(SaveSlotWidget::slotPath(m_currentSlot));
 
-    // Tell the shop to refresh its display (gold changed, owned count changed)
     m_shop->setProfile(&m_profile);
-
-    // Keep gold HUD in sync for when the player returns to the overworld
     updateGoldHud();
 }
 
@@ -499,16 +504,12 @@ void MainWindow::updateGoldHud()
 
 void MainWindow::onBattleItemChosen(ItemType type)
 {
-    // Guard: make sure player actually has this item
     if (!m_profile.hasItem(type)) return;
 
-    // Deduct from inventory first
     m_profile.removeItem(type, 1);
 
-    // Then call the appropriate engine effect
     switch (type) {
     case ItemType::HealthPotion: {
-        // 35% of player's max HP — engine calculates internally
         int maxHp = 0;
         const auto& chars = m_engine->getAllCharacters();
         if (!chars.isEmpty()) maxHp = chars[0]->getMaxHealth();
@@ -528,9 +529,12 @@ void MainWindow::onBattleItemChosen(ItemType type)
     }
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+//  Boss dialog
+// ─────────────────────────────────────────────────────────────────────────────
+
 void MainWindow::onBossTriggered(const LevelDef& level)
 {
-    // Level ticker already stopped inside Level1Widget
     m_bossDialog->resize(m_level1->size());
     m_bossDialog->setParent(m_level1);
     m_bossDialog->showIntro(level, m_profile.characterName);
@@ -542,7 +546,7 @@ void MainWindow::onBossTriggered(const LevelDef& level)
 void MainWindow::onBossFightAccepted()
 {
     m_bossDialog->hide();
-    m_activeLevelId = m_inLevel ? 1 : 0;   // ← set only here, not on level entry
+    m_activeLevelId = m_inLevel ? 1 : 0;
     m_battleOrigin  = BattleOrigin::Level;
 
     const LevelDef* lvl = m_levelManager.level(m_activeLevelId);
@@ -563,14 +567,13 @@ void MainWindow::onBossFightAccepted()
     m_engine->onPlayerSelectedCharacter(
         static_cast<CharacterType>(m_profile.characterType),
         m_profile.characterName);
-    // Engine emits PlayerTurn → onStateChanged → battleWidget
 }
 
 void MainWindow::onBossOutroDismissed()
 {
     m_bossDialog->hide();
     m_level1->deactivate();
-    m_inLevel      = false;
+    m_inLevel = false;
     updateGoldHud();
     m_overworld->activate();
     m_stack->setCurrentWidget(m_overworld);

@@ -26,7 +26,7 @@ qt_add_executable(CS2-Battle-Arena
     include/leveldef.h
     include/levelmanager.h       src/levelmanager.cpp
     include/bossdialogwidget.h   src/bossdialogwidget.cpp
-
+    include/storyslidedialog.h  src/storyslidedialog.cpp
     # ── Main window shell ──────────────────────
     include/mainwindow.h        src/mainwindow.cpp
     src/mainwindow.ui
@@ -58,6 +58,8 @@ qt_add_executable(CS2-Battle-Arena
     include/housewidget.h      src/housewidget.cpp
     include/shopwidget.h       src/shopwidget.cpp
     src/shopwidget.ui
+    
+
 )
 
 # Tell the compiler where your headers live
