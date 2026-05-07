@@ -61,6 +61,7 @@ public:
 
     // Keeps the gold HUD in sync with the player profile
     void setGold(int gold);
+    void reactivate();
 
 signals:
     void battleTriggered(CharacterType enemyType, const QString& enemyName);
@@ -113,7 +114,6 @@ private:
     void checkCollisions();
     void fitView();
     void togglePause();
-
 
     LevelDef            m_level;
     bool                m_bossTriggered = false;

@@ -287,6 +287,7 @@ void MainWindow::onStateChanged(GameState newState)
         m_audio->stopMusic();
 
         if (m_activeLevelId > 0) {
+            // Boss fight just ended
             const LevelDef* lvl = m_levelManager.level(m_activeLevelId);
             bool playerWon = m_engine->getPlayerScore() > m_engine->getEnemyScore();
 
@@ -297,7 +298,8 @@ void MainWindow::onStateChanged(GameState newState)
                 updateGoldHud();
             }
 
-            m_activeLevelId = 0;
+            int levelId    = m_activeLevelId;
+            m_activeLevelId = 0;   // clear BEFORE showing outro
 
             if (lvl) {
                 m_stack->setCurrentWidget(m_level1);
@@ -309,6 +311,7 @@ void MainWindow::onStateChanged(GameState newState)
                 m_bossDialog->setFocus();
             }
         } else {
+            // Regular fight (dungeon or level enemy) — show normal game over
             m_stack->setCurrentWidget(m_gameOver);
         }
         break;
@@ -332,6 +335,7 @@ void MainWindow::onDungeonEntered()
 
 void MainWindow::onExitedDungeon()
 {
+    m_battleOrigin = BattleOrigin::None;
     // Clean exit via portal — count the run and auto-save
     m_profile.dungeonRuns++;
     if (m_currentSlot >= 0)
@@ -354,7 +358,8 @@ void MainWindow::onLevel1Entered()
         return;
     }
 
-    m_activeLevelId = 1;
+    m_inLevel = true;
+    m_activeLevelId = 0;  // ← clear — only set when boss fight starts
     m_level1->activate(*lvl, m_profile);   // ← pass level + profile
     m_stack->setCurrentWidget(m_level1);
 }
@@ -393,8 +398,10 @@ void MainWindow::onBattleTriggered(CharacterType enemyType, const QString& enemy
     m_pendingEnemyType = enemyType;
     m_pendingEnemyName = enemyName;
 
+    // Remember where this battle came from
+    m_battleOrigin = m_inLevel ? BattleOrigin::Level : BattleOrigin::Dungeon;
+
     if (!m_playerHasChosen) {
-        // First encounter — need character select first
         m_hasPendingBattle = true;
         m_stack->setCurrentWidget(m_charSelect);
     } else {
@@ -402,11 +409,9 @@ void MainWindow::onBattleTriggered(CharacterType enemyType, const QString& enemy
             m_profile.upgrades.bonusMaxHp,
             m_profile.upgrades.bonusAttack,
             m_profile.upgrades.bonusSpPerAtk);
-        // Character already chosen — jump straight to battle
         m_engine->onPlayerSelectedCharacter(
             m_engine->getPlayerType(),
             m_engine->getPlayerName());
-        // Engine emits PlayerTurn → onStateChanged shows battleWidget
     }
 }
 
@@ -442,13 +447,26 @@ void MainWindow::onSaveRequested()
 
 void MainWindow::onReturnToOverworld()
 {
-    // Game over → "EXPLORE MORE": save gold earned this run then go to overworld
-    m_profile.dungeonRuns++;
+    // Save gold earned this run
     if (m_currentSlot >= 0)
         m_profile.saveToFile(SaveSlotWidget::slotPath(m_currentSlot));
     updateGoldHud();
-    m_overworld->activate();
-    m_stack->setCurrentWidget(m_overworld);
+
+    if (m_battleOrigin == BattleOrigin::Dungeon) {
+        m_battleOrigin = BattleOrigin::None;
+        m_dungeon->reactivate();
+        m_stack->setCurrentWidget(m_dungeon);
+    } else if (m_battleOrigin == BattleOrigin::Level && m_inLevel) {
+        m_battleOrigin = BattleOrigin::None;
+        m_level1->reactivate();
+        m_stack->setCurrentWidget(m_level1);
+    } else {
+        // Default — go to overworld
+        m_battleOrigin = BattleOrigin::None;
+        m_inLevel = false;
+        m_overworld->activate();
+        m_stack->setCurrentWidget(m_overworld);
+    }
 }
 
 void MainWindow::onBuyItemRequested(ItemType type, int cost)
@@ -522,6 +540,8 @@ void MainWindow::onBossTriggered(const LevelDef& level)
 void MainWindow::onBossFightAccepted()
 {
     m_bossDialog->hide();
+    m_activeLevelId = m_inLevel ? 1 : 0;   // ← set only here, not on level entry
+    m_battleOrigin  = BattleOrigin::Level;
 
     const LevelDef* lvl = m_levelManager.level(m_activeLevelId);
     if (!lvl) return;
@@ -548,6 +568,7 @@ void MainWindow::onBossOutroDismissed()
 {
     m_bossDialog->hide();
     m_level1->deactivate();
+    m_inLevel      = false;
     updateGoldHud();
     m_overworld->activate();
     m_stack->setCurrentWidget(m_overworld);

@@ -60,6 +60,7 @@ private:
     static constexpr int WALK_FRAMES = 6;
 
     QGraphicsEllipseItem* m_shadow = nullptr;
+
 };
 
 class EnemySprite : public QGraphicsPixmapItem
@@ -103,6 +104,7 @@ public:
     void activate();
     void deactivate();
     void setGold(int gold);
+    void reactivate();
 
 signals:
     void battleTriggered(CharacterType enemyType, const QString& enemyName);
@@ -153,4 +155,5 @@ private:
     AudioManager* m_audio = nullptr;
     PauseOverlayWidget* m_pauseOverlay = nullptr;
     bool m_paused = false;
+    int  m_defeatedCount = 0;
 };

@@ -344,10 +344,18 @@ void Level1Widget::checkCollisions()
     }
 
     // Enemy contact → trigger a battle (same signal shape as DungeonWidget)
-    for (EnemySprite* e : m_enemies) {
+    for (int i = 0; i < m_enemies.size(); ++i) {
+        EnemySprite* e = m_enemies[i];
         if (m_player->collidesWithItem(e)) {
+            CharacterType type = e->enemyType();
+            QString       name = e->enemyName();
+
+            m_scene->removeItem(e);
+            delete e;
+            m_enemies.removeAt(i);
+
             deactivate();
-            emit battleTriggered(e->enemyType(), e->enemyName());
+            emit battleTriggered(type, name);
             return;
         }
     }
@@ -406,4 +414,13 @@ void Level1Widget::togglePause()
         m_pauseOverlay->hide();
         setFocus();
     }
+}
+
+void Level1Widget::reactivate()
+{
+    m_bossTriggered = false;   // re-arm in case of reload
+    m_heldKeys.clear();
+    placePlayer();
+    m_ticker.start();
+    setFocus();
 }

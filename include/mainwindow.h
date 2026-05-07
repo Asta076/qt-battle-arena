@@ -87,7 +87,7 @@ private:
     CharacterSelectWidget* m_charSelect   = nullptr;
     OverworldWidget*       m_overworld    = nullptr;
     DungeonWidget*         m_dungeon      = nullptr;
-    Level1Widget*          m_level1       = nullptr;   // ← ADD
+    Level1Widget*          m_level1       = nullptr;
     HouseWidget*           m_house        = nullptr;
     ShopWidget*            m_shop         = nullptr;
     BattleWidget*          m_battleWidget = nullptr;
@@ -97,4 +97,9 @@ private:
     LevelManager      m_levelManager;
     BossDialogWidget* m_bossDialog    = nullptr;
     int               m_activeLevelId = 0;
+
+    enum class BattleOrigin { None, Dungeon, Level };
+    BattleOrigin m_battleOrigin  = BattleOrigin::None;
+    bool         m_inLevel       = false;   // true while player is inside a level screen
+    // m_activeLevelId stays — but now only set during boss fights
 };
