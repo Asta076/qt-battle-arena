@@ -5,45 +5,43 @@ find_package(Qt6 REQUIRED COMPONENTS Core Widgets Multimedia)
 qt_standard_project_setup()
 
 qt_add_executable(CS2-Battle-Arena
-    WIN32 MACOSX_BUNDLE
+        WIN32 MACOSX_BUNDLE
 
-    # ── Entry point ────────────────────────────
-    src/main.cpp
+        # ── Entry point ────────────────────────────
+        src/main.cpp
 
-    include/character.h         src/character.cpp
-    include/warrior.h           src/warrior.cpp
-    include/mage.h              src/mage.cpp
-    include/archer.h            src/archer.cpp
-    include/scoretracker.h      src/scoretracker.cpp
-    include/playerprofile.h     src/playerprofile.cpp
-    include/enemy.h             src/enemy.cpp
-    include/projectile.h        src/projectile.cpp
-    include/worldcombatmanager.h src/worldcombatmanager.cpp
+        include/character.h         src/character.cpp
+        include/warrior.h           src/warrior.cpp
+        include/mage.h              src/mage.cpp
+        include/archer.h            src/archer.cpp
 
-    include/gameengine.h        src/gameengine.cpp
-    include/spritecache.h       src/spritecache.cpp
-    include/playercontroller.h  src/playercontroller.cpp
+        include/playerprofile.h     src/playerprofile.cpp
+        include/enemy.h             src/enemy.cpp
+        include/projectile.h        src/projectile.cpp
+        include/worldcombatmanager.h src/worldcombatmanager.cpp
 
-    include/mainwindow.h        src/mainwindow.cpp
-    src/mainwindow.ui
+        include/gameengine.h        src/gameengine.cpp
+        include/spritecache.h       src/spritecache.cpp
+        include/playercontroller.h  src/playercontroller.cpp
 
-    include/startscreenwidget.h         src/startscreenwidget.cpp
-    include/characterselectiondialog.h  src/characterselectiondialog.cpp
-    src/characterselectiondialog.ui
-    include/gameoverwidget.h            src/gameoverwidget.cpp
-    include/scoreboardwidget.h          src/scoreboardwidget.cpp
-    include/saveslotwidget.h            src/saveslotwidget.cpp
-    include/goldhudwidget.h             src/goldhudwidget.cpp
-    include/healthbarwidget.h           src/healthbarwidget.cpp
-    include/pauseoverlaywidget.h        src/pauseoverlaywidget.cpp
-    include/audiomanager.h              src/audiomanager.cpp
-    include/itemmenuwidget.h            src/itemmenuwidget.cpp
+        include/mainwindow.h        src/mainwindow.cpp
+        src/mainwindow.ui
 
-    include/overworldwidget.h  src/overworldwidget.cpp
-    include/dungeonwidget.h    src/dungeonwidget.cpp
-    include/housewidget.h      src/housewidget.cpp
-    include/shopwidget.h       src/shopwidget.cpp
-    src/shopwidget.ui
+        include/startscreenwidget.h         src/startscreenwidget.cpp
+        include/characterselectiondialog.h  src/characterselectiondialog.cpp
+        src/characterselectiondialog.ui
+
+        include/saveslotwidget.h            src/saveslotwidget.cpp
+        include/goldhudwidget.h             src/goldhudwidget.cpp
+        include/healthbarwidget.h           src/healthbarwidget.cpp
+        include/pauseoverlaywidget.h        src/pauseoverlaywidget.cpp
+        include/audiomanager.h              src/audiomanager.cpp
+
+        include/overworldwidget.h  src/overworldwidget.cpp
+        include/dungeonwidget.h    src/dungeonwidget.cpp
+        include/housewidget.h      src/housewidget.cpp
+        include/shopwidget.h       src/shopwidget.cpp
+        src/shopwidget.ui
 )
 
 # Tell the compiler where your headers live
@@ -51,9 +49,9 @@ target_include_directories(CS2-Battle-Arena PRIVATE include)
 
 # Resources (font, stylesheet, sprites, backgrounds)
 qt_add_resources(CS2-Battle-Arena "assets"
-    PREFIX "/"
-    BASE resources
-    FILES
+        PREFIX "/"
+        BASE resources
+        FILES
         resources/fonts/PressStart2P-Regular.ttf
         resources/styles/game.qss
         resources/sprites/warrior_front.png
@@ -81,7 +79,7 @@ qt_add_resources(CS2-Battle-Arena "assets"
 )
 
 target_link_libraries(CS2-Battle-Arena
-    PRIVATE
+        PRIVATE
         Qt6::Core
         Qt6::Widgets
         Qt6::Multimedia
@@ -89,8 +87,7 @@ target_link_libraries(CS2-Battle-Arena
 
 include(GNUInstallDirs)
 install(TARGETS CS2-Battle-Arena
-    BUNDLE  DESTINATION .
-    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
-    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+        BUNDLE  DESTINATION .
+        RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+        LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
 )
-
