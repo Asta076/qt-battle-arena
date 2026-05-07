@@ -1,11 +1,13 @@
 #pragma once
 
+#include <QPixmap>
 #include <QWidget>
 
 #include "character.h"
 
 class QComboBox;
 class QPushButton;
+class QPaintEvent;
 
 class PvpCharacterSelectWidget : public QWidget {
     Q_OBJECT
@@ -17,8 +19,13 @@ signals:
     void duelStartRequested(CharacterType p1Type, CharacterType p2Type);
     void backRequested();
 
+protected:
+    void paintEvent(QPaintEvent* event) override;
+
 private:
     CharacterType selectedTypeFromCombo(QComboBox* combo) const;
+
+    QPixmap m_background;
 
     QComboBox* m_p1Combo = nullptr;
     QComboBox* m_p2Combo = nullptr;
