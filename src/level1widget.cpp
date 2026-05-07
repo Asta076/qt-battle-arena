@@ -327,19 +327,21 @@ void Level1Widget::checkCollisions()
 {
     if (!m_player) return;
 
-    // Exit portal
-    if (m_exitZone && m_player->collidesWithItem(m_exitZone)) {
-        deactivate();
-        emit exitedLevel();
-        return;
-    }
-
-    // ── Boss collision — shows dialog, doesn't start battle directly ──────────
+    // ── Boss collision — checked BEFORE exit to prevent overlap-exit bug ──────
+    // Also requires all regular enemies defeated first (the "counter")
     if (!m_bossTriggered && m_bossSprite
+        && m_enemies.isEmpty()
         && m_player->collidesWithItem(m_bossSprite)) {
         m_bossTriggered = true;
         m_ticker.stop();
         emit bossTriggered(m_level);
+        return;
+    }
+
+    // Exit portal — only reachable after boss is dealt with
+    if (m_exitZone && m_player->collidesWithItem(m_exitZone)) {
+        deactivate();
+        emit exitedLevel();
         return;
     }
 
