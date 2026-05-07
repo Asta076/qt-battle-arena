@@ -4,11 +4,14 @@
 #include <QPaintEvent>
 #include <QKeyEvent>
 #include <QFont>
+#include <QPen>
 
 PvpArenaWidget::PvpArenaWidget(QWidget* parent)
     : QWidget(parent)
 {
     setFocusPolicy(Qt::StrongFocus);
+
+    m_arenaBackground.load(":/backgrounds/pvp_arena.png");
 }
 
 void PvpArenaWidget::activate()
@@ -22,29 +25,32 @@ void PvpArenaWidget::paintEvent(QPaintEvent* event)
     Q_UNUSED(event);
 
     QPainter painter(this);
-    painter.setRenderHint(QPainter::Antialiasing, true);
+    painter.setRenderHint(QPainter::SmoothPixmapTransform, false);
+    painter.setRenderHint(QPainter::Antialiasing, false);
 
-    // Background
+    // Fallback background if the PNG does not load
     painter.fillRect(rect(), QColor("#111827"));
 
-    // Arena box
-    QRect arenaRect = rect().adjusted(60, 60, -60, -60);
-    painter.setPen(QPen(QColor("#FACC15"), 4));
-    painter.setBrush(QColor("#1F2937"));
-    painter.drawRoundedRect(arenaRect, 20, 20);
+    if (!m_arenaBackground.isNull()) {
+        painter.drawPixmap(rect(), m_arenaBackground);
+    }
 
-    // Title
+    // Temporary controls text
     painter.setPen(QColor("#F9FAFB"));
-    painter.setFont(QFont("Arial", 32, QFont::Bold));
-    painter.drawText(rect(), Qt::AlignCenter, "PVP ARENA");
+    painter.setFont(QFont("Arial", 14, QFont::Bold));
 
-    // Controls text
-    painter.setFont(QFont("Arial", 14));
+    QRect controlsRect(0, height() - 45, width(), 30);
+
+    painter.fillRect(
+        controlsRect.adjusted(0, -5, 0, 5),
+        QColor(0, 0, 0, 130)
+        );
+
     painter.drawText(
-        QRect(0, height() - 80, width(), 40),
+        controlsRect,
         Qt::AlignCenter,
-        "ESC: Back to Menu"
-    );
+        "P1: WASD    |    P2: Arrow Keys    |    ESC: Back"
+        );
 }
 
 void PvpArenaWidget::keyPressEvent(QKeyEvent* event)

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <QPixmap>
 #include <QWidget>
 
 class QPaintEvent;
@@ -19,4 +20,7 @@ signals:
 protected:
     void paintEvent(QPaintEvent* event) override;
     void keyPressEvent(QKeyEvent* event) override;
+
+private:
+    QPixmap m_arenaBackground;
 };

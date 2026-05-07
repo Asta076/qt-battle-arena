@@ -77,6 +77,7 @@ qt_add_resources(CS2-Battle-Arena "assets"
         resources/sprites/dirt1.png
         resources/sprites/dirt2.png
         resources/backgrounds/battle_bg.png
+        resources/backgrounds/pvp_arena.png
         resources/music/battle.ogg
         resources/music/menu.ogg
         resources/music/overworld.ogg
