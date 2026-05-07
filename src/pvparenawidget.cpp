@@ -14,7 +14,9 @@ PvpArenaWidget::PvpArenaWidget(QWidget* parent)
     setFocusPolicy(Qt::StrongFocus);
 
     m_arenaBackground.load(":/backgrounds/pvp_arena.png");
-    m_playerSprite.load(":/sprites/player.png");
+
+    // Temporary defaults until character select passes the chosen classes.
+    setFighters(CharacterType::Warrior, CharacterType::Archer);
 
     resetPlayers();
 }
@@ -26,12 +28,45 @@ void PvpArenaWidget::activate()
     update();
 }
 
+QString PvpArenaWidget::movementSheetFor(CharacterType type) const
+{
+    switch (type) {
+    case CharacterType::Warrior:
+        return ":/sprites/warrior_movement_8dir_6frames.png";
+    case CharacterType::Mage:
+        return ":/sprites/mage_movement_8dir_6frames.png";
+    case CharacterType::Archer:
+        return ":/sprites/archer_movement_8dir_6frames.png";
+    }
+
+    return ":/sprites/archer_movement_8dir_6frames.png";
+}
+
+void PvpArenaWidget::setFighters(CharacterType p1Type, CharacterType p2Type)
+{
+    m_p1Sheet.load(movementSheetFor(p1Type));
+    m_p2Sheet.load(movementSheetFor(p2Type));
+
+    update();
+}
+
 void PvpArenaWidget::resetPlayers()
 {
     // World coordinates, not screen pixels.
     // P1 starts left side, P2 starts right side.
     m_p1Pos = QPointF(330.0, 430.0);
     m_p2Pos = QPointF(580.0, 430.0);
+}
+
+QPixmap PvpArenaWidget::cropIdleFrame(const QPixmap& sheet, int idleColumn) const
+{
+    if (sheet.isNull()) {
+        return QPixmap();
+    }
+
+    // Row 0 = idle poses.
+    // Column decides facing direction.
+    return sheet.copy(idleColumn * FRAME_W, 0, FRAME_W, FRAME_H);
 }
 
 void PvpArenaWidget::paintEvent(QPaintEvent* event)
@@ -68,9 +103,11 @@ void PvpArenaWidget::paintEvent(QPaintEvent* event)
         painter.drawRoundedRect(QRectF(80, 80, WORLD_W - 160, WORLD_H - 160), 20, 20);
     }
 
-    // Players.
-    drawPlayer(painter, m_p1Pos, "P1", QColor("#3A86FF"));
-    drawPlayer(painter, m_p2Pos, "P2", QColor("#FF4D6D"));
+    // Idle column mapping from our movement sheets:
+    // 2 = facing right, 6 = facing left.
+    // This makes P1 and P2 face each other.
+    drawPlayer(painter, m_p1Pos, m_p1Sheet, 2, "P1", QColor("#3A86FF"));
+    drawPlayer(painter, m_p2Pos, m_p2Sheet, 6, "P2", QColor("#FF4D6D"));
 
     painter.restore();
 
@@ -93,6 +130,8 @@ void PvpArenaWidget::paintEvent(QPaintEvent* event)
 
 void PvpArenaWidget::drawPlayer(QPainter& painter,
                                 const QPointF& pos,
+                                const QPixmap& sheet,
+                                int idleColumn,
                                 const QString& label,
                                 const QColor& outlineColor)
 {
@@ -101,10 +140,19 @@ void PvpArenaWidget::drawPlayer(QPainter& painter,
     // Small shadow under player.
     painter.setPen(Qt::NoPen);
     painter.setBrush(QColor(0, 0, 0, 90));
-    painter.drawEllipse(QRectF(body.x() + 6, body.y() + PLAYER_H - 10, PLAYER_W - 12, 12));
+    painter.drawEllipse(QRectF(body.x() + 8, body.y() + PLAYER_H - 12, PLAYER_W - 16, 14));
 
-    if (!m_playerSprite.isNull()) {
-        painter.drawPixmap(body.toRect(), m_playerSprite);
+    QPixmap frame = cropIdleFrame(sheet, idleColumn);
+
+    if (!frame.isNull()) {
+        painter.drawPixmap(
+            body.toRect(),
+            frame.scaled(
+                body.size().toSize(),
+                Qt::KeepAspectRatio,
+                Qt::FastTransformation
+                )
+            );
     } else {
         painter.setBrush(QColor("#E5E7EB"));
         painter.setPen(QPen(outlineColor, 3));
