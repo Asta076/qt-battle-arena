@@ -36,6 +36,7 @@ qt_add_executable(CS2-Battle-Arena
     include/scoreboardwidget.h          src/scoreboardwidget.cpp
     include/saveslotwidget.h            src/saveslotwidget.cpp
     include/goldhudwidget.h             src/goldhudwidget.cpp
+    include/pvpcharacterselectwidget.h  src/pvpcharacterselectwidget.cpp 
     # ── Battle scene widgets ───────────────────
     include/battlewidget.h      src/battlewidget.cpp
     include/battlemenuwidget.h  src/battlemenuwidget.cpp

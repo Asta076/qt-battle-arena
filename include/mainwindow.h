@@ -19,6 +19,7 @@ class DungeonWidget;
 class HouseWidget;
 class ShopWidget;
 class PvpArenaWidget;
+class PvpCharacterSelectWidget;
 
 class MainWindow : public QMainWindow {
     Q_OBJECT
@@ -34,8 +35,10 @@ private slots:
     // ── Start screen ──────────────────────────────────────────────────────────
     void onStartRequested();
     void onPvpRequested();
+    void onPvpDuelStartRequested(CharacterType p1Type, CharacterType p2Type);
     void onPvpBackToMenu();
     void onLoadRequested();
+
 
     // ── Slot screen ───────────────────────────────────────────────────────────
     void onNewGameInSlot(int slotIndex);
@@ -89,4 +92,5 @@ private:
     GameOverWidget*        m_gameOver     = nullptr;
     ScoreboardWidget*      m_scoreboard   = nullptr;
     PvpArenaWidget*        m_pvpArena     = nullptr;
+    PvpCharacterSelectWidget* m_pvpCharSelect = nullptr;
 };

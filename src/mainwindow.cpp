@@ -11,7 +11,7 @@
 #include "housewidget.h"
 #include "audiomanager.h"
 #include "pvparenawidget.h"
-
+#include "pvpcharacterselectwidget.h"
 #include <QMenuBar>
 #include <QAction>
 #include <QApplication>
@@ -58,6 +58,7 @@ void MainWindow::buildUI()
     m_battleWidget = new BattleWidget(m_engine, m_audio, &m_profile, this);
     m_gameOver     = new GameOverWidget(m_engine, this);
     m_scoreboard   = new ScoreboardWidget(m_engine, this);
+    m_pvpCharSelect = new PvpCharacterSelectWidget(this);
     m_pvpArena     = new PvpArenaWidget(this);
 
     m_stack->addWidget(m_startScreen);
@@ -70,6 +71,7 @@ void MainWindow::buildUI()
     m_stack->addWidget(m_battleWidget);
     m_stack->addWidget(m_gameOver);
     m_stack->addWidget(m_scoreboard);
+    m_stack->addWidget(m_pvpCharSelect);
     m_stack->addWidget(m_pvpArena);
 
     setCentralWidget(m_stack);
@@ -86,6 +88,12 @@ void MainWindow::buildUI()
             this, &MainWindow::onLoadRequested);
 
     connect(m_pvpArena, &PvpArenaWidget::backToMenu,
+            this, &MainWindow::onPvpBackToMenu);
+
+    connect(m_pvpCharSelect, &PvpCharacterSelectWidget::duelStartRequested,
+            this, &MainWindow::onPvpDuelStartRequested);
+
+    connect(m_pvpCharSelect, &PvpCharacterSelectWidget::backRequested,
             this, &MainWindow::onPvpBackToMenu);
 
     // ── Slot screen ──────────────────────────────────────────────────────────
@@ -156,6 +164,13 @@ void MainWindow::onStartRequested()
 
 void MainWindow::onPvpRequested()
 {
+    m_stack->setCurrentWidget(m_pvpCharSelect);
+}
+void MainWindow::onPvpDuelStartRequested(CharacterType p1Type, CharacterType p2Type)
+{
+    Q_UNUSED(p1Type);
+    Q_UNUSED(p2Type);
+
     m_stack->setCurrentWidget(m_pvpArena);
     m_pvpArena->activate();
     m_audio->playMusic("/music/battle.ogg");
