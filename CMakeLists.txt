@@ -25,6 +25,7 @@ qt_add_executable(CS2-Battle-Arena
     include/gameengine.h        src/gameengine.cpp
     include/spritecache.h       src/spritecache.cpp
     include/playercontroller.h  src/playercontroller.cpp
+    include/direction.h
 
     # ── Main window shell ──────────────────────
     include/mainwindow.h        src/mainwindow.cpp
