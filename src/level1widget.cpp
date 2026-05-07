@@ -92,10 +92,17 @@ void Level1Widget::activate(const LevelDef& level, const PlayerProfile& profile)
     m_player = nullptr;
     m_bossSprite = nullptr;
     m_enemies.clear();
-    buildScene();
+    m_enemyHint  = nullptr;
 
+    buildScene();
     placePlayer();
     spawnEnemies();    // spawns regular enemies AND the boss
+
+    m_enemyHint = m_scene->addText("", QFont("Arial", 8, QFont::Bold));
+    m_enemyHint->setDefaultTextColor(QColor("#FFE066"));
+    m_enemyHint->setPos(8, WORLD_H - 40);
+    m_enemyHint->setZValue(10);
+
     m_goldHud->setGold(profile.gold);
     m_ticker.start();
     setFocus();
