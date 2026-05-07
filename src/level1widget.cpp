@@ -49,7 +49,11 @@ Level1Widget::Level1Widget(AudioManager* audio, QWidget* parent)
 
     setFocusPolicy(Qt::StrongFocus);
     m_view->setSceneRect(0, 0, WORLD_W, WORLD_H);
-
+// ── Enemy counter hint — updates every tick ───────────────────────────────
+    m_enemyHint = m_scene->addText("", QFont("Arial", 8, QFont::Bold));
+    m_enemyHint->setDefaultTextColor(QColor("#FFE066"));
+    m_enemyHint->setPos(8, WORLD_H - 40);
+    m_enemyHint->setZValue(10);
     // Pause overlay — showSave=false (no mid-level saves, same as dungeon)
     m_pauseOverlay = new PauseOverlayWidget(false, this);
     connect(m_pauseOverlay, &PauseOverlayWidget::resumeRequested,
@@ -294,6 +298,16 @@ void Level1Widget::onTick()
     patrolEnemies();
     checkCollisions();
     fitView();
+// Update enemy hint text
+    if (m_enemyHint) {
+        if (!m_enemies.isEmpty())
+            m_enemyHint->setPlainText(
+                QString("⚠ Defeat all enemies first! (%1 remaining)").arg(m_enemies.size()));
+        else if (!m_bossTriggered)
+            m_enemyHint->setPlainText("✦ The boss awaits — move north!");
+        else
+            m_enemyHint->setPlainText("");
+    }
 }
 
 void Level1Widget::movePlayer()

@@ -86,8 +86,9 @@ private:
     QGraphicsView*       m_view     = nullptr;     // promoted widget from .ui
     DungeonPlayerSprite* m_player   = nullptr;
     QGraphicsRectItem*   m_exitZone = nullptr;
+    QGraphicsTextItem* m_enemyHint  = nullptr;   
     QList<EnemySprite*>  m_enemies;
-
+  
     // ── HUD / overlays ────────────────────────────────────────────────────────
     GoldHudWidget*      m_goldHud      = nullptr;
     PauseOverlayWidget* m_pauseOverlay = nullptr;
