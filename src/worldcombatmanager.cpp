@@ -342,7 +342,7 @@ ActiveAttack* WorldCombatManager::shootArrow(const QRectF& playerBounds, Directi
         item->setTransformOriginPoint(item->boundingRect().center());
         item->setRotation(projectileRotation(facing));
         item->setPos(attack->bounds.topLeft());
-        item->setZValue(10);
+        item->setZValue(5);
 
         m_scene->addItem(item);
         attack->visual = item;
@@ -391,7 +391,7 @@ ActiveAttack* WorldCombatManager::shootFireball(const QRectF& playerBounds, Dire
         item->setTransformOriginPoint(item->boundingRect().center());
         item->setRotation(projectileRotation(facing));
         item->setPos(attack->bounds.topLeft());
-        item->setZValue(10);
+        item->setZValue(5);
 
         m_scene->addItem(item);
         attack->visual = item;
