@@ -75,13 +75,24 @@ Level1Widget::~Level1Widget()
 //  Public API
 // ─────────────────────────────────────────────────────────────────────────────
 
-void Level1Widget::activate()
+void Level1Widget::activate(const LevelDef& level, const PlayerProfile& profile)
 {
-    // Use overworld music for the outdoor forest feel
+    m_level          = level;
+    m_bossTriggered  = false;
+    m_bossSprite     = nullptr;
+
     if (m_audio) m_audio->playMusic("/music/overworld.ogg");
     m_heldKeys.clear();
+
+    m_scene->clear();
+    m_player = nullptr;
+    m_bossSprite = nullptr;
+    m_enemies.clear();
+    buildScene();
+
     placePlayer();
-    spawnEnemies();
+    spawnEnemies();    // spawns regular enemies AND the boss
+    m_goldHud->setGold(profile.gold);
     m_ticker.start();
     setFocus();
 }
@@ -201,7 +212,10 @@ void Level1Widget::buildScene()
     exitLabel->setZValue(3);
 
     // ── Level title ───────────────────────────────────────────────────────────
-    auto* titleText = m_scene->addText("LEVEL 1 — FOREST PATH", QFont("Arial", 8, QFont::Bold));
+    QString title = m_level.name.isEmpty()
+                        ? "LEVEL 1 — FOREST PATH"
+                        : m_level.name.toUpper();
+    auto* titleText = m_scene->addText(title, QFont("Arial", 8, QFont::Bold));
     titleText->setDefaultTextColor(QColor("#a5d6a7"));
     titleText->setPos(8, 4);
     titleText->setZValue(10);
@@ -256,6 +270,17 @@ void Level1Widget::spawnEnemies()
         m_scene->addItem(e);
         m_enemies.append(e);
     }
+
+    // ── Boss — waits at the top of the path ───────────────────────────────────
+    m_bossSprite = new EnemySprite(m_level.bossType, m_level.bossName);
+    m_bossSprite->setPos(
+        (WORLD_W - EnemySprite::W) / 2.0,
+        120   // near the top, just below the exit zone
+        );
+    m_bossSprite->setZValue(8);
+    m_scene->addItem(m_bossSprite);
+    // Note: boss is NOT added to m_enemies list — handled separately
+
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -306,6 +331,15 @@ void Level1Widget::checkCollisions()
     if (m_exitZone && m_player->collidesWithItem(m_exitZone)) {
         deactivate();
         emit exitedLevel();
+        return;
+    }
+
+    // ── Boss collision — shows dialog, doesn't start battle directly ──────────
+    if (!m_bossTriggered && m_bossSprite
+        && m_player->collidesWithItem(m_bossSprite)) {
+        m_bossTriggered = true;
+        m_ticker.stop();
+        emit bossTriggered(m_level);
         return;
     }
 

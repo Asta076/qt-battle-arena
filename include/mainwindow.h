@@ -6,6 +6,8 @@
 #include "playerprofile.h"
 #include "saveslotwidget.h"
 #include "character.h"
+#include "levelmanager.h"
+#include "bossdialogwidget.h"
 
 class StartScreenWidget;
 class CharacterSelectWidget;
@@ -58,6 +60,10 @@ private slots:
 
     void onBattleItemChosen(ItemType type);
 
+    void onBossTriggered(const LevelDef& level);
+    void onBossFightAccepted();
+    void onBossOutroDismissed();
+
 private:
     void buildUI();
     void buildMenuBar();
@@ -87,4 +93,8 @@ private:
     BattleWidget*          m_battleWidget = nullptr;
     GameOverWidget*        m_gameOver     = nullptr;
     ScoreboardWidget*      m_scoreboard   = nullptr;
+
+    LevelManager      m_levelManager;
+    BossDialogWidget* m_bossDialog    = nullptr;
+    int               m_activeLevelId = 0;
 };

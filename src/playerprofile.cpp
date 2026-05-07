@@ -41,6 +41,7 @@ void PlayerProfile::reset()
     dungeonRuns   = 0;
     inventory.clear();
     unlockedBuildings.clear();
+    completedLevels.clear();
     upgrades = StatUpgrades{};
 }
 
@@ -105,6 +106,11 @@ bool PlayerProfile::saveToFile(const QString &path) const
         buildings.append(buildingKey(b));
     root["unlockedBuildings"] = buildings;
 
+    // Completed levels
+    QJsonArray lvls;
+    for (int id : completedLevels) lvls.append(id);
+    root["completedLevels"] = lvls;
+
     // Stat upgrades
     QJsonObject ups;
     ups["bonusMaxHp"]    = upgrades.bonusMaxHp;
@@ -142,6 +148,11 @@ bool PlayerProfile::loadFromFile(const QString &path)
     unlockedBuildings.clear();
     for (const QJsonValue &v : root["unlockedBuildings"].toArray())
         unlockedBuildings.insert(buildingFromKey(v.toString()));
+
+    // Completed levels
+    completedLevels.clear();
+    for (const QJsonValue& v : root["completedLevels"].toArray())
+        completedLevels.insert(v.toInt());
 
     // Stat upgrades
     QJsonObject ups = root["upgrades"].toObject();

@@ -30,6 +30,8 @@
 #include "dungeonwidget.h"      // reuses DungeonPlayerSprite, EnemySprite, DungeonSpriteSheet
 #include "goldhudwidget.h"
 #include "playercontroller.h"
+#include "leveldef.h"
+#include "playerprofile.h"
 
 class AudioManager;
 class PauseOverlayWidget;
@@ -54,7 +56,7 @@ public:
     ~Level1Widget() override;
 
     // Call from MainWindow when switching to / away from this screen
-    void activate();
+    void activate(const LevelDef& level, const PlayerProfile& profile);
     void deactivate();
 
     // Keeps the gold HUD in sync with the player profile
@@ -64,6 +66,7 @@ signals:
     void battleTriggered(CharacterType enemyType, const QString& enemyName);
     void exitedLevel();       // player reached the exit portal
     void backToMenu();        // player chose Main Menu from the pause overlay
+    void bossTriggered(const LevelDef& level);
 
 protected:
     void keyPressEvent  (QKeyEvent*   e) override;
@@ -110,4 +113,9 @@ private:
     void checkCollisions();
     void fitView();
     void togglePause();
+
+
+    LevelDef            m_level;
+    bool                m_bossTriggered = false;
+    EnemySprite*        m_bossSprite    = nullptr;
 };
