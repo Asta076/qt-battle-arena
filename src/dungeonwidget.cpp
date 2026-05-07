@@ -1,5 +1,8 @@
 #include "dungeonwidget.h"
 
+#include <algorithm>
+#include <cmath>
+
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QResizeEvent>
@@ -9,7 +12,6 @@
 #include <QFont>
 #include <QFrame>
 #include <QLabel>
-#include <QRandomGenerator>
 #include <QGraphicsEllipseItem>
 #include <QRadialGradient>
 
@@ -146,10 +148,6 @@ EnemySprite::EnemySprite(CharacterType type,
     setPixmap(m_sprite);
     setTransformationMode(Qt::FastTransformation);
 
-    auto *rng = QRandomGenerator::global();
-    m_vx = (rng->bounded(2) == 0 ? 1 : -1) * (1 + rng->bounded(2));
-    m_vy = (rng->bounded(2) == 0 ? 1 : -1) * (1 + rng->bounded(2));
-
     const qreal shadowW = W * 0.60;
     const qreal shadowH = H * 0.25;
 
@@ -174,22 +172,42 @@ EnemySprite::EnemySprite(CharacterType type,
     m_nameLabel->setZValue(1);
 }
 
-void EnemySprite::patrol(const QRectF &worldBounds)
+QRectF EnemySprite::hitBox() const
 {
-    qreal nx = x() + m_vx;
-    qreal ny = y() + m_vy;
+    return sceneBoundingRect();
+}
 
-    if (nx < worldBounds.left() || nx > worldBounds.right() - W) {
-        m_vx = -m_vx;
-        nx = x();
-    }
+void EnemySprite::chasePlayer(const QRectF& playerBounds, const QRectF& worldBounds)
+{
+    QPointF enemyCenter = sceneBoundingRect().center();
+    QPointF playerCenter = playerBounds.center();
 
-    if (ny < worldBounds.top() + 60 || ny > worldBounds.bottom() - H) {
-        m_vy = -m_vy;
-        ny = y();
-    }
+    QPointF delta = playerCenter - enemyCenter;
 
-    setPos(nx, ny);
+    qreal length = std::sqrt(delta.x() * delta.x() + delta.y() * delta.y());
+
+    if (length < 4.0)
+        return;
+
+    QPointF dir(delta.x() / length, delta.y() / length);
+
+    static constexpr qreal ENEMY_SPEED = 1.35;
+
+    QPointF nextPos = pos() + dir * ENEMY_SPEED;
+
+    qreal clampedX = std::clamp(
+        nextPos.x(),
+        worldBounds.left(),
+        worldBounds.right() - W
+    );
+
+    qreal clampedY = std::clamp(
+        nextPos.y(),
+        worldBounds.top() + 60,
+        worldBounds.bottom() - H
+    );
+
+    setPos(clampedX, clampedY);
 }
 
 void EnemySprite::updateAnimation()
@@ -565,10 +583,95 @@ void DungeonWidget::movePlayer()
 
 void DungeonWidget::patrolEnemies()
 {
-    QRectF bounds(0, 0, WORLD_W, WORLD_H);
+    if (!m_player)
+        return;
 
+    QRectF worldBounds(0, 0, WORLD_W, WORLD_H);
+    QRectF playerBounds = m_player->sceneBoundingRect();
+
+    // Step 1: enemies chase the player
     for (EnemySprite* enemy : m_enemies) {
-        enemy->patrol(bounds);
+        if (!enemy)
+            continue;
+
+        enemy->chasePlayer(playerBounds, worldBounds);
+    }
+
+    // Step 2: enemies push away from each other so they do not stack
+    for (int i = 0; i < m_enemies.size(); ++i) {
+        EnemySprite* a = m_enemies[i];
+
+        if (!a)
+            continue;
+
+        for (int j = i + 1; j < m_enemies.size(); ++j) {
+            EnemySprite* b = m_enemies[j];
+
+            if (!b)
+                continue;
+
+            QRectF aBox = a->hitBox();
+            QRectF bBox = b->hitBox();
+
+            if (!aBox.intersects(bBox))
+                continue;
+
+            QPointF aCenter = aBox.center();
+            QPointF bCenter = bBox.center();
+
+            QPointF delta = aCenter - bCenter;
+
+            qreal length = std::sqrt(delta.x() * delta.x() + delta.y() * delta.y());
+
+            if (length < 0.001) {
+                delta = QPointF(1.0, 0.0);
+                length = 1.0;
+            }
+
+            QPointF pushDir(delta.x() / length, delta.y() / length);
+
+            QRectF overlap = aBox.intersected(bBox);
+            qreal pushAmount = std::min(overlap.width(), overlap.height()) / 2.0 + 0.5;
+
+            QPointF push = pushDir * pushAmount;
+
+            QPointF aNext = a->pos() + push;
+            QPointF bNext = b->pos() - push;
+
+            aNext.setX(std::clamp(
+                aNext.x(),
+                worldBounds.left(),
+                worldBounds.right() - EnemySprite::W
+            ));
+
+            aNext.setY(std::clamp(
+                aNext.y(),
+                worldBounds.top() + 60,
+                worldBounds.bottom() - EnemySprite::H
+            ));
+
+            bNext.setX(std::clamp(
+                bNext.x(),
+                worldBounds.left(),
+                worldBounds.right() - EnemySprite::W
+            ));
+
+            bNext.setY(std::clamp(
+                bNext.y(),
+                worldBounds.top() + 60,
+                worldBounds.bottom() - EnemySprite::H
+            ));
+
+            a->setPos(aNext);
+            b->setPos(bNext);
+        }
+    }
+
+    // Step 3: update enemy animation
+    for (EnemySprite* enemy : m_enemies) {
+        if (!enemy)
+            continue;
+
         enemy->updateAnimation();
     }
 }
@@ -593,7 +696,7 @@ void DungeonWidget::checkCollisions()
         if (!enemy || !enemy->isAlive())
             continue;
 
-        if (m_player->collidesWithItem(sprite) &&
+        if (m_player->sceneBoundingRect().intersects(sprite->hitBox()) &&
             m_combat.canEnemyAttack(enemy)) {
 
             int damage = m_combat.enemyAttackDamage(enemy);
@@ -666,7 +769,7 @@ void DungeonWidget::checkAttackCollisions()
             if (!enemy || !enemy->isAlive())
                 continue;
 
-            if (attack->bounds.intersects(sprite->sceneBoundingRect())) {
+            if (attack->bounds.intersects(sprite->hitBox())) {
                 m_combat.damageEnemy(enemy, attack->damage);
                 m_combat.expireAttack(attack);
 

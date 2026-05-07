@@ -73,13 +73,15 @@ public:
     explicit EnemySprite(CharacterType type, const QString& name,
                          QGraphicsItem* parent = nullptr);
 
-    static constexpr qreal W = 28;
-    static constexpr qreal H = 28;
+    static constexpr qreal W = 52;
+    static constexpr qreal H = 52;
 
     CharacterType enemyType() const { return m_type; }
     QString enemyName() const { return m_name; }
 
-    void patrol(const QRectF& worldBounds);
+    QRectF hitBox() const;
+
+    void chasePlayer(const QRectF& playerBounds, const QRectF& worldBounds);
     void updateAnimation();
 
 private:
@@ -89,9 +91,6 @@ private:
     QPixmap m_sprite;
     QGraphicsEllipseItem* m_shadow = nullptr;
     QGraphicsTextItem* m_nameLabel = nullptr;
-
-    qreal m_vx = 0;
-    qreal m_vy = 0;
 
     int m_frameIndex = 0;
     int m_tickAccum = 0;
