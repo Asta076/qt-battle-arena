@@ -225,6 +225,7 @@ void MainWindow::onStateChanged(GameState newState)
 
 void MainWindow::onDungeonEntered()
 {
+    m_dungeon->setPlayerCharacter(m_engine->playerCharacter());
     m_dungeon->activate();
     m_stack->setCurrentWidget(m_dungeon);
 }

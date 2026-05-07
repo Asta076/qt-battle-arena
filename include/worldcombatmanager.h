@@ -34,6 +34,7 @@ class WorldCombatManager : public QObject
 
 public:
     explicit WorldCombatManager(QObject* parent = nullptr);
+    ~WorldCombatManager() override;
 
     void setPlayer(Character* player);
     void setScene(QGraphicsScene* scene);
@@ -48,6 +49,8 @@ public:
     bool canPlayerShoot() const;
     bool canEnemyAttack(Enemy* enemy) const;
 
+    ActiveAttack* createPlayerAttack(const QRectF& playerBounds, Direction facing);
+
     ActiveAttack* createSwordSwing(const QRectF& playerBounds, Direction facing);
     ActiveAttack* shootArrow(const QRectF& playerBounds, Direction facing);
     ActiveAttack* shootFireball(const QRectF& playerBounds, Direction facing);
@@ -55,6 +58,7 @@ public:
     const QList<ActiveAttack*>& activeAttacks() const;
 
     void expireAttack(ActiveAttack* attack);
+    void clearAttacks();
 
     int enemyAttackDamage(Enemy* enemy) const;
 
@@ -78,6 +82,17 @@ private:
 
     QHash<Enemy*, float> m_enemyAttackCooldowns;
     QList<ActiveAttack*> m_activeAttacks;
+
+    float m_playerSwordCooldown = 0.0f;
+    float m_playerShootCooldown = 0.0f;
+
+    static constexpr float PLAYER_SWORD_COOLDOWN = 0.35f;
+    static constexpr float PLAYER_SHOOT_COOLDOWN = 0.45f;
+    static constexpr float ENEMY_ATTACK_COOLDOWN = 1.0f;
+
+    static constexpr int SWORD_DAMAGE = 25;
+    static constexpr int ARROW_DAMAGE = 18;
+    static constexpr int FIREBALL_DAMAGE = 30;
 
     QPointF directionVector(Direction facing) const;
     QRectF swordBounds(const QRectF& playerBounds, Direction facing) const;

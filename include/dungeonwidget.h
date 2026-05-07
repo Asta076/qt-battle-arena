@@ -11,12 +11,15 @@
 #include <QKeyEvent>
 #include <QSet>
 #include <QList>
+#include <QHash>
 #include <QPixmap>
 
 #include "character.h"
+#include "enemy.h"
+#include "worldcombatmanager.h"
 #include "goldhudwidget.h"
 #include "playercontroller.h"
-#include "overworldwidget.h"   // Direction, walkRow(), idleCol()
+#include "overworldwidget.h"
 
 class AudioManager;
 class PauseOverlayWidget;
@@ -103,6 +106,7 @@ public:
     void activate();
     void deactivate();
     void setGold(int gold);
+    void setPlayerCharacter(Character* player);
 
 signals:
     void exitedDungeon();
@@ -143,11 +147,14 @@ private:
     void buildScene();
     void placePlayer();
     void spawnEnemies();
+    void clearEnemies();
+
     void movePlayer();
     void patrolEnemies();
     void checkCollisions();
     void fitView();
     void togglePause();
+
     void handleClassAttack();
     void checkAttackCollisions();
 
@@ -157,5 +164,6 @@ private:
 
     WorldCombatManager m_combat;
     QHash<EnemySprite*, Enemy*> m_enemyLogic;
+
     Direction m_facing = Direction::Down;
 };
