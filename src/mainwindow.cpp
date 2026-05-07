@@ -366,6 +366,7 @@ void MainWindow::onLevel1Entered()
 
 void MainWindow::onExitedLevel1()
 {
+    m_inLevel = false; 
     updateGoldHud();
     m_overworld->activate();
     m_stack->setCurrentWidget(m_overworld);
@@ -493,6 +494,7 @@ void MainWindow::updateGoldHud()
 {
     m_overworld->setGold(m_profile.gold);
     m_dungeon->setGold(m_profile.gold);
+    m_level1->setGold(m_profile.gold);
 }
 
 void MainWindow::onBattleItemChosen(ItemType type)
