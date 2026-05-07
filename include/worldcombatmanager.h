@@ -37,6 +37,8 @@ public:
     ~WorldCombatManager() override;
 
     void setPlayer(Character* player);
+    Character* player() const { return m_player; }
+
     void setScene(QGraphicsScene* scene);
 
     void registerEnemy(Enemy* enemy);
@@ -87,7 +89,7 @@ private:
     float m_playerShootCooldown = 0.0f;
 
     static constexpr float PLAYER_SWORD_COOLDOWN = 0.35f;
-    static constexpr float PLAYER_SHOOT_COOLDOWN = 0.45f;
+    static constexpr float PLAYER_SHOOT_COOLDOWN = 1.0f;
     static constexpr float ENEMY_ATTACK_COOLDOWN = 1.0f;
 
     static constexpr int SWORD_DAMAGE = 25;

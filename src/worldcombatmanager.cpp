@@ -311,8 +311,8 @@ ActiveAttack* WorldCombatManager::shootArrow(const QRectF& playerBounds, Directi
     QPointF dir = directionVector(facing);
     QPointF start = playerBounds.center();
 
-    static constexpr qreal ARROW_W = 32.0;
-    static constexpr qreal ARROW_H = 12.0;
+    static constexpr qreal ARROW_W = 65.0;
+    static constexpr qreal ARROW_H = 25.0;
 
     ActiveAttack* attack = new ActiveAttack;
     attack->type = AttackType::Arrow;
@@ -362,7 +362,7 @@ ActiveAttack* WorldCombatManager::shootFireball(const QRectF& playerBounds, Dire
     QPointF dir = directionVector(facing);
     QPointF start = playerBounds.center();
 
-    static constexpr qreal FIREBALL_SIZE = 28.0;
+    static constexpr qreal FIREBALL_SIZE = 60.0;
 
     ActiveAttack* attack = new ActiveAttack;
     attack->type = AttackType::Fireball;

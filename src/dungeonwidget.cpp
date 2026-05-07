@@ -1,12 +1,14 @@
 #include "dungeonwidget.h"
 
 #include <QVBoxLayout>
+#include <QHBoxLayout>
 #include <QResizeEvent>
 #include <QPainter>
 #include <QBrush>
 #include <QPen>
 #include <QFont>
 #include <QFrame>
+#include <QLabel>
 #include <QRandomGenerator>
 #include <QGraphicsEllipseItem>
 #include <QRadialGradient>
@@ -222,6 +224,7 @@ DungeonWidget::DungeonWidget(AudioManager *audio, QWidget *parent)
 
     connect(&m_combat, &WorldCombatManager::playerDied, this, [this] {
         deactivate();
+        updatePlayerHud();
         emit exitedDungeon();
     });
 
@@ -258,6 +261,9 @@ DungeonWidget::DungeonWidget(AudioManager *audio, QWidget *parent)
 
     m_goldHud = new GoldHudWidget(this);
     m_goldHud->raise();
+
+    buildPlayerHud();
+    updatePlayerHud();
 }
 
 void DungeonWidget::activate()
@@ -270,6 +276,9 @@ void DungeonWidget::activate()
 
     placePlayer();
     spawnEnemies();
+
+    updatePlayerHud();
+    positionPlayerHud();
 
     m_ticker.start();
     setFocus();
@@ -285,6 +294,7 @@ void DungeonWidget::deactivate()
 void DungeonWidget::setPlayerCharacter(Character* player)
 {
     m_combat.setPlayer(player);
+    updatePlayerHud();
 }
 
 void DungeonWidget::buildScene()
@@ -503,6 +513,8 @@ void DungeonWidget::resizeEvent(QResizeEvent* e)
 
     if (m_goldHud)
         m_goldHud->move(width() - m_goldHud->width() - 16, 16);
+
+    positionPlayerHud();
 }
 
 void DungeonWidget::onTick()
@@ -518,6 +530,8 @@ void DungeonWidget::onTick()
 
     checkCollisions();
     fitView();
+
+    updatePlayerHud();
 }
 
 void DungeonWidget::movePlayer()
@@ -588,6 +602,8 @@ void DungeonWidget::checkCollisions()
 
             if (m_audio)
                 m_audio->playSfx("/sfx/hit.wav");
+
+            updatePlayerHud();
         }
     }
 }
@@ -689,4 +705,94 @@ void DungeonWidget::checkAttackCollisions()
         deactivate();
         emit exitedDungeon();
     }
+}
+
+void DungeonWidget::buildPlayerHud()
+{
+    if (m_playerHud)
+        return;
+
+    m_playerHud = new QWidget(this);
+    m_playerHud->setFixedSize(250, 78);
+    m_playerHud->setAttribute(Qt::WA_StyledBackground, true);
+    m_playerHud->setStyleSheet(
+        "QWidget {"
+        " background-color: rgba(13, 13, 26, 190);"
+        " border: 3px solid #F0E8D0;"
+        "}"
+        "QLabel {"
+        " background: transparent;"
+        " border: none;"
+        " color: #F0E8D0;"
+        " font-size: 8px;"
+        "}"
+    );
+
+    auto* root = new QVBoxLayout(m_playerHud);
+    root->setContentsMargins(10, 8, 10, 8);
+    root->setSpacing(6);
+
+    auto* healthRow = new QHBoxLayout;
+    healthRow->setSpacing(8);
+
+    m_healthLabel = new QLabel("HP", m_playerHud);
+    m_healthLabel->setFixedWidth(60);
+
+    m_healthBar = new HealthBarWidget(m_playerHud);
+    m_healthBar->setFixedSize(160, 18);
+
+    healthRow->addWidget(m_healthLabel);
+    healthRow->addWidget(m_healthBar);
+
+    auto* specialRow = new QHBoxLayout;
+    specialRow->setSpacing(8);
+
+    m_specialLabel = new QLabel("SPECIAL", m_playerHud);
+    m_specialLabel->setFixedWidth(60);
+
+    m_specialBar = new HealthBarWidget(m_playerHud);
+    m_specialBar->setFixedSize(160, 18);
+    m_specialBar->setFixedBarColor(QColor("#4A90D9"));
+
+    specialRow->addWidget(m_specialLabel);
+    specialRow->addWidget(m_specialBar);
+
+    root->addLayout(healthRow);
+    root->addLayout(specialRow);
+
+    positionPlayerHud();
+    m_playerHud->raise();
+    m_playerHud->show();
+}
+
+void DungeonWidget::updatePlayerHud()
+{
+    if (!m_healthBar || !m_specialBar)
+        return;
+
+    Character* player = m_combat.player();
+
+    if (!player) {
+        m_healthBar->setBarPercent(0.0f);
+        m_specialBar->setBarPercent(0.0f);
+        return;
+    }
+
+    m_healthBar->setBarPercent(player->getHealthPercent());
+    m_specialBar->setBarPercent(player->getSpPercent());
+}
+
+void DungeonWidget::positionPlayerHud()
+{
+    if (!m_playerHud)
+        return;
+
+    constexpr int margin = 16;
+
+    m_playerHud->move(
+        width() - m_playerHud->width() - margin,
+        height() - m_playerHud->height() - margin
+    );
+
+    m_playerHud->raise();
 }

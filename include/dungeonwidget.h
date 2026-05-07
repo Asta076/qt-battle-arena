@@ -18,9 +18,11 @@
 #include "enemy.h"
 #include "worldcombatmanager.h"
 #include "goldhudwidget.h"
+#include "healthbarwidget.h"
 #include "playercontroller.h"
 #include "overworldwidget.h"
 
+class QLabel;
 class AudioManager;
 class PauseOverlayWidget;
 
@@ -158,9 +160,19 @@ private:
     void handleClassAttack();
     void checkAttackCollisions();
 
+    void buildPlayerHud();
+    void updatePlayerHud();
+    void positionPlayerHud();
+
     AudioManager* m_audio = nullptr;
     PauseOverlayWidget* m_pauseOverlay = nullptr;
     bool m_paused = false;
+
+    QWidget* m_playerHud = nullptr;
+    QLabel* m_healthLabel = nullptr;
+    QLabel* m_specialLabel = nullptr;
+    HealthBarWidget* m_healthBar = nullptr;
+    HealthBarWidget* m_specialBar = nullptr;
 
     WorldCombatManager m_combat;
     QHash<EnemySprite*, Enemy*> m_enemyLogic;

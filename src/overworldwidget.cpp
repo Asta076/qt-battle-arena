@@ -392,6 +392,18 @@ void OverworldWidget::buildScene()
     static constexpr int DUNGEON_X = 230;
     static constexpr int DUNGEON_Y = -175;
 
+    // Shadow underneath cave image
+    QGraphicsEllipseItem* caveShadow = m_scene->addEllipse(
+        DUNGEON_X + 54,
+        DUNGEON_Y + 125,
+        DUNGEON_W - 140,
+        DUNGEON_H-225,
+        Qt::NoPen,
+        QBrush(QColor(0, 0, 0, 120))
+    );
+
+    caveShadow->setZValue(5);
+
     // Visible dungeon entrance image
     QPixmap dungeonPx("resources/sprites/dungeon_entrance.png");
 
@@ -417,9 +429,9 @@ void OverworldWidget::buildScene()
         DUNGEON_X + 28,
         DUNGEON_Y + 76,
         DUNGEON_W - 56,
-        36,
+        DUNGEON_H-225,
         Qt::NoPen,
-        QBrush(Qt::transparent)
+        QBrush(Qt::red)
     );
 
     m_dungeonZone->setZValue(20);
