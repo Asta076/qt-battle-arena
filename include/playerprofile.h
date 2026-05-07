@@ -51,6 +51,9 @@ public:
     // ── Progression ───────────────────────────────────────────────────────────
     QSet<BuildingType>  unlockedBuildings;
     StatUpgrades        upgrades;
+    QSet<int>           completedLevels;   // level IDs beaten
+    int                 currentLevelId = 0; // which level zone was entered
+
 
     // ── Convenience helpers ───────────────────────────────────────────────────
     int  itemCount(ItemType t)       const { return inventory.value(t, 0); }

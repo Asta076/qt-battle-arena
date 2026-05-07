@@ -114,10 +114,12 @@ public:
 
 signals:
     void dungeonEntered();
+    void level1Entered();
     void houseEntered();
     void shopEntered();
     void backToMenu();
     void saveRequested();
+
 
 protected:
     // Qt event overrides
@@ -154,6 +156,7 @@ private:
     PlayerSprite      *m_player            = nullptr;
     QGraphicsRectItem *m_dungeonZone       = nullptr;
     QGraphicsRectItem *m_houseCollider     = nullptr;
+    QGraphicsRectItem *m_level1Zone        = nullptr;
     QGraphicsRectItem *m_shopZone          = nullptr;
     QGraphicsRectItem *m_houseEntranceZone = nullptr;
     GoldHudWidget     *m_goldHud           = nullptr;
@@ -169,4 +172,8 @@ private:
     AudioManager *m_audio        = nullptr;
     PauseOverlayWidget* m_pauseOverlay = nullptr;
     bool          m_paused       = false;
+
+    static constexpr bool DEBUG_COLLIDERS = true;  // false on release
+    void drawDebugColliders();
+
 };

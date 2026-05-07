@@ -123,6 +123,19 @@ void MainWindow::buildUI()
 
     connect(m_battleWidget, &BattleWidget::itemChosen,
             this, &MainWindow::onBattleItemChosen);
+
+    // ── Boss dialog ───────────────────────────────────────────────────────────
+    m_bossDialog = new BossDialogWidget(this);
+    m_bossDialog->hide();
+
+    connect(m_bossDialog, &BossDialogWidget::fightAccepted,
+            this, &MainWindow::onBossFightAccepted);
+    connect(m_bossDialog, &BossDialogWidget::dialogDismissed,
+            this, &MainWindow::onBossDialogDismissed);
+
+    // ── Overworld level zones ─────────────────────────────────────────────────
+    connect(m_overworld, &OverworldWidget::level1Entered,
+            this, &MainWindow::onLevel1Entered);
 }
 
 void MainWindow::buildMenuBar()
@@ -260,8 +273,31 @@ void MainWindow::onStateChanged(GameState newState)
         break;
 
     case GameState::GameOver:
-        m_stack->setCurrentWidget(m_gameOver);
-        m_audio->stopMusic();
+        if (m_activeLevelId > 0) {
+            // Boss fight just ended — check who won
+            const LevelDef* lvl = m_levelManager.level(m_activeLevelId);
+            bool playerWon = (m_engine->getPlayerScore() > m_engine->getEnemyScore());
+
+            if (playerWon && lvl) {
+                m_levelManager.completeLevel(m_activeLevelId, m_profile);
+                if (m_currentSlot >= 0)
+                    m_profile.saveToFile(SaveSlotWidget::slotPath(m_currentSlot));
+                updateGoldHud();
+            }
+
+            m_activeLevelId = 0;   // reset
+
+            m_bossDialog->resize(size());
+            m_bossDialog->showOutro(*lvl, playerWon);
+            m_bossDialog->show();
+            m_bossDialog->raise();
+            m_bossDialog->setFocus();
+            m_audio->stopMusic();
+        } else {
+            // Normal dungeon game over — existing behavior
+            m_stack->setCurrentWidget(m_gameOver);
+            m_audio->stopMusic();
+        }
         break;
 
     case GameState::Scoreboard:
@@ -433,4 +469,69 @@ void MainWindow::onBattleItemChosen(ItemType type)
         m_engine->onPlayerDefenseActivated();
         break;
     }
+}
+
+void MainWindow::onLevel1Entered()
+{
+    const LevelDef* lvl = m_levelManager.level(1);
+    if (!lvl) return;
+
+    if (!m_levelManager.isUnlocked(1, m_profile)) {
+        // Locked — do nothing for now (overworld already shows hint text)
+        return;
+    }
+
+    m_activeLevelId = 1;
+    m_overworld->deactivate();
+
+    // Resize dialog to fill the window
+    m_bossDialog->resize(size());
+    m_bossDialog->showIntro(*lvl, m_profile.characterName);
+    m_bossDialog->show();
+    m_bossDialog->raise();
+    m_bossDialog->setFocus();
+}
+
+void MainWindow::onBossFightAccepted()
+{
+    m_bossDialog->hide();
+
+    const LevelDef* lvl = m_levelManager.level(m_activeLevelId);
+    if (!lvl) return;
+
+    // Level 5 boss mirrors the player's class
+    CharacterType bossType = (m_activeLevelId == 5)
+                                 ? static_cast<CharacterType>(m_profile.characterType)
+                                 : lvl->bossType;
+
+    // Scale boss stats via GameEngine
+    m_engine->setStatBonuses(
+        m_profile.upgrades.bonusMaxHp,
+        m_profile.upgrades.bonusAttack,
+        m_profile.upgrades.bonusSpPerAtk);
+
+    // Start battle — boss name and type go through normal battle path
+    m_engine->onPlayerSelectedCharacter(
+        static_cast<CharacterType>(m_profile.characterType),
+        m_profile.characterName);
+
+    // Tell engine the enemy is a boss (scaled HP + attack)
+    // This reuses the existing setStatBonuses pattern on the enemy side
+    // — for now, store boss params and apply in onStateChanged
+    m_pendingEnemyName = lvl->bossName;
+    m_pendingEnemyType = bossType;
+    m_hasPendingBattle = false;
+
+    m_stack->setCurrentWidget(m_battleWidget);
+    m_audio->playMusic("/music/battle.ogg");
+}
+
+void MainWindow::onBossDialogDismissed()
+{
+    m_bossDialog->hide();
+
+    // Return to overworld — save is already done in onBossDefeated
+    updateGoldHud();
+    m_overworld->activate();
+    m_stack->setCurrentWidget(m_overworld);
 }

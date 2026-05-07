@@ -6,6 +6,9 @@
 #include "playerprofile.h"
 #include "saveslotwidget.h"
 #include "character.h"
+#include "levelmanager.h"
+#include "bossdialogwidget.h"
+
 
 class StartScreenWidget;
 class CharacterSelectWidget;
@@ -47,6 +50,9 @@ private slots:
     void onShopEntered();
     void onShopExited();
     void onBuyItemRequested(ItemType type, int cost);
+    void onLevel1Entered();
+    void onBossFightAccepted();
+    void onBossDialogDismissed();
 
     // ── Profile events ────────────────────────────────────────────────────────
     void onGoldEarned(int amount);
@@ -82,4 +88,8 @@ private:
     BattleWidget*          m_battleWidget = nullptr;
     GameOverWidget*        m_gameOver     = nullptr;
     ScoreboardWidget*      m_scoreboard   = nullptr;
+
+    LevelManager      m_levelManager;
+    BossDialogWidget* m_bossDialog   = nullptr;
+    int               m_activeLevelId = 0;   // which level is being fought
 };

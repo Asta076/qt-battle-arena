@@ -18,7 +18,9 @@ qt_add_executable(CS2-Battle-Arena
     include/battleresult.h
     include/scoretracker.h      src/scoretracker.cpp
     include/playerprofile.h     src/playerprofile.cpp
-    
+    include/leveldef.h
+    include/levelmanager.h      src/levelmanager.cpp
+    include/bossdialogwidget.h  src/bossdialogwidget.cpp
     # ── Game engine (Qt Core) ──────────────────
     include/gameengine.h        src/gameengine.cpp
     include/spritecache.h       src/spritecache.cpp

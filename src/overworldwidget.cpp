@@ -267,17 +267,15 @@ void OverworldWidget::buildScene()
             housePx.scaled(HOUSE_W, HOUSE_H, Qt::KeepAspectRatio, Qt::FastTransformation)
         );
         houseItem->setPos(HOUSE_X, HOUSE_Y);
-        houseItem->setZValue(10);
+        houseItem->setZValue(5);
     } else {
         qWarning("Could not load resources/sprites/house.png");
     }
 
-    // ── House solid collider — covers the whole house body ───────────────────
-    // Slightly inset on the sides so the player can walk right up to the wall.
-    // Tall enough that the player can never jump over it from the south.
-    const qreal colliderInset = HOUSE_W * 0.05;
-    const qreal colliderY     = HOUSE_Y + HOUSE_H * 0.45;  // starts higher up
-    const qreal colliderH     = HOUSE_H * 0.50;             // taller — covers more
+    // ── House solid collider ─────────────────────────────────────────────────
+    const qreal colliderInset = HOUSE_W * 0.20;           // 48px each side
+    const qreal colliderY     = HOUSE_Y + HOUSE_H * 0.82; // Y=348 — just above door frame
+    const qreal colliderH     = HOUSE_H - HOUSE_H * 0.82; // extends to Y=420, house bottom
     m_houseCollider = m_scene->addRect(
         HOUSE_X + colliderInset, colliderY,
         HOUSE_W - colliderInset * 2, colliderH,
@@ -285,14 +283,12 @@ void OverworldWidget::buildScene()
         );
     m_houseCollider->setZValue(1);
 
-    // ── House entrance zone — sits BELOW the collider, no overlap ────────────
-    // The collider bottom is at colliderY + colliderH.
-    // The entrance zone starts 2px below that so they never overlap.
-    const qreal entranceW = HOUSE_W * 0.30;
-    const qreal entranceX = HOUSE_X + (HOUSE_W - entranceW) / 2.0;
-    const qreal entranceY = colliderY + colliderH + 2.0;   // flush below collider
+    // Entrance zone: narrow strip at TOP of the collider (player approaches from below)
+    const qreal doorW = HOUSE_W * 0.22;
+    const qreal doorX = HOUSE_X + (HOUSE_W - doorW) / 2.0;
+    const qreal doorY = colliderY + 2.0;                        // flush with collider top
     m_houseEntranceZone = m_scene->addRect(
-        entranceX, entranceY, entranceW, 16,
+        doorX, doorY, doorW, 16,
         Qt::NoPen, Qt::NoBrush);
     m_houseEntranceZone->setZValue(1);
     // ── Shop ────────────────────────────────────────────────────────────────
@@ -415,11 +411,38 @@ void OverworldWidget::buildScene()
     hint->setPos(8, WORLD_H - 20);
     hint->setZValue(10);
 
+    // ── Level 1 entrance — left of the house ─────────────────────────────────
+    static constexpr qreal L1_W = 72;
+    static constexpr qreal L1_H = 52;
+    static constexpr qreal L1_X = HOUSE_X + (HOUSE_W - L1_W) / 2.0;  // centered under house
+    static constexpr qreal L1_Y = HOUSE_Y + HOUSE_H + 90;
+
+    // stone border
+    m_scene->addRect(
+               L1_X - 8, L1_Y - 6, L1_W + 16, L1_H + 10,
+               Qt::NoPen, QBrush(QColor("#424242"))
+               )->setZValue(1);
+
+    // the dark portal / gate
+    m_level1Zone = m_scene->addRect(
+        L1_X, L1_Y, L1_W, L1_H,
+        Qt::NoPen, QBrush(QColor("#1a1a2e"))
+        );
+    m_level1Zone->setZValue(2);
+
+    // label
+    auto *lvl1Label = m_scene->addText("⚔  LEVEL 1", QFont("Arial", 8, QFont::Bold));
+    lvl1Label->setDefaultTextColor(QColor("#FFD700"));
+    lvl1Label->setPos(L1_X - 4, L1_Y + L1_H + 4);
+    lvl1Label->setZValue(3);
     // --- player sprite ---
     m_player = new PlayerSprite(m_sheet);
     m_player->setZValue(9);
     m_scene->addItem(m_player);
     placePlayer();
+
+
+    drawDebugColliders();
 }
 
 // put the player in the center of the map
@@ -439,69 +462,94 @@ void OverworldWidget::placePlayer()
 // ============================================================
 
 // called every tick by the timer
-void OverworldWidget::onTick() {
+void OverworldWidget::onTick()
+{
     QPointF vel = m_controller.computeVelocity(m_heldKeys);
-    QPointF proposed(m_player->x() + vel.x(), m_player->y() + vel.y());
-    
-    QRectF solid = m_houseCollider ? m_houseCollider->sceneBoundingRect() : QRectF();
-    
-    // Apply collision manually
-    qreal nx = qBound(0.0, proposed.x(), WORLD_W - PlayerSprite::W);
-    qreal ny = qBound(0.0, proposed.y(), WORLD_H - PlayerSprite::H);
-    
-    if (solid.isValid()) {
-        QRectF playerRect(nx, ny, PlayerSprite::W, PlayerSprite::H);
-        if (playerRect.intersects(solid)) {
-            if (vel.x() > 0) nx = solid.left() - PlayerSprite::W;
-            else if (vel.x() < 0) nx = solid.right();
-            
-            playerRect = QRectF(nx, ny, PlayerSprite::W, PlayerSprite::H);
-            if (playerRect.intersects(solid)) {
-                if (vel.y() > 0) ny = solid.top() - PlayerSprite::H;
-                else if (vel.y() < 0) ny = solid.bottom();
-            }
+
+    // ── Feet rect — only the bottom 20px of the sprite is used for collision.
+    // This makes the player feel like they're touching what they look like
+    // they're touching, instead of their 96px bounding box hitting first.
+    auto feetRect = [&](qreal px, qreal py) -> QRectF {
+        const qreal feetH = 20.0;
+        return QRectF(
+            px + PlayerSprite::W * 0.25,           // inset sides 25% each
+            py + PlayerSprite::H - feetH,           // bottom strip only
+            PlayerSprite::W * 0.50,                 // 50% of sprite width
+            feetH
+            );
+    };
+
+    qreal nx = qBound(0.0, m_player->x() + vel.x(), WORLD_W - PlayerSprite::W);
+    qreal ny = qBound(0.0, m_player->y() + vel.y(), WORLD_H - PlayerSprite::H);
+
+    if (m_houseCollider) {
+        QRectF solid = m_houseCollider->sceneBoundingRect();
+
+        // Resolve X independently using current Y
+        if (feetRect(nx, m_player->y()).intersects(solid)) {
+            nx = (vel.x() > 0)
+            ? solid.left()  - PlayerSprite::W * 0.75   // snap left edge of feet
+            : solid.right() - PlayerSprite::W * 0.25;  // snap right edge of feet
+            nx = qBound(0.0, nx, WORLD_W - PlayerSprite::W);
+        }
+
+        if (feetRect(m_player->x(), ny).intersects(solid)) {
+            if (vel.y() > 0)
+                ny = solid.top() - PlayerSprite::H + 20.0;
+            else
+                ny = solid.bottom() - PlayerSprite::H + 20.0;
+            ny = qBound(0.0, ny, WORLD_H - PlayerSprite::H);
         }
     }
-    
+
     m_player->setPos(nx, ny);
-    
+
     bool moving = m_controller.isMoving(m_heldKeys);
     Direction dir = m_controller.computeDirection(m_heldKeys);
     m_player->updateAnimation(moving, dir);
-    
-    checkTriggers();
 
+    checkTriggers();
 }
 
 // check if the player has walked into any trigger zones
 void OverworldWidget::checkTriggers()
 {
-    // dungeon entrance — teleport player to dungeon screen
-    if (m_player->collidesWithItem(m_dungeonZone)) {
+    // Feet rect — matches onTick so triggers fire at the same point walls stop
+    const qreal feetH = 20.0;
+    QRectF feet(
+        m_player->x() + PlayerSprite::W * 0.25,
+        m_player->y() + PlayerSprite::H - feetH,
+        PlayerSprite::W * 0.50,
+        feetH
+        );
+
+    if (m_dungeonZone && feet.intersects(m_dungeonZone->sceneBoundingRect())) {
         deactivate();
         emit dungeonEntered();
         return;
     }
 
-
-    // ── House entrance → enter house screen ──────────────────────────────────
-    // Only trigger when the player is pressing up/W — stops accidental entry
-    // when the collider pushes them into the zone from the side.
-    if (m_houseEntranceZone && m_player->collidesWithItem(m_houseEntranceZone)) {
-        const bool movingUp = m_heldKeys.contains(Qt::Key_W)
-        || m_heldKeys.contains(Qt::Key_Up);
-        if (movingUp) {
+    // House entrance — player must press W/Up while feet touch the door strip
+    if (m_houseEntranceZone
+        && feet.intersects(m_houseEntranceZone->sceneBoundingRect())) {
+        if (m_heldKeys.contains(Qt::Key_W) || m_heldKeys.contains(Qt::Key_Up)) {
             deactivate();
             emit houseEntered();
             return;
         }
     }
-   //--shop------------------------------------------------------------------ 
-    if (m_shopZone && m_player->collidesWithItem(m_shopZone)) {
-    deactivate();
-    emit shopEntered();
-    return;
-}
+
+    if (m_shopZone && feet.intersects(m_shopZone->sceneBoundingRect())) {
+        deactivate();
+        emit shopEntered();
+        return;
+    }
+
+    if (m_level1Zone && feet.intersects(m_level1Zone->sceneBoundingRect())) {
+        deactivate();
+        emit level1Entered();
+        return;
+    }
 }
 
 
@@ -553,7 +601,7 @@ void OverworldWidget::showEvent(QShowEvent *e)
 void OverworldWidget::fitView()
 {
     if (!m_view) return;
-    m_view->fitInView(0, 0, WORLD_W, WORLD_H, Qt::KeepAspectRatio);
+    m_view->fitInView(0, 0, WORLD_W, WORLD_H, Qt::IgnoreAspectRatio);
 }
 
 
@@ -586,4 +634,22 @@ void OverworldWidget::togglePause()
 void OverworldWidget::setGold(int gold)
 {
     if (m_goldHud) m_goldHud->setGold(gold);
+}
+
+void OverworldWidget::drawDebugColliders()
+{
+    if (!DEBUG_COLLIDERS) return;
+
+    auto highlight = [&](QGraphicsRectItem* item, QColor color) {
+        if (!item) return;
+        item->setPen(QPen(color, 2));
+        item->setBrush(QBrush(QColor(color.red(), color.green(), color.blue(), 40)));
+        item->setZValue(99);  // always on top
+    };
+
+    highlight(m_houseCollider,     QColor("#FF4444"));  // red   = solid wall
+    highlight(m_houseEntranceZone, QColor("#44FF44"));  // green = door trigger
+    highlight(m_dungeonZone,       QColor("#4444FF"));  // blue  = dungeon trigger
+    highlight(m_shopZone,          QColor("#FFAA00"));  // orange = shop trigger
+    highlight(m_level1Zone,        QColor("#FF44FF"));  // pink  = level 1 trigger
 }
