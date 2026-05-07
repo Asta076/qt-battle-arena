@@ -10,10 +10,12 @@
 #include "shopwidget.h"
 #include "housewidget.h"
 #include "audiomanager.h"
+
 #include <QMenuBar>
 #include <QAction>
 #include <QApplication>
 #include <QFile>
+#include <QMessageBox>
 
 // ── Item effect constants ────────
 static constexpr int HEALTH_POTION_AMOUNT = 0;   // 0 = use 35% of max HP
@@ -74,6 +76,10 @@ void MainWindow::buildUI()
     // ── Start screen ─────────────────────────────────────────────────────────
     connect(m_startScreen, &StartScreenWidget::startRequested,
             this, &MainWindow::onStartRequested);
+
+    connect(m_startScreen, &StartScreenWidget::pvpRequested,
+            this, &MainWindow::onPvpRequested);
+
     connect(m_startScreen, &StartScreenWidget::loadRequested,
             this, &MainWindow::onLoadRequested);
 
@@ -93,9 +99,7 @@ void MainWindow::buildUI()
     connect(m_overworld, &OverworldWidget::saveRequested,
             this, &MainWindow::onSaveRequested);
 
-
     // ── House ──────────────────────────────────────────────────────────────
-
     connect(m_overworld, &OverworldWidget::houseEntered,
             this, &MainWindow::onHouseEntered);
     connect(m_house, &HouseWidget::backToOverworld,
@@ -143,6 +147,21 @@ void MainWindow::onStartRequested()
 {
     m_slotScreen->refresh(SlotMode::NewGame);
     m_stack->setCurrentWidget(m_slotScreen);
+}
+
+void MainWindow::onPvpRequested()
+{
+    QMessageBox::information(
+        this,
+        "PvP Battle",
+        "PvP arena screen will be added next."
+        );
+}
+
+void MainWindow::onPvpBackToMenu()
+{
+    m_stack->setCurrentWidget(m_startScreen);
+    m_audio->playMusic("/music/menu.ogg");
 }
 
 void MainWindow::onLoadRequested()
@@ -304,6 +323,7 @@ void MainWindow::onHouseExited()
     m_overworld->activate();
     m_stack->setCurrentWidget(m_overworld);
 }
+
 void MainWindow::onShopEntered()
 {
     m_shop->setProfile(&m_profile);
@@ -315,6 +335,7 @@ void MainWindow::onShopExited()
     m_overworld->activate();
     m_stack->setCurrentWidget(m_overworld);
 }
+
 void MainWindow::onBattleTriggered(CharacterType enemyType, const QString& enemyName)
 {
     m_pendingEnemyType = enemyType;

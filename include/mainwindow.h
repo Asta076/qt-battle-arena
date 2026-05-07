@@ -1,6 +1,8 @@
 #pragma once
+
 #include <QMainWindow>
 #include <QStackedWidget>
+
 #include "gameengine.h"
 #include "audiomanager.h"
 #include "playerprofile.h"
@@ -16,6 +18,7 @@ class OverworldWidget;
 class DungeonWidget;
 class HouseWidget;
 class ShopWidget;
+class PvpArenaWidget;
 
 class MainWindow : public QMainWindow {
     Q_OBJECT
@@ -30,6 +33,8 @@ private slots:
 
     // ── Start screen ──────────────────────────────────────────────────────────
     void onStartRequested();
+    void onPvpRequested();
+    void onPvpBackToMenu();
     void onLoadRequested();
 
     // ── Slot screen ───────────────────────────────────────────────────────────
@@ -53,12 +58,13 @@ private slots:
     void onSaveRequested();       // from overworld pause SAVE button
     void onReturnToOverworld();   // from game over EXPLORE MORE
 
-    //
     void onBattleItemChosen(ItemType type);
+
 private:
     void buildUI();
     void buildMenuBar();
     void updateGoldHud();
+
     // ── Core ──────────────────────────────────────────────────────────────────
     GameEngine*     m_engine          = nullptr;
     AudioManager*   m_audio           = nullptr;
@@ -82,4 +88,5 @@ private:
     BattleWidget*          m_battleWidget = nullptr;
     GameOverWidget*        m_gameOver     = nullptr;
     ScoreboardWidget*      m_scoreboard   = nullptr;
+    PvpArenaWidget*        m_pvpArena     = nullptr;
 };
