@@ -53,10 +53,24 @@ struct SpriteSheet
 // ============================================================
 
 
-// helpers to get row/col from a direction (cleaner than casting everywhere)
-inline int walkRow(Direction d) { return static_cast<int>(d) + 1; }
-inline int idleCol(Direction d) { return static_cast<int>(d); }
+inline int sheetDirIndex(Direction d)
+{
+    switch (d) {
+    case Direction::Down:         return 0;
+    case Direction::DownRight:    return 1;
+    case Direction::Right:        return 2;
+    case Direction::ForwardRight: return 3;
+    case Direction::Up:           return 4;
+    case Direction::ForwardLeft:  return 5;
+    case Direction::Left:         return 6;
+    case Direction::DownLeft:     return 7;
+    }
 
+    return 0;
+}
+
+inline int walkRow(Direction d) { return sheetDirIndex(d) + 1; }
+inline int idleCol(Direction d) { return sheetDirIndex(d); }
 
 // ============================================================
 //  PlayerSprite
