@@ -10,12 +10,12 @@
 #include "shopwidget.h"
 #include "housewidget.h"
 #include "audiomanager.h"
+#include "pvparenawidget.h"
 
 #include <QMenuBar>
 #include <QAction>
 #include <QApplication>
 #include <QFile>
-#include <QMessageBox>
 
 // ── Item effect constants ────────
 static constexpr int HEALTH_POTION_AMOUNT = 0;   // 0 = use 35% of max HP
@@ -58,6 +58,7 @@ void MainWindow::buildUI()
     m_battleWidget = new BattleWidget(m_engine, m_audio, &m_profile, this);
     m_gameOver     = new GameOverWidget(m_engine, this);
     m_scoreboard   = new ScoreboardWidget(m_engine, this);
+    m_pvpArena     = new PvpArenaWidget(this);
 
     m_stack->addWidget(m_startScreen);
     m_stack->addWidget(m_slotScreen);
@@ -69,6 +70,7 @@ void MainWindow::buildUI()
     m_stack->addWidget(m_battleWidget);
     m_stack->addWidget(m_gameOver);
     m_stack->addWidget(m_scoreboard);
+    m_stack->addWidget(m_pvpArena);
 
     setCentralWidget(m_stack);
     m_stack->setCurrentWidget(m_startScreen);
@@ -82,6 +84,9 @@ void MainWindow::buildUI()
 
     connect(m_startScreen, &StartScreenWidget::loadRequested,
             this, &MainWindow::onLoadRequested);
+
+    connect(m_pvpArena, &PvpArenaWidget::backToMenu,
+            this, &MainWindow::onPvpBackToMenu);
 
     // ── Slot screen ──────────────────────────────────────────────────────────
     connect(m_slotScreen, &SaveSlotWidget::newGameRequested,
@@ -151,11 +156,9 @@ void MainWindow::onStartRequested()
 
 void MainWindow::onPvpRequested()
 {
-    QMessageBox::information(
-        this,
-        "PvP Battle",
-        "PvP arena screen will be added next."
-        );
+    m_stack->setCurrentWidget(m_pvpArena);
+    m_pvpArena->activate();
+    m_audio->playMusic("/music/battle.ogg");
 }
 
 void MainWindow::onPvpBackToMenu()
