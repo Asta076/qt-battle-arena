@@ -4,7 +4,6 @@
 
 
 enum class Direction : int;
-
 class PlayerController {
 public:
     PlayerController() = default;

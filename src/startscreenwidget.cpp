@@ -39,6 +39,7 @@ StartScreenWidget::StartScreenWidget(GameEngine* engine, QWidget* parent)
 
     // Buttons
     m_startBtn = new QPushButton("► START GAME", this);
+    m_pvpBtn   = new QPushButton("  PVP BATTLE", this);
     m_loadBtn  = new QPushButton("  LOAD SAVE",  this);
 
     // Assemble
@@ -49,6 +50,7 @@ StartScreenWidget::StartScreenWidget(GameEngine* engine, QWidget* parent)
     root->addLayout(diffRow);
     root->addSpacing(12);
     root->addWidget(m_startBtn);
+    root->addWidget(m_pvpBtn);
     root->addWidget(m_loadBtn);
     root->addStretch(3);
 
@@ -56,13 +58,8 @@ StartScreenWidget::StartScreenWidget(GameEngine* engine, QWidget* parent)
     connect(m_startBtn, &QPushButton::clicked,
             this, &StartScreenWidget::startRequested);
 
-    connect(m_difficultyBox, &QComboBox::currentIndexChanged, this, [this](int idx){
-        Difficulty d = m_difficultyBox->itemData(idx).value<Difficulty>();
-        m_engine->onDifficultyChanged(d);
-    });
-
-    connect(m_loadBtn, &QPushButton::clicked,
-            this, &StartScreenWidget::loadRequested);
+    connect(m_pvpBtn, &QPushButton::clicked,
+            this, &StartScreenWidget::pvpRequested);
 }
 
 void StartScreenWidget::paintEvent(QPaintEvent* event)

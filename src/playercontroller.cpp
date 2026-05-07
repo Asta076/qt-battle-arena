@@ -58,3 +58,4 @@ bool PlayerController::isMoving(const QSet<int>& heldKeys) const
            heldKeys.contains(Qt::Key_A) || heldKeys.contains(Qt::Key_Left) ||
            heldKeys.contains(Qt::Key_D) || heldKeys.contains(Qt::Key_Right);
 }
+
