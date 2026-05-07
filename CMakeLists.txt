@@ -52,6 +52,7 @@ qt_add_executable(CS2-Battle-Arena
     include/dungeonwidget.h    src/dungeonwidget.cpp
     include/housewidget.h      src/housewidget.cpp
     include/shopwidget.h       src/shopwidget.cpp
+    include/pvparenawidget.h   src/pvparenawidget.cpp   
     src/shopwidget.ui
 )
 
