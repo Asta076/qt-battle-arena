@@ -1,21 +1,21 @@
 #pragma once
+
 #include <QObject>
-#include <QTimer>
+#include <QString>
+
 #include "character.h"
-#include "battleresult.h"
-#include "scoretracker.h"
 
 enum class GameState {
-    MainMenu, CharacterSelect, Playing, PlayerTurn,
-    AnimatingAttack, Paused, RoundOver, GameOver, Scoreboard
+    MainMenu,
+    CharacterSelect,
+    Playing,
+    Paused
 };
 
-enum class Difficulty { Easy, Normal, Hard };
-
-struct RoundRecord {
-    int  roundNumber;
-    bool playerWon;
-    QString enemyName;
+enum class Difficulty {
+    Easy,
+    Normal,
+    Hard
 };
 
 class GameEngine : public QObject {
@@ -25,88 +25,50 @@ public:
     explicit GameEngine(QObject* parent = nullptr);
     ~GameEngine() override;
 
-    GameState    getState()        const { return m_state; }
-    Difficulty   getDifficulty()   const { return m_difficulty; }
-    int          getPlayerScore()  const { return m_playerScore; }
-    int          getEnemyScore()   const { return m_enemyScore; }
-    int          getCurrentRound() const { return m_currentRound; }
-    int          getMaxRounds()    const { return m_maxRounds; }
-    bool         itemAvailable()       const { return m_itemsUsedThisBattle < MAX_ITEMS_PER_BATTLE; }
-    int          itemsUsedThisBattle() const { return m_itemsUsedThisBattle; }
-    int          maxItemsPerBattle()   const { return MAX_ITEMS_PER_BATTLE; }
-    SessionStats getSessionStats() const { return m_tracker.getStats(); }
-    QString      getPlayerName()   const { return m_playerName; }
-    CharacterType getPlayerType()  const { return m_playerType; }
-    bool playerCanUseSpecial()     const {                         // ← ADD
-        return m_player && m_player->canUseSpecial();
-    }
-    const QList<Character*>&   getAllCharacters()  const { return m_allCharacters; }
-    const QList<RoundRecord>&  getRoundHistory()   const { return m_roundHistory; }
+    GameState getState() const { return m_state; }
+    Difficulty getDifficulty() const { return m_difficulty; }
 
-signals:
-    void stateChanged(GameState newState);
-    void healthUpdated(float playerPercent, float enemyPercent);
-    void battleLogMessage(const QString& message);
-    void battleActionResolved(BattleResult result);
-    void roundEnded(int playerScore, int enemyScore, bool playerWonRound);
-    void gameOver(bool playerWon, int finalPlayerScore, int finalEnemyScore);
-    void energyUpdated(float playerSpPct, float enemySpPct);
-    void goldEarned(int amount);
+    QString getPlayerName() const { return m_playerName; }
+    CharacterType getPlayerType() const { return m_playerType; }
+
+    Character* playerCharacter() const { return m_player; }
+
+    signals:
+        void stateChanged(GameState newState);
+
 public slots:
     void setState(GameState s);
+
     void onStartGame();
     void onDifficultyChanged(Difficulty d);
     void onPlayerSelectedCharacter(CharacterType type, const QString& name);
-    void onPlayerChoseFight();
-    void onPlayerChoseSpecial();
-    void onPlayerHealed(int amount);         // HealthPotion effect
-    void onPlayerSpRestored(int amount);     // SpPotion effect
-    void onPlayerAttackBoosted();            // AttackBoost effect
-    void onPlayerDefenseActivated();         // DefenseBoost effect
-    void onPlayerChoseRun();
+
     void onPauseToggle();
     void onRestartGame();
     void onExitToMenu();
+
     bool onSaveGame(const QString& path);
     bool onLoadGame(const QString& path);
+
     void setPlayerIdentity(CharacterType type, const QString& name);
     void setStatBonuses(int bonusHp, int bonusAttack, int bonusSpPerAtk);
-private slots:
-    void enemyTakeTurn();
 
 private:
-    static constexpr int MAX_ITEMS_PER_BATTLE = 2;
-    void setState_internal(GameState s);
-    void resolvePlayerAction(bool useSpecial);
-    void spawnEnemy();
-    void endRound(bool playerWon);
-    void cleanupCharacters();
-    void resetRound();
+    void cleanupCharacter();
     Character* createCharacter(CharacterType type, const QString& name);
-
-    GameState     m_state        = GameState::MainMenu;
-    Difficulty    m_difficulty   = Difficulty::Normal;
-    Character*    m_player       = nullptr;
-    Character*    m_enemy        = nullptr;
-    QList<Character*>  m_allCharacters;
-    QList<RoundRecord> m_roundHistory;
-    QTimer*       m_roundTimer   = nullptr;
-    int           m_playerScore  = 0;
-    int           m_enemyScore   = 0;
-    int           m_currentRound = 0;
-    int           m_maxRounds    = 5;
-    int  m_itemsUsedThisBattle = 0;
-    bool m_defenseActive       = false;   // set by DefenseBoost, consumed on next hit
-    bool m_attackBoosted       = false;
-    QList<bool>   m_playerMoveHistory;
-    ScoreTracker  m_tracker;
-    CharacterType m_playerType   = CharacterType::Warrior;
-    QString       m_playerName   = "Player";
-
-    int m_bonusHp       = 0;
-    int m_bonusAttack   = 0;
-    int m_bonusSpPerAtk = 0;
-
     void applyPlayerBonuses();
+
+    GameState m_state = GameState::MainMenu;
+    Difficulty m_difficulty = Difficulty::Normal;
+
+    Character* m_player = nullptr;
+
+    CharacterType m_playerType = CharacterType::Warrior;
+    QString m_playerName = "Player";
+
+    int m_bonusHp = 0;
+    int m_bonusAttack = 0;
+    int m_bonusSpPerAtk = 0;
 };
+
 Q_DECLARE_METATYPE(Difficulty)

@@ -11,13 +11,18 @@
 #include <QKeyEvent>
 #include <QSet>
 #include <QList>
+#include <QHash>
 #include <QPixmap>
 
 #include "character.h"
+#include "enemy.h"
+#include "worldcombatmanager.h"
 #include "goldhudwidget.h"
+#include "healthbarwidget.h"
 #include "playercontroller.h"
 #include "overworldwidget.h"   // Direction, walkRow(), idleCol()
 
+class QLabel;
 class AudioManager;
 class PauseOverlayWidget;
 
@@ -74,9 +79,12 @@ public:
 
     CharacterType enemyType() const { return m_type; }
     QString enemyName() const { return m_name; }
+    QRectF hitBox() const;
 
     void patrol(const QRectF& worldBounds);
     void updateAnimation();
+    void chasePlayer(const QRectF& playerBounds, const QRectF& worldBounds);
+
 
 private:
     CharacterType m_type;
@@ -105,6 +113,7 @@ public:
     void deactivate();
     void setGold(int gold);
     void setPlayerCharacterType(CharacterType type);
+    void setPlayerCharacter(Character* player);
 
 signals:
     void battleTriggered(CharacterType enemyType, const QString& enemyName);
@@ -147,6 +156,8 @@ private:
     void buildScene();
     void placePlayer();
     void spawnEnemies();
+    void clearEnemies();
+
     void movePlayer();
     void patrolEnemies();
     void checkCollisions();
@@ -154,7 +165,26 @@ private:
     void togglePause();
     void loadPlayerSheet(CharacterType type);
 
+    void handleClassAttack();
+    void checkAttackCollisions();
+
+    void buildPlayerHud();
+    void updatePlayerHud();
+    void positionPlayerHud();
+
+
     AudioManager* m_audio = nullptr;
     PauseOverlayWidget* m_pauseOverlay = nullptr;
     bool m_paused = false;
+
+    QWidget* m_playerHud = nullptr;
+    QLabel* m_healthLabel = nullptr;
+    QLabel* m_specialLabel = nullptr;
+    HealthBarWidget* m_healthBar = nullptr;
+    HealthBarWidget* m_specialBar = nullptr;
+
+    WorldCombatManager m_combat;
+    QHash<EnemySprite*, Enemy*> m_enemyLogic;
+
+    Direction m_facing = Direction::Down;
 };

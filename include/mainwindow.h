@@ -1,8 +1,6 @@
 #pragma once
-
 #include <QMainWindow>
 #include <QStackedWidget>
-
 #include "gameengine.h"
 #include "audiomanager.h"
 #include "playerprofile.h"
@@ -11,9 +9,6 @@
 
 class StartScreenWidget;
 class CharacterSelectWidget;
-class BattleWidget;
-class GameOverWidget;
-class ScoreboardWidget;
 class OverworldWidget;
 class DungeonWidget;
 class HouseWidget;
@@ -39,7 +34,6 @@ private slots:
     void onPvpBackToMenu();
     void onLoadRequested();
 
-
     // ── Slot screen ───────────────────────────────────────────────────────────
     void onNewGameInSlot(int slotIndex);
     void onLoadSlot(int slotIndex);
@@ -48,7 +42,6 @@ private slots:
     // ── Exploration ───────────────────────────────────────────────────────────
     void onDungeonEntered();
     void onExitedDungeon();
-    void onBattleTriggered(CharacterType enemyType, const QString& enemyName);
     void onBackToMenu();
     void onHouseEntered();
     void onHouseExited();
@@ -57,21 +50,16 @@ private slots:
     void onBuyItemRequested(ItemType type, int cost);
 
     // ── Profile events ────────────────────────────────────────────────────────
-    void onGoldEarned(int amount);
-    void onSaveRequested();       // from overworld pause SAVE button
-    void onReturnToOverworld();   // from game over EXPLORE MORE
-
-    void onBattleItemChosen(ItemType type);
+    void onSaveRequested();
 
 private:
     void buildUI();
     void buildMenuBar();
     void updateGoldHud();
-
     // ── Core ──────────────────────────────────────────────────────────────────
-    GameEngine*     m_engine          = nullptr;
-    AudioManager*   m_audio           = nullptr;
-    QStackedWidget* m_stack           = nullptr;
+    GameEngine*     m_engine      = nullptr;
+    AudioManager*   m_audio       = nullptr;
+    QStackedWidget* m_stack       = nullptr;
     PlayerProfile   m_profile;
     int             m_currentSlot     = -1;     // active save slot (-1 = none)
     bool            m_playerHasChosen = false;
@@ -88,9 +76,6 @@ private:
     DungeonWidget*         m_dungeon      = nullptr;
     HouseWidget*           m_house        = nullptr;
     ShopWidget*            m_shop         = nullptr;
-    BattleWidget*          m_battleWidget = nullptr;
-    GameOverWidget*        m_gameOver     = nullptr;
-    ScoreboardWidget*      m_scoreboard   = nullptr;
     PvpArenaWidget*        m_pvpArena     = nullptr;
     PvpCharacterSelectWidget* m_pvpCharSelect = nullptr;
 };

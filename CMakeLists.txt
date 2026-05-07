@@ -5,56 +5,45 @@ find_package(Qt6 REQUIRED COMPONENTS Core Widgets Multimedia)
 qt_standard_project_setup()
 
 qt_add_executable(CS2-Battle-Arena
-    WIN32 MACOSX_BUNDLE
+        WIN32 MACOSX_BUNDLE
 
-    # ── Entry point ────────────────────────────
-    src/main.cpp
+        # ── Entry point ────────────────────────────
+        src/main.cpp
 
-    # ── Pure C++ logic (no Qt) ─────────────────
-    include/character.h         src/character.cpp
-    include/warrior.h           src/warrior.cpp
-    include/mage.h              src/mage.cpp
-    include/archer.h            src/archer.cpp
-    include/battleresult.h
-    include/scoretracker.h      src/scoretracker.cpp
-    include/playerprofile.h     src/playerprofile.cpp
-    
-    # ── Game engine (Qt Core) ──────────────────
-    include/gameengine.h        src/gameengine.cpp
-    include/spritecache.h       src/spritecache.cpp
-    include/playercontroller.h  src/playercontroller.cpp
+        include/character.h         src/character.cpp
+        include/warrior.h           src/warrior.cpp
+        include/mage.h              src/mage.cpp
+        include/archer.h            src/archer.cpp
 
-    # ── Main window shell ──────────────────────
-    include/mainwindow.h        src/mainwindow.cpp
-    src/mainwindow.ui
+        include/playerprofile.h     src/playerprofile.cpp
+        include/enemy.h             src/enemy.cpp
+        include/projectile.h        src/projectile.cpp
+        include/worldcombatmanager.h src/worldcombatmanager.cpp
 
-    # ── Screens ────────────────────────────────
-    include/startscreenwidget.h         src/startscreenwidget.cpp
-    include/characterselectiondialog.h  src/characterselectiondialog.cpp
-    src/characterselectiondialog.ui
-    include/gameoverwidget.h            src/gameoverwidget.cpp
-    include/scoreboardwidget.h          src/scoreboardwidget.cpp
-    include/saveslotwidget.h            src/saveslotwidget.cpp
-    include/goldhudwidget.h             src/goldhudwidget.cpp
-    include/pvpcharacterselectwidget.h  src/pvpcharacterselectwidget.cpp 
-    # ── Battle scene widgets ───────────────────
-    include/battlewidget.h      src/battlewidget.cpp
-    include/battlemenuwidget.h  src/battlemenuwidget.cpp
-    include/battlelogwidget.h   src/battlelogwidget.cpp
-    include/spritewidget.h      src/spritewidget.cpp
-    include/healthbarwidget.h   src/healthbarwidget.cpp
-    include/pauseoverlaywidget.h src/pauseoverlaywidget.cpp
-    include/roundoverwidget.h   src/roundoverwidget.cpp
-    include/audiomanager.h      src/audiomanager.cpp
-    include/itemmenuwidget.h    src/itemmenuwidget.cpp
+        include/gameengine.h        src/gameengine.cpp
+        include/spritecache.h       src/spritecache.cpp
+        include/playercontroller.h  src/playercontroller.cpp
 
-    # ── World widgets ───────────────────
-    include/overworldwidget.h  src/overworldwidget.cpp
-    include/dungeonwidget.h    src/dungeonwidget.cpp
-    include/housewidget.h      src/housewidget.cpp
-    include/shopwidget.h       src/shopwidget.cpp
-    include/pvparenawidget.h   src/pvparenawidget.cpp   
-    src/shopwidget.ui
+        include/mainwindow.h        src/mainwindow.cpp
+        src/mainwindow.ui
+
+        include/startscreenwidget.h         src/startscreenwidget.cpp
+        include/characterselectiondialog.h  src/characterselectiondialog.cpp
+        src/characterselectiondialog.ui
+
+        include/saveslotwidget.h            src/saveslotwidget.cpp
+        include/goldhudwidget.h             src/goldhudwidget.cpp
+        include/healthbarwidget.h           src/healthbarwidget.cpp
+        include/pauseoverlaywidget.h        src/pauseoverlaywidget.cpp
+        include/audiomanager.h              src/audiomanager.cpp
+
+        include/overworldwidget.h  src/overworldwidget.cpp
+        include/dungeonwidget.h    src/dungeonwidget.cpp
+        include/housewidget.h      src/housewidget.cpp
+        include/shopwidget.h       src/shopwidget.cpp
+        src/shopwidget.ui
+        include/pvpcharacterselectwidget.h  src/pvpcharacterselectwidget.cpp
+        include/pvparenawidget.h   src/pvparenawidget.cpp
 )
 
 # Tell the compiler where your headers live
@@ -74,12 +63,14 @@ qt_add_resources(CS2-Battle-Arena "assets"
         resources/sprites/archer_front.png
         resources/sprites/archer_back.png
         resources/sprites/player.png
+        resources/sprites/arrow.png
+        resources/sprites/fireball.png
         resources/sprites/grass.png
         resources/sprites/dirt1.png
         resources/sprites/dirt2.png
         resources/sprites/archer_movement_8dir_6frames.png
-        resources/sprites/mage_movement_8dir_6frames.png 
-        resources/sprites/warrior_movement_8dir_6frames.png 
+        resources/sprites/mage_movement_8dir_6frames.png
+        resources/sprites/warrior_movement_8dir_6frames.png
         resources/backgrounds/battle_bg.png
         resources/backgrounds/pvp_arena.png
         resources/music/battle.ogg
@@ -104,8 +95,8 @@ target_link_libraries(CS2-Battle-Arena
 
 include(GNUInstallDirs)
 install(TARGETS CS2-Battle-Arena
-    BUNDLE  DESTINATION .
-    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
-    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+        BUNDLE  DESTINATION .
+        RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+        LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
 )
 
