@@ -295,6 +295,7 @@ void OverworldWidget::buildScene()
         entranceX, entranceY, entranceW, 16,
         Qt::NoPen, Qt::NoBrush);
     m_houseEntranceZone->setZValue(1);
+
     // ── Shop ────────────────────────────────────────────────────────────────
     const qreal SHOP_X = 600;
     const qreal SHOP_Y = 165;
@@ -329,6 +330,7 @@ void OverworldWidget::buildScene()
         Qt::NoBrush
         );
     m_shopZone->setZValue(1);
+
     // ── Trees ────────────────────────────────────────────────────────────────
     QPixmap treeRoundPx(":/sprites/tree_round.png");
     QPixmap treePinePx (":/sprites/tree_pine.png");
@@ -405,6 +407,25 @@ void OverworldWidget::buildScene()
     skull->setDefaultTextColor(QColor("#ef5350"));
     skull->setPos(dx + 2, dy + dh + 4);
     skull->setZValue(3);
+
+    // ── Level 1 entrance (top-right corner) ──────────────────────────────────
+    const qreal l1w = 80, l1h = 56;
+    const qreal l1x = WORLD_W - l1w - 6;
+    const qreal l1y = 6;
+
+    // green border around the entrance
+    m_scene->addRect(l1x - 10, l1y - 6, l1w + 20, l1h + 10,
+                     Qt::NoPen, QBrush(QColor("#1a3a1a")))->setZValue(1);
+
+    // the zone that triggers level 1 entry
+    m_level1Zone = m_scene->addRect(l1x, l1y, l1w, l1h,
+                                    Qt::NoPen, QBrush(QColor("#00e676")));
+    m_level1Zone->setZValue(2);
+
+    auto *l1label = m_scene->addText("LEVEL 1", QFont("Arial", 8, QFont::Bold));
+    l1label->setDefaultTextColor(QColor("#a5d6a7"));
+    l1label->setPos(l1x + 6, l1y + l1h + 4);
+    l1label->setZValue(3);
 
     // --- controls hint at the bottom ---
     auto *hint = m_scene->addText(
@@ -483,7 +504,6 @@ void OverworldWidget::checkTriggers()
         return;
     }
 
-
     // ── House entrance → enter house screen ──────────────────────────────────
     // Only trigger when the player is pressing up/W — stops accidental entry
     // when the collider pushes them into the zone from the side.
@@ -496,12 +516,20 @@ void OverworldWidget::checkTriggers()
             return;
         }
     }
-   //--shop------------------------------------------------------------------ 
+
+    //--shop------------------------------------------------------------------
     if (m_shopZone && m_player->collidesWithItem(m_shopZone)) {
-    deactivate();
-    emit shopEntered();
-    return;
-}
+        deactivate();
+        emit shopEntered();
+        return;
+    }
+
+    // ── Level 1 entrance ─────────────────────────────────────────────────────
+    if (m_level1Zone && m_player->collidesWithItem(m_level1Zone)) {
+        deactivate();
+        emit level1Entered();
+        return;
+    }
 }
 
 

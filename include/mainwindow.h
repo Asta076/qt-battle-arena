@@ -16,6 +16,7 @@ class OverworldWidget;
 class DungeonWidget;
 class HouseWidget;
 class ShopWidget;
+class Level1Widget;          
 
 class MainWindow : public QMainWindow {
     Q_OBJECT
@@ -40,6 +41,8 @@ private slots:
     // ── Exploration ───────────────────────────────────────────────────────────
     void onDungeonEntered();
     void onExitedDungeon();
+    void onLevel1Entered();          // ← ADD
+    void onExitedLevel1();           // ← ADD
     void onBattleTriggered(CharacterType enemyType, const QString& enemyName);
     void onBackToMenu();
     void onHouseEntered();
@@ -50,23 +53,24 @@ private slots:
 
     // ── Profile events ────────────────────────────────────────────────────────
     void onGoldEarned(int amount);
-    void onSaveRequested();       // from overworld pause SAVE button
-    void onReturnToOverworld();   // from game over EXPLORE MORE
+    void onSaveRequested();
+    void onReturnToOverworld();
 
-    //
     void onBattleItemChosen(ItemType type);
+
 private:
     void buildUI();
     void buildMenuBar();
     void updateGoldHud();
+
     // ── Core ──────────────────────────────────────────────────────────────────
     GameEngine*     m_engine          = nullptr;
     AudioManager*   m_audio           = nullptr;
     QStackedWidget* m_stack           = nullptr;
     PlayerProfile   m_profile;
-    int             m_currentSlot     = -1;     // active save slot (-1 = none)
+    int             m_currentSlot     = -1;
     bool            m_playerHasChosen = false;
-    bool            m_hasPendingBattle= false;  // enemy waiting after charSelect
+    bool            m_hasPendingBattle= false;
 
     CharacterType   m_pendingEnemyType = CharacterType::Warrior;
     QString         m_pendingEnemyName;
@@ -77,6 +81,7 @@ private:
     CharacterSelectWidget* m_charSelect   = nullptr;
     OverworldWidget*       m_overworld    = nullptr;
     DungeonWidget*         m_dungeon      = nullptr;
+    Level1Widget*          m_level1       = nullptr;   // ← ADD
     HouseWidget*           m_house        = nullptr;
     ShopWidget*            m_shop         = nullptr;
     BattleWidget*          m_battleWidget = nullptr;

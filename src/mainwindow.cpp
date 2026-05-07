@@ -9,6 +9,7 @@
 #include "dungeonwidget.h"
 #include "shopwidget.h"
 #include "housewidget.h"
+#include "level1widget.h"      // ← NEW
 #include "audiomanager.h"
 #include <QMenuBar>
 #include <QAction>
@@ -51,6 +52,7 @@ void MainWindow::buildUI()
     m_charSelect   = new CharacterSelectWidget(m_engine, this);
     m_overworld    = new OverworldWidget(m_audio, this);
     m_dungeon      = new DungeonWidget(m_audio, this);
+    m_level1       = new Level1Widget(m_audio, this);   // ← NEW
     m_house        = new HouseWidget(m_audio, this);
     m_shop         = new ShopWidget(this);
     m_battleWidget = new BattleWidget(m_engine, m_audio, &m_profile, this);
@@ -62,6 +64,7 @@ void MainWindow::buildUI()
     m_stack->addWidget(m_charSelect);
     m_stack->addWidget(m_overworld);
     m_stack->addWidget(m_dungeon);
+    m_stack->addWidget(m_level1);       // ← NEW
     m_stack->addWidget(m_house);
     m_stack->addWidget(m_shop);
     m_stack->addWidget(m_battleWidget);
@@ -88,6 +91,8 @@ void MainWindow::buildUI()
     // ── Overworld ────────────────────────────────────────────────────────────
     connect(m_overworld, &OverworldWidget::dungeonEntered,
             this, &MainWindow::onDungeonEntered);
+    connect(m_overworld, &OverworldWidget::level1Entered,
+            this, &MainWindow::onLevel1Entered);          // ← NEW
     connect(m_overworld, &OverworldWidget::backToMenu,
             this, &MainWindow::onBackToMenu);
     connect(m_overworld, &OverworldWidget::saveRequested,
@@ -108,6 +113,14 @@ void MainWindow::buildUI()
             this, &MainWindow::onExitedDungeon);
     connect(m_dungeon, &DungeonWidget::backToMenu,
             this, &MainWindow::onBackToMenu);
+
+    // ── Level 1 ──────────────────────────────────────────────────────────────
+    connect(m_level1, &Level1Widget::battleTriggered,
+            this, &MainWindow::onBattleTriggered);        // ← NEW
+    connect(m_level1, &Level1Widget::exitedLevel,
+            this, &MainWindow::onExitedLevel1);           // ← NEW
+    connect(m_level1, &Level1Widget::backToMenu,
+            this, &MainWindow::onBackToMenu);             // ← NEW
 
     // --Shop---------------------------------------------------------------
     connect(m_overworld, &OverworldWidget::shopEntered,
@@ -288,6 +301,20 @@ void MainWindow::onExitedDungeon()
     if (m_currentSlot >= 0)
         m_profile.saveToFile(SaveSlotWidget::slotPath(m_currentSlot));
 
+    updateGoldHud();
+    m_overworld->activate();
+    m_stack->setCurrentWidget(m_overworld);
+}
+
+void MainWindow::onLevel1Entered()          // ← NEW
+{
+    m_level1->setGold(m_profile.gold);
+    m_level1->activate();
+    m_stack->setCurrentWidget(m_level1);
+}
+
+void MainWindow::onExitedLevel1()           // ← NEW
+{
     updateGoldHud();
     m_overworld->activate();
     m_stack->setCurrentWidget(m_overworld);

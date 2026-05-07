@@ -116,6 +116,7 @@ signals:
     void dungeonEntered();
     void houseEntered();
     void shopEntered();
+    void level1Entered();       // ← NEW: triggers Level 1 screen
     void backToMenu();
     void saveRequested();
 
@@ -130,12 +131,12 @@ private slots:
     void onTick(); // runs every 16ms (roughly 60fps)
 
 private:
-    
+
     PlayerController m_controller;
     // --- setup ---
-    void buildScene();       // creates all the tiles, trees, buildings etc.
+    void buildScene();        // creates all the tiles, trees, buildings etc.
     void buildPauseOverlay(); // creates the pause menu widget
-    void placePlayer();      // puts player in the center of the map
+    void placePlayer();       // puts player in the center of the map
 
     // --- game loop ---
     void checkTriggers();    // checks if player walked into a zone
@@ -156,6 +157,7 @@ private:
     QGraphicsRectItem *m_houseCollider     = nullptr;
     QGraphicsRectItem *m_shopZone          = nullptr;
     QGraphicsRectItem *m_houseEntranceZone = nullptr;
+    QGraphicsRectItem *m_level1Zone        = nullptr;   // ← NEW: Level 1 entrance zone
     GoldHudWidget     *m_goldHud           = nullptr;
 
     // --- game loop stuff ---
@@ -166,7 +168,7 @@ private:
     SpriteSheet m_sheet;
 
     // --- other ---
-    AudioManager *m_audio        = nullptr;
-    PauseOverlayWidget* m_pauseOverlay = nullptr;
-    bool          m_paused       = false;
+    AudioManager       *m_audio        = nullptr;
+    PauseOverlayWidget *m_pauseOverlay = nullptr;
+    bool                m_paused       = false;
 };

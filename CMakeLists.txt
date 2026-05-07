@@ -36,8 +36,6 @@ qt_add_executable(CS2-Battle-Arena
     include/scoreboardwidget.h          src/scoreboardwidget.cpp
     include/saveslotwidget.h            src/saveslotwidget.cpp
     include/goldhudwidget.h             src/goldhudwidget.cpp
-    include/level1widget.h    src/level1widget.cpp
-    src/level1widget.ui
     # ── Battle scene widgets ───────────────────
     include/battlewidget.h      src/battlewidget.cpp
     include/battlemenuwidget.h  src/battlemenuwidget.cpp
@@ -52,6 +50,8 @@ qt_add_executable(CS2-Battle-Arena
     # ── World widgets ───────────────────
     include/overworldwidget.h  src/overworldwidget.cpp
     include/dungeonwidget.h    src/dungeonwidget.cpp
+    include/level1widget.h     src/level1widget.cpp
+    src/level1widget.ui
     include/housewidget.h      src/housewidget.cpp
     include/shopwidget.h       src/shopwidget.cpp
     src/shopwidget.ui
@@ -104,4 +104,3 @@ install(TARGETS CS2-Battle-Arena
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
 )
-
