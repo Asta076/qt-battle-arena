@@ -228,6 +228,10 @@ void MainWindow::onLoadSlot(int slotIndex)
         m_profile.upgrades.bonusAttack,
         m_profile.upgrades.bonusSpPerAtk);
 
+    CharacterType loadedType = static_cast<CharacterType>(m_profile.characterType);
+    m_overworld->setPlayerCharacterType(loadedType);
+    m_dungeon->setPlayerCharacterType(loadedType);
+
     updateGoldHud();
     m_overworld->activate();
     m_stack->setCurrentWidget(m_overworld);
@@ -264,6 +268,10 @@ void MainWindow::onStateChanged(GameState newState)
             // Save identity to profile immediately
             m_profile.characterName = m_engine->getPlayerName();
             m_profile.characterType = static_cast<int>(m_engine->getPlayerType());
+
+            CharacterType chosenType = m_engine->getPlayerType();
+            m_overworld->setPlayerCharacterType(chosenType);
+            m_dungeon->setPlayerCharacterType(chosenType);
 
             if (m_hasPendingBattle) {
                 // Was sent to charSelect because of dungeon collision

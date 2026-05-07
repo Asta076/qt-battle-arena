@@ -44,6 +44,7 @@ public:
     static constexpr qreal H = 96.0;
 
     void updateAnimation(bool isMoving, Direction facingDir);
+    void refreshFrame();
 
 private:
     void setWalkAnim(Direction dir);
@@ -103,6 +104,7 @@ public:
     void activate();
     void deactivate();
     void setGold(int gold);
+    void setPlayerCharacterType(CharacterType type);
 
 signals:
     void battleTriggered(CharacterType enemyType, const QString& enemyName);
@@ -140,6 +142,7 @@ private:
     static constexpr int SPEED = 3;
 
     DungeonSpriteSheet m_sheet;
+    CharacterType m_playerType = CharacterType::Archer;
 
     void buildScene();
     void placePlayer();
@@ -149,6 +152,7 @@ private:
     void checkCollisions();
     void fitView();
     void togglePause();
+    void loadPlayerSheet(CharacterType type);
 
     AudioManager* m_audio = nullptr;
     PauseOverlayWidget* m_pauseOverlay = nullptr;

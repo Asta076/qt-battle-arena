@@ -17,6 +17,20 @@
 //  DungeonPlayerSprite — same pattern as OverworldWidget's PlayerSprite
 // ═════════════════════════════════════════════════════════════════════════════
 
+static QString movementSheetFor(CharacterType type)
+{
+    switch (type) {
+    case CharacterType::Warrior:
+        return ":/sprites/warrior_movement_8dir_6frames.png";
+    case CharacterType::Mage:
+        return ":/sprites/mage_movement_8dir_6frames.png";
+    case CharacterType::Archer:
+        return ":/sprites/archer_movement_8dir_6frames.png";
+    }
+
+    return ":/sprites/archer_movement_8dir_6frames.png";
+}
+
 DungeonPlayerSprite::DungeonPlayerSprite(const DungeonSpriteSheet &sheet, 
                                          QGraphicsItem *parent)
     : QGraphicsPixmapItem(parent)
@@ -87,6 +101,7 @@ void DungeonPlayerSprite::applyFrame()
 
 void DungeonPlayerSprite::updateAnimation(bool isMoving, Direction facingDir)
 {
+
     if (isMoving) {
         setWalkAnim(facingDir);
         ++m_tickAccum;
@@ -98,6 +113,10 @@ void DungeonPlayerSprite::updateAnimation(bool isMoving, Direction facingDir)
     } else {
         if (!m_isIdle) setIdleFrame(m_facing);
     }
+}
+void DungeonPlayerSprite::refreshFrame()
+{
+    applyFrame();
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -200,7 +219,7 @@ DungeonWidget::DungeonWidget(AudioManager *audio, QWidget *parent)
     , m_audio(audio)
 {
     // Load player sprite sheet (reuse same one as overworld)
-    m_sheet.pixmap = SpriteCache::instance().get(":/sprites/player.png");
+    loadPlayerSheet(m_playerType);
     
     auto *layout = new QVBoxLayout(this);
     layout->setContentsMargins(0, 0, 0, 0);
@@ -254,6 +273,25 @@ void DungeonWidget::deactivate()
 {
     m_ticker.stop();
     m_heldKeys.clear();
+}
+void DungeonWidget::loadPlayerSheet(CharacterType type)
+{
+    m_sheet.pixmap = SpriteCache::instance().get(movementSheetFor(type));
+
+    // Fallback just in case the new file path is wrong.
+    if (m_sheet.pixmap.isNull()) {
+        m_sheet.pixmap = SpriteCache::instance().get(":/sprites/player.png");
+    }
+}
+
+void DungeonWidget::setPlayerCharacterType(CharacterType type)
+{
+    m_playerType = type;
+    loadPlayerSheet(type);
+
+    if (m_player) {
+        m_player->refreshFrame();
+    }
 }
 
 void DungeonWidget::buildScene() {

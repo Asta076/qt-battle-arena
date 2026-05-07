@@ -26,6 +26,20 @@
 //  PlayerSprite  — constructor
 // ============================================================
 
+static QString movementSheetFor(CharacterType type)
+{
+    switch (type) {
+    case CharacterType::Warrior:
+        return ":/sprites/warrior_movement_8dir_6frames.png";
+    case CharacterType::Mage:
+        return ":/sprites/mage_movement_8dir_6frames.png";
+    case CharacterType::Archer:
+        return ":/sprites/archer_movement_8dir_6frames.png";
+    }
+
+    return ":/sprites/archer_movement_8dir_6frames.png";
+}
+
 PlayerSprite::PlayerSprite(const SpriteSheet &sheet, QGraphicsItem *parent)
     : QGraphicsPixmapItem(parent)
     , m_sheet(sheet) {
@@ -119,6 +133,10 @@ void PlayerSprite::updateAnimation(bool isMoving, Direction facingDir)
         if (!m_isIdle) setIdleFrame(m_facing);
     }
 }
+void PlayerSprite::refreshFrame()
+{
+    applyFrame();
+}
 
 // ============================================================
 //  OverworldWidget  — constructor
@@ -129,7 +147,7 @@ OverworldWidget::OverworldWidget(AudioManager *audio, QWidget *parent)
     , m_audio(audio)
 {
     // load the player sprite sheet from resources
-    m_sheet.pixmap = SpriteCache::instance().get(":/sprites/player.png");
+    loadPlayerSheet(m_playerType);
 
     // set up layout — no margins so the view fills the whole widget
     auto *layout = new QVBoxLayout(this);
@@ -172,7 +190,25 @@ OverworldWidget::OverworldWidget(AudioManager *audio, QWidget *parent)
     m_goldHud = new GoldHudWidget(this);
     m_goldHud->raise();
 }
+void OverworldWidget::loadPlayerSheet(CharacterType type)
+{
+    m_sheet.pixmap = SpriteCache::instance().get(movementSheetFor(type));
 
+    // Fallback just in case the new file path is wrong.
+    if (m_sheet.pixmap.isNull()) {
+        m_sheet.pixmap = SpriteCache::instance().get(":/sprites/player.png");
+    }
+}
+
+void OverworldWidget::setPlayerCharacterType(CharacterType type)
+{
+    m_playerType = type;
+    loadPlayerSheet(type);
+
+    if (m_player) {
+        m_player->refreshFrame();
+    }
+}
 
 // ============================================================
 //  OverworldWidget  — activate / deactivate

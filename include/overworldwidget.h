@@ -14,7 +14,7 @@
 #include "goldhudwidget.h"
 #include "playercontroller.h"
 #include "direction.h"
-
+#include "character.h"
 // forward declare so we dont have to include the whole header here
 class AudioManager;
 class PauseOverlayWidget;
@@ -74,6 +74,7 @@ public:
 
 
     void updateAnimation(bool isMoving, Direction facingDir);
+    void refreshFrame();
 
 private:
     void setWalkAnim(Direction dir);
@@ -111,6 +112,7 @@ public:
 
     // updates the gold counter in the HUD
     void setGold(int gold);
+    void setPlayerCharacterType(CharacterType type);
 
 signals:
     void dungeonEntered();
@@ -136,6 +138,7 @@ private:
     void buildScene();       // creates all the tiles, trees, buildings etc.
     void buildPauseOverlay(); // creates the pause menu widget
     void placePlayer();      // puts player in the center of the map
+    void loadPlayerSheet(CharacterType type);
 
     // --- game loop ---
     void checkTriggers();    // checks if player walked into a zone
@@ -164,6 +167,7 @@ private:
 
     // --- assets ---
     SpriteSheet m_sheet;
+    CharacterType m_playerType = CharacterType::Archer;
 
     // --- other ---
     AudioManager *m_audio        = nullptr;
