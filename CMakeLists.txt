@@ -61,6 +61,8 @@ qt_add_resources(CS2-Battle-Arena "assets"
         resources/sprites/archer_front.png
         resources/sprites/archer_back.png
         resources/sprites/player.png
+        resources/sprites/arrow.png
+        resources/sprites/fireball.png
         resources/sprites/grass.png
         resources/sprites/dirt1.png
         resources/sprites/dirt2.png
