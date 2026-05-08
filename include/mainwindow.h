@@ -39,7 +39,6 @@ private slots:
     void onPvpBackToMenu();
     void onLoadRequested();
 
-
     // ── Slot screen ───────────────────────────────────────────────────────────
     void onNewGameInSlot(int slotIndex);
     void onLoadSlot(int slotIndex);
@@ -48,7 +47,6 @@ private slots:
     // ── Exploration ───────────────────────────────────────────────────────────
     void onDungeonEntered();
     void onExitedDungeon();
-    void onBattleTriggered(CharacterType enemyType, const QString& enemyName);
     void onBackToMenu();
     void onHouseEntered();
     void onHouseExited();
@@ -57,10 +55,9 @@ private slots:
     void onBuyItemRequested(ItemType type, int cost);
 
     // ── Profile events ────────────────────────────────────────────────────────
-    void onGoldEarned(int amount);
-    void onSaveRequested();       // from overworld pause SAVE button
-    void onReturnToOverworld();   // from game over EXPLORE MORE
+    void onSaveRequested();
 
+    // ── Old battle item system ────────────────────────────────────────────────
     void onBattleItemChosen(ItemType type);
 
 private:
@@ -73,24 +70,21 @@ private:
     AudioManager*   m_audio           = nullptr;
     QStackedWidget* m_stack           = nullptr;
     PlayerProfile   m_profile;
-    int             m_currentSlot     = -1;     // active save slot (-1 = none)
+    int             m_currentSlot     = -1;
     bool            m_playerHasChosen = false;
-    bool            m_hasPendingBattle= false;  // enemy waiting after charSelect
-
-    CharacterType   m_pendingEnemyType = CharacterType::Warrior;
-    QString         m_pendingEnemyName;
+    bool            m_hasPendingBattle = false;
 
     // ── Screens ───────────────────────────────────────────────────────────────
-    StartScreenWidget*     m_startScreen  = nullptr;
-    SaveSlotWidget*        m_slotScreen   = nullptr;
-    CharacterSelectWidget* m_charSelect   = nullptr;
-    OverworldWidget*       m_overworld    = nullptr;
-    DungeonWidget*         m_dungeon      = nullptr;
-    HouseWidget*           m_house        = nullptr;
-    ShopWidget*            m_shop         = nullptr;
-    BattleWidget*          m_battleWidget = nullptr;
-    GameOverWidget*        m_gameOver     = nullptr;
-    ScoreboardWidget*      m_scoreboard   = nullptr;
-    PvpArenaWidget*        m_pvpArena     = nullptr;
+    StartScreenWidget*        m_startScreen   = nullptr;
+    SaveSlotWidget*           m_slotScreen    = nullptr;
+    CharacterSelectWidget*    m_charSelect    = nullptr;
+    OverworldWidget*          m_overworld     = nullptr;
+    DungeonWidget*            m_dungeon       = nullptr;
+    HouseWidget*              m_house         = nullptr;
+    ShopWidget*               m_shop          = nullptr;
+    BattleWidget*             m_battleWidget  = nullptr;
+    GameOverWidget*           m_gameOver      = nullptr;
+    ScoreboardWidget*         m_scoreboard    = nullptr;
+    PvpArenaWidget*           m_pvpArena      = nullptr;
     PvpCharacterSelectWidget* m_pvpCharSelect = nullptr;
 };

@@ -11,13 +11,18 @@
 #include <QKeyEvent>
 #include <QSet>
 #include <QList>
+#include <QHash>
 #include <QPixmap>
 
 #include "character.h"
+#include "enemy.h"
+#include "worldcombatmanager.h"
 #include "goldhudwidget.h"
+#include "healthbarwidget.h"
 #include "playercontroller.h"
-#include "overworldwidget.h"   // Direction, walkRow(), idleCol()
+#include "overworldwidget.h"
 
+class QLabel;
 class AudioManager;
 class PauseOverlayWidget;
 
@@ -69,13 +74,15 @@ public:
     explicit EnemySprite(CharacterType type, const QString& name,
                          QGraphicsItem* parent = nullptr);
 
-    static constexpr qreal W = 28;
-    static constexpr qreal H = 28;
+    static constexpr qreal W = 52;
+    static constexpr qreal H = 52;
 
     CharacterType enemyType() const { return m_type; }
     QString enemyName() const { return m_name; }
 
-    void patrol(const QRectF& worldBounds);
+    QRectF hitBox() const;
+
+    void chasePlayer(const QRectF& playerBounds, const QRectF& worldBounds);
     void updateAnimation();
 
 private:
@@ -85,9 +92,6 @@ private:
     QPixmap m_sprite;
     QGraphicsEllipseItem* m_shadow = nullptr;
     QGraphicsTextItem* m_nameLabel = nullptr;
-
-    qreal m_vx = 0;
-    qreal m_vy = 0;
 
     int m_frameIndex = 0;
     int m_tickAccum = 0;
@@ -104,10 +108,14 @@ public:
     void activate();
     void deactivate();
     void setGold(int gold);
+
+    // Your movement sprite-sheet function
     void setPlayerCharacterType(CharacterType type);
 
+    // Your friend's combat/player function
+    void setPlayerCharacter(Character* player);
+
 signals:
-    void battleTriggered(CharacterType enemyType, const QString& enemyName);
     void exitedDungeon();
     void backToMenu();
 
@@ -147,6 +155,8 @@ private:
     void buildScene();
     void placePlayer();
     void spawnEnemies();
+    void clearEnemies();
+
     void movePlayer();
     void patrolEnemies();
     void checkCollisions();
@@ -154,7 +164,25 @@ private:
     void togglePause();
     void loadPlayerSheet(CharacterType type);
 
+    void handleClassAttack();
+    void checkAttackCollisions();
+
+    void buildPlayerHud();
+    void updatePlayerHud();
+    void positionPlayerHud();
+
     AudioManager* m_audio = nullptr;
     PauseOverlayWidget* m_pauseOverlay = nullptr;
     bool m_paused = false;
+
+    QWidget* m_playerHud = nullptr;
+    QLabel* m_healthLabel = nullptr;
+    QLabel* m_specialLabel = nullptr;
+    HealthBarWidget* m_healthBar = nullptr;
+    HealthBarWidget* m_specialBar = nullptr;
+
+    WorldCombatManager m_combat;
+    QHash<EnemySprite*, Enemy*> m_enemyLogic;
+
+    Direction m_facing = Direction::Down;
 };

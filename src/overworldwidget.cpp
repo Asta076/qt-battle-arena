@@ -379,11 +379,11 @@ void OverworldWidget::buildScene()
         {{60,  60},  false},
         {{150, 50},  true },
         {{680, 55},  true },
-        {{740, 130}, false},
+        {{640, 130}, false},
         {{60,  430}, true },
         {{130, 510}, false},
         {{690, 420}, false},
-        {{750, 300}, true },
+        {{650, 300}, true },
         {{550, 480}, true },
         {{580, 80},  false},
     };
@@ -422,25 +422,56 @@ void OverworldWidget::buildScene()
         treeItem->setZValue(3);
     }
 
-    // --- dungeon entrance at the top ---
-    const qreal dw = 80, dh = 56;
-    const qreal dx = (WORLD_W - dw) / 2.0;
-    const qreal dy = 6;
+    // --- dungeon entrance ---
+    static constexpr int DUNGEON_W = 384;
+    static constexpr int DUNGEON_H = 384;
+    static constexpr int DUNGEON_X = 230;
+    static constexpr int DUNGEON_Y = -175;
 
-    // dark stone border around the entrance
-    m_scene->addRect(
-        dx - 10, dy - 6, dw + 20, dh + 10,
-        Qt::NoPen, QBrush(QColor("#424242"))
-    )->setZValue(1);
+    // Shadow underneath cave image
+    QGraphicsEllipseItem* caveShadow = m_scene->addEllipse(
+        DUNGEON_X + 54,
+        DUNGEON_Y + 125,
+        DUNGEON_W - 140,
+        DUNGEON_H-225,
+        Qt::NoPen,
+        QBrush(QColor(0, 0, 0, 120))
+    );
 
-    // the zone that triggers dungeon entry
-    m_dungeonZone = m_scene->addRect(dx, dy, dw, dh, Qt::NoPen, QBrush(QColor("#1a1a2e")));
-    m_dungeonZone->setZValue(2);
+    caveShadow->setZValue(5);
 
-    auto *skull = m_scene->addText("☠  DUNGEON", QFont("Arial", 8, QFont::Bold));
-    skull->setDefaultTextColor(QColor("#ef5350"));
-    skull->setPos(dx + 2, dy + dh + 4);
-    skull->setZValue(3);
+    // Visible dungeon entrance image
+    QPixmap dungeonPx("resources/sprites/dungeon_entrance.png");
+
+    if (!dungeonPx.isNull()) {
+        QGraphicsPixmapItem* dungeonItem = m_scene->addPixmap(
+            dungeonPx.scaled(
+                DUNGEON_W,
+                DUNGEON_H,
+                Qt::KeepAspectRatio,
+                Qt::FastTransformation
+            )
+        );
+
+        dungeonItem->setPos(DUNGEON_X, DUNGEON_Y);
+        dungeonItem->setZValue(6);
+    } else {
+        qWarning("Could not load :/sprites/dungeon_entrance.png");
+    }
+
+    // Invisible trigger zone.
+    // Keep this because checkTriggers() already uses m_dungeonZone.
+    m_dungeonZone = m_scene->addRect(
+        DUNGEON_X + 28,
+        DUNGEON_Y + 76,
+        DUNGEON_W - 56,
+        DUNGEON_H-225,
+        Qt::NoPen,
+        QBrush(Qt::red)
+    );
+
+    m_dungeonZone->setZValue(20);
+    m_dungeonZone->setVisible(false);
 
     // --- controls hint at the bottom ---
     auto *hint = m_scene->addText(

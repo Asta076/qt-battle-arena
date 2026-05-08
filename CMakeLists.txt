@@ -10,89 +10,102 @@ qt_add_executable(CS2-Battle-Arena
     # ── Entry point ────────────────────────────
     src/main.cpp
 
-    # ── Pure C++ logic (no Qt) ─────────────────
-    include/character.h         src/character.cpp
-    include/warrior.h           src/warrior.cpp
-    include/mage.h              src/mage.cpp
-    include/archer.h            src/archer.cpp
-    include/battleresult.h
-    include/scoretracker.h      src/scoretracker.cpp
-    include/playerprofile.h     src/playerprofile.cpp
-    
-    # ── Game engine (Qt Core) ──────────────────
-    include/gameengine.h        src/gameengine.cpp
-    include/spritecache.h       src/spritecache.cpp
-    include/playercontroller.h  src/playercontroller.cpp
+    # ── Core character logic ───────────────────
+    include/character.h          src/character.cpp
+    include/warrior.h            src/warrior.cpp
+    include/mage.h               src/mage.cpp
+    include/archer.h             src/archer.cpp
+    include/playerprofile.h      src/playerprofile.cpp
+
+    # ── New combat system ──────────────────────
+    include/enemy.h              src/enemy.cpp
+    include/projectile.h         src/projectile.cpp
+    include/worldcombatmanager.h src/worldcombatmanager.cpp
+
+    # ── Game engine / helpers ──────────────────
+    include/gameengine.h         src/gameengine.cpp
+    include/spritecache.h        src/spritecache.cpp
+    include/playercontroller.h   src/playercontroller.cpp
+    include/audiomanager.h       src/audiomanager.cpp
 
     # ── Main window shell ──────────────────────
-    include/mainwindow.h        src/mainwindow.cpp
+    include/mainwindow.h         src/mainwindow.cpp
     src/mainwindow.ui
 
     # ── Screens ────────────────────────────────
-    include/startscreenwidget.h         src/startscreenwidget.cpp
-    include/characterselectiondialog.h  src/characterselectiondialog.cpp
+    include/startscreenwidget.h          src/startscreenwidget.cpp
+    include/characterselectiondialog.h   src/characterselectiondialog.cpp
     src/characterselectiondialog.ui
-    include/gameoverwidget.h            src/gameoverwidget.cpp
-    include/scoreboardwidget.h          src/scoreboardwidget.cpp
-    include/saveslotwidget.h            src/saveslotwidget.cpp
-    include/goldhudwidget.h             src/goldhudwidget.cpp
-    include/pvpcharacterselectwidget.h  src/pvpcharacterselectwidget.cpp 
-    # ── Battle scene widgets ───────────────────
-    include/battlewidget.h      src/battlewidget.cpp
-    include/battlemenuwidget.h  src/battlemenuwidget.cpp
-    include/battlelogwidget.h   src/battlelogwidget.cpp
-    include/spritewidget.h      src/spritewidget.cpp
-    include/healthbarwidget.h   src/healthbarwidget.cpp
-    include/pauseoverlaywidget.h src/pauseoverlaywidget.cpp
-    include/roundoverwidget.h   src/roundoverwidget.cpp
-    include/audiomanager.h      src/audiomanager.cpp
-    include/itemmenuwidget.h    src/itemmenuwidget.cpp
+    include/saveslotwidget.h             src/saveslotwidget.cpp
+    include/pvpcharacterselectwidget.h   src/pvpcharacterselectwidget.cpp
 
-    # ── World widgets ───────────────────
-    include/overworldwidget.h  src/overworldwidget.cpp
-    include/dungeonwidget.h    src/dungeonwidget.cpp
-    include/housewidget.h      src/housewidget.cpp
-    include/shopwidget.h       src/shopwidget.cpp
-    include/pvparenawidget.h   src/pvparenawidget.cpp   
+    # ── Shared widgets ─────────────────────────
+    include/goldhudwidget.h        src/goldhudwidget.cpp
+    include/healthbarwidget.h      src/healthbarwidget.cpp
+    include/pauseoverlaywidget.h   src/pauseoverlaywidget.cpp
+
+    # ── World / PvP widgets ────────────────────
+    include/overworldwidget.h      src/overworldwidget.cpp
+    include/dungeonwidget.h        src/dungeonwidget.cpp
+    include/housewidget.h          src/housewidget.cpp
+    include/shopwidget.h           src/shopwidget.cpp
+    include/pvparenawidget.h       src/pvparenawidget.cpp
     src/shopwidget.ui
 )
 
-# Tell the compiler where your headers live
 target_include_directories(CS2-Battle-Arena PRIVATE include)
 
-# Resources (font, stylesheet, sprites, backgrounds)
 qt_add_resources(CS2-Battle-Arena "assets"
     PREFIX "/"
     BASE resources
     FILES
+        # Fonts / style
         resources/fonts/PressStart2P-Regular.ttf
         resources/styles/game.qss
+
+        # Character front/back sprites
         resources/sprites/warrior_front.png
         resources/sprites/warrior_back.png
         resources/sprites/mage_front.png
         resources/sprites/mage_back.png
         resources/sprites/archer_front.png
         resources/sprites/archer_back.png
+
+        # Movement sprite sheets
+        resources/sprites/archer_movement_8dir_6frames.png
+        resources/sprites/mage_movement_8dir_6frames.png
+        resources/sprites/warrior_movement_8dir_6frames.png
+
+        # Old/fallback player sheet
         resources/sprites/player.png
+
+        # Combat projectiles
+        resources/sprites/arrow.png
+        resources/sprites/fireball.png
+
+        # World sprites
         resources/sprites/grass.png
         resources/sprites/dirt1.png
         resources/sprites/dirt2.png
-        resources/sprites/archer_movement_8dir_6frames.png
-        resources/sprites/mage_movement_8dir_6frames.png 
-        resources/sprites/warrior_movement_8dir_6frames.png 
-        resources/backgrounds/battle_bg.png
-        resources/backgrounds/pvp_arena.png
-        resources/music/battle.ogg
-        resources/music/menu.ogg
-        resources/music/overworld.ogg
-        resources/sfx/hit.wav
-        resources/sfx/faint.wav
-        resources/sfx/special.wav
         resources/sprites/house.png
         resources/sprites/tree_round.png
         resources/sprites/tree_pine.png
         resources/sprites/dirt_wall.png
         resources/sprites/shop.png
+
+        # Backgrounds
+        resources/backgrounds/battle_bg.png
+        resources/backgrounds/pvp_arena.png
+
+        # Music
+        resources/music/battle.ogg
+        resources/music/menu.ogg
+        resources/music/overworld.ogg
+
+        # SFX
+        resources/sfx/hit.wav
+        resources/sfx/faint.wav
+        resources/sfx/special.wav
 )
 
 target_link_libraries(CS2-Battle-Arena
@@ -103,9 +116,9 @@ target_link_libraries(CS2-Battle-Arena
 )
 
 include(GNUInstallDirs)
+
 install(TARGETS CS2-Battle-Arena
     BUNDLE  DESTINATION .
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
 )
-
