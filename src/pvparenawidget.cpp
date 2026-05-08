@@ -397,7 +397,9 @@ void PvpArenaWidget::applyDamage(PvpFighterAnim& target,
         target.hp = 0;
         m_roundOver = true;
         m_winnerText = winnerText;
-        m_projectiles.clear();
+
+        // Do NOT clear projectiles here.
+        // updateCombatHits() may still be looping through m_projectiles.
     }
 }
 
@@ -409,8 +411,9 @@ void PvpArenaWidget::updateCombatHits()
     QRectF p1Rect = fighterRect(m_p1);
     QRectF p2Rect = fighterRect(m_p2);
 
+    // Projectile hits
     for (int i = m_projectiles.size() - 1; i >= 0; --i) {
-        const PvpProjectile& projectile = m_projectiles[i];
+        const PvpProjectile projectile = m_projectiles[i];
 
         QRectF projectileRect(
             projectile.pos.x() - 8.0,
@@ -425,18 +428,31 @@ void PvpArenaWidget::updateCombatHits()
             damage = MAGE_PROJECTILE_DAMAGE;
 
         if (projectile.owner == 1 && projectileRect.intersects(p2Rect)) {
-            applyDamage(m_p2, damage, "PLAYER 1 WINS");
             m_projectiles.removeAt(i);
+            applyDamage(m_p2, damage, "PLAYER 1 WINS");
+
+            if (m_roundOver) {
+                m_projectiles.clear();
+                return;
+            }
+
             continue;
         }
 
         if (projectile.owner == 2 && projectileRect.intersects(p1Rect)) {
-            applyDamage(m_p1, damage, "PLAYER 2 WINS");
             m_projectiles.removeAt(i);
+            applyDamage(m_p1, damage, "PLAYER 2 WINS");
+
+            if (m_roundOver) {
+                m_projectiles.clear();
+                return;
+            }
+
             continue;
         }
     }
 
+    // Warrior melee hits
     if (m_p1.type == CharacterType::Warrior &&
         m_p1.isAttacking &&
         !m_p1.hasHitDuringAttack &&
@@ -445,6 +461,11 @@ void PvpArenaWidget::updateCombatHits()
 
         applyDamage(m_p2, MELEE_DAMAGE, "PLAYER 1 WINS");
         m_p1.hasHitDuringAttack = true;
+
+        if (m_roundOver) {
+            m_projectiles.clear();
+            return;
+        }
     }
 
     if (m_p2.type == CharacterType::Warrior &&
@@ -455,6 +476,11 @@ void PvpArenaWidget::updateCombatHits()
 
         applyDamage(m_p1, MELEE_DAMAGE, "PLAYER 2 WINS");
         m_p2.hasHitDuringAttack = true;
+
+        if (m_roundOver) {
+            m_projectiles.clear();
+            return;
+        }
     }
 }
 
