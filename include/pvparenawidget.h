@@ -24,12 +24,21 @@ enum class PvpDirection {
 };
 
 struct PvpFighterAnim {
-    QPixmap sheet;
+    QPixmap movementSheet;
+    QPixmap attackSheet;
+
     QPointF pos;
 
     PvpDirection facing = PvpDirection::Down;
+
+    bool isMoving = false;
+
     int frameIndex = 0;
     int tickAccum = 0;
+
+    bool isAttacking = false;
+    int attackFrameIndex = 0;
+    int attackTickAccum = 0;
 };
 
 class PvpArenaWidget : public QWidget {
@@ -65,14 +74,17 @@ private:
                                        PvpDirection fallback) const;
 
     void updateFighterAnimation(PvpFighterAnim& fighter, bool isMoving);
+    void startAttack(PvpFighterAnim& fighter);
 
     void drawPlayer(QPainter& painter,
                     const PvpFighterAnim& fighter,
                     const QString& label,
                     const QColor& outlineColor);
 
-    QPixmap cropFrame(const PvpFighterAnim& fighter, bool isMoving) const;
+    QPixmap cropFrame(const PvpFighterAnim& fighter) const;
+
     QString movementSheetFor(CharacterType type) const;
+    QString attackSheetFor(CharacterType type) const;
 
     static constexpr qreal WORLD_W = 960.0;
     static constexpr qreal WORLD_H = 720.0;
@@ -82,8 +94,12 @@ private:
 
     static constexpr int FRAME_W = 68;
     static constexpr int FRAME_H = 68;
+
     static constexpr int WALK_FRAMES = 6;
     static constexpr int TICKS_PER_FRAME = 5;
+
+    static constexpr int ATTACK_FRAMES = 7;
+    static constexpr int ATTACK_TICKS_PER_FRAME = 4;
 
     static constexpr qreal SPEED = 4.0;
 

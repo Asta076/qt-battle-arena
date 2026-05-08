@@ -7,7 +7,7 @@
 #include <QPaintEvent>
 #include <QPen>
 #include <QString>
-#include <QtMath>
+#include <QtGlobal>
 
 PvpArenaWidget::PvpArenaWidget(QWidget* parent)
     : QWidget(parent)
@@ -20,6 +20,7 @@ PvpArenaWidget::PvpArenaWidget(QWidget* parent)
     resetPlayers();
 
     m_ticker.setInterval(16);
+
     connect(&m_ticker, &QTimer::timeout,
             this, &PvpArenaWidget::onTick);
 }
@@ -54,10 +55,27 @@ QString PvpArenaWidget::movementSheetFor(CharacterType type) const
     return ":/sprites/archer_movement_8dir_6frames.png";
 }
 
+QString PvpArenaWidget::attackSheetFor(CharacterType type) const
+{
+    switch (type) {
+    case CharacterType::Warrior:
+        return ":/sprites/warrior_attack_8dir_7frames.png";
+    case CharacterType::Mage:
+        return ":/sprites/mage_attack_8dir_7frames.png";
+    case CharacterType::Archer:
+        return ":/sprites/archer_attack_8dir_7frames.png";
+    }
+
+    return ":/sprites/archer_attack_8dir_7frames.png";
+}
+
 void PvpArenaWidget::setFighters(CharacterType p1Type, CharacterType p2Type)
 {
-    m_p1.sheet.load(movementSheetFor(p1Type));
-    m_p2.sheet.load(movementSheetFor(p2Type));
+    m_p1.movementSheet.load(movementSheetFor(p1Type));
+    m_p1.attackSheet.load(attackSheetFor(p1Type));
+
+    m_p2.movementSheet.load(movementSheetFor(p2Type));
+    m_p2.attackSheet.load(attackSheetFor(p2Type));
 
     update();
 }
@@ -70,11 +88,23 @@ void PvpArenaWidget::resetPlayers()
     m_p1.facing = PvpDirection::Right;
     m_p2.facing = PvpDirection::Left;
 
+    m_p1.isMoving = false;
+    m_p2.isMoving = false;
+
     m_p1.frameIndex = 0;
     m_p2.frameIndex = 0;
 
     m_p1.tickAccum = 0;
     m_p2.tickAccum = 0;
+
+    m_p1.isAttacking = false;
+    m_p2.isAttacking = false;
+
+    m_p1.attackFrameIndex = 0;
+    m_p2.attackFrameIndex = 0;
+
+    m_p1.attackTickAccum = 0;
+    m_p2.attackTickAccum = 0;
 }
 
 QPointF PvpArenaWidget::velocityForPlayer1() const
@@ -115,7 +145,6 @@ QPointF PvpArenaWidget::velocityForPlayer2() const
 
 QPointF PvpArenaWidget::clampToArena(const QPointF& pos) const
 {
-    // These bounds keep players mostly inside the sandy arena area.
     const qreal minX = 170.0;
     const qreal maxX = WORLD_W - 170.0 - PLAYER_W;
     const qreal minY = 210.0;
@@ -124,7 +153,7 @@ QPointF PvpArenaWidget::clampToArena(const QPointF& pos) const
     return QPointF(
         qBound(minX, pos.x(), maxX),
         qBound(minY, pos.y(), maxY)
-        );
+    );
 }
 
 PvpDirection PvpArenaWidget::directionFromVelocity(const QPointF& velocity,
@@ -151,6 +180,25 @@ PvpDirection PvpArenaWidget::directionFromVelocity(const QPointF& velocity,
 
 void PvpArenaWidget::updateFighterAnimation(PvpFighterAnim& fighter, bool isMoving)
 {
+    fighter.isMoving = isMoving;
+
+    if (fighter.isAttacking) {
+        ++fighter.attackTickAccum;
+
+        if (fighter.attackTickAccum >= ATTACK_TICKS_PER_FRAME) {
+            fighter.attackTickAccum = 0;
+            ++fighter.attackFrameIndex;
+
+            if (fighter.attackFrameIndex >= ATTACK_FRAMES) {
+                fighter.isAttacking = false;
+                fighter.attackFrameIndex = 0;
+                fighter.attackTickAccum = 0;
+            }
+        }
+
+        return;
+    }
+
     if (!isMoving) {
         fighter.frameIndex = 0;
         fighter.tickAccum = 0;
@@ -163,6 +211,19 @@ void PvpArenaWidget::updateFighterAnimation(PvpFighterAnim& fighter, bool isMovi
         fighter.tickAccum = 0;
         fighter.frameIndex = (fighter.frameIndex + 1) % WALK_FRAMES;
     }
+}
+
+void PvpArenaWidget::startAttack(PvpFighterAnim& fighter)
+{
+    if (fighter.attackSheet.isNull())
+        return;
+
+    if (fighter.isAttacking)
+        return;
+
+    fighter.isAttacking = true;
+    fighter.attackFrameIndex = 0;
+    fighter.attackTickAccum = 0;
 }
 
 void PvpArenaWidget::onTick()
@@ -185,22 +246,37 @@ void PvpArenaWidget::onTick()
     update();
 }
 
-QPixmap PvpArenaWidget::cropFrame(const PvpFighterAnim& fighter, bool isMoving) const
+QPixmap PvpArenaWidget::cropFrame(const PvpFighterAnim& fighter) const
 {
-    if (fighter.sheet.isNull())
-        return QPixmap();
-
     const int dirIndex = static_cast<int>(fighter.facing);
 
-    int row = 0;
-    int col = dirIndex;
-
-    if (isMoving) {
-        row = dirIndex + 1;
-        col = fighter.frameIndex;
+    if (fighter.isAttacking && !fighter.attackSheet.isNull()) {
+        return fighter.attackSheet.copy(
+            fighter.attackFrameIndex * FRAME_W,
+            dirIndex * FRAME_H,
+            FRAME_W,
+            FRAME_H
+        );
     }
 
-    return fighter.sheet.copy(col * FRAME_W, row * FRAME_H, FRAME_W, FRAME_H);
+    if (fighter.movementSheet.isNull())
+        return QPixmap();
+
+    if (fighter.isMoving) {
+        return fighter.movementSheet.copy(
+            fighter.frameIndex * FRAME_W,
+            (dirIndex + 1) * FRAME_H,
+            FRAME_W,
+            FRAME_H
+        );
+    }
+
+    return fighter.movementSheet.copy(
+        dirIndex * FRAME_W,
+        0,
+        FRAME_W,
+        FRAME_H
+    );
 }
 
 void PvpArenaWidget::paintEvent(QPaintEvent* event)
@@ -225,7 +301,7 @@ void PvpArenaWidget::paintEvent(QPaintEvent* event)
         painter.drawPixmap(
             QRect(0, 0, static_cast<int>(WORLD_W), static_cast<int>(WORLD_H)),
             m_arenaBackground
-            );
+        );
     } else {
         painter.fillRect(QRectF(0, 0, WORLD_W, WORLD_H), QColor("#111827"));
 
@@ -244,15 +320,15 @@ void PvpArenaWidget::paintEvent(QPaintEvent* event)
     painter.fillRect(
         controlsRect.adjusted(0, -6, 0, 6),
         QColor(0, 0, 0, 150)
-        );
+    );
 
     painter.setPen(QColor("#F9FAFB"));
     painter.setFont(QFont("Arial", 14, QFont::Bold));
     painter.drawText(
         controlsRect,
         Qt::AlignCenter,
-        "P1: WASD    |    P2: Arrow Keys    |    ESC: Back"
-        );
+        "P1: WASD + F Attack    |    P2: Arrows + / Attack    |    ESC: Back"
+    );
 }
 
 void PvpArenaWidget::drawPlayer(QPainter& painter,
@@ -266,8 +342,7 @@ void PvpArenaWidget::drawPlayer(QPainter& painter,
     painter.setBrush(QColor(0, 0, 0, 90));
     painter.drawEllipse(QRectF(body.x() + 8, body.y() + PLAYER_H - 12, PLAYER_W - 16, 14));
 
-    const bool isMoving = fighter.tickAccum != 0 || fighter.frameIndex != 0;
-    QPixmap frame = cropFrame(fighter, isMoving);
+    QPixmap frame = cropFrame(fighter);
 
     if (!frame.isNull()) {
         painter.drawPixmap(
@@ -276,8 +351,8 @@ void PvpArenaWidget::drawPlayer(QPainter& painter,
                 body.size().toSize(),
                 Qt::KeepAspectRatio,
                 Qt::FastTransformation
-                )
-            );
+            )
+        );
     } else {
         painter.setBrush(QColor("#E5E7EB"));
         painter.setPen(QPen(outlineColor, 3));
@@ -294,7 +369,7 @@ void PvpArenaWidget::drawPlayer(QPainter& painter,
         QRectF(body.x() - 20, body.y() - 26, body.width() + 40, 22),
         Qt::AlignCenter,
         label
-        );
+    );
 }
 
 void PvpArenaWidget::keyPressEvent(QKeyEvent* event)
@@ -307,6 +382,18 @@ void PvpArenaWidget::keyPressEvent(QKeyEvent* event)
     if (event->key() == Qt::Key_Escape) {
         deactivate();
         emit backToMenu();
+        event->accept();
+        return;
+    }
+
+    if (event->key() == Qt::Key_F) {
+        startAttack(m_p1);
+        event->accept();
+        return;
+    }
+
+    if (event->key() == Qt::Key_Slash) {
+        startAttack(m_p2);
         event->accept();
         return;
     }
