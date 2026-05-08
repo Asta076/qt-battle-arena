@@ -126,6 +126,13 @@ void Level1Widget::setGold(int gold)
 void Level1Widget::buildScene()
 {
      const int TILE = 64;
+    QColor tint;
+    if (m_level.id == 1)
+        tint = QColor(0, 0, 0, 0);
+    else if (m_level.id == 2)
+        tint = QColor(25, 0, 45, 90);
+    else
+        tint = QColor(60, 0, 0, 100);
     QPixmap grassTile = SpriteCache::instance().get(":/sprites/grass.png")
                             .scaled(TILE, TILE, Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
 
@@ -151,6 +158,17 @@ void Level1Widget::buildScene()
             tile->setPos(x, y);
             tile->setZValue(1);
         }
+    if (m_level.id == 2) {
+        auto* fog = m_scene->addRect(0, 0, WORLD_W, WORLD_H,
+                                     Qt::NoPen,
+                                     QBrush(tint));
+        fog->setZValue(4);
+
+        auto* title = m_scene->addText("HAUNTED FOREST", QFont("Arial", 14, QFont::Bold));
+        title->setDefaultTextColor(QColor("#D8B4FF"));
+        title->setPos(250, 24);
+        title->setZValue(12);
+    }
     }
 
     // ── Trees — uses the repo's existing tree sprites ─────────────────────────

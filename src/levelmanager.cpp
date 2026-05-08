@@ -103,8 +103,52 @@ void LevelManager::buildLevels()
 
         .enterPrompt = "► ENTER THE FOREST"
     });
+    // ─────────────────────────────────────────────────────────────────────────
+    //  Level 2 — Haunted Forest
+    // ─────────────────────────────────────────────────────────────────────────
+    m_levels.append({
+        .id               = 2,
+        .name             = "Haunted Forest",
 
+        .bossName         = "Shadow Walker",
+        .bossType         = CharacterType::Archer,
+        .bossHpMultiplier = 2,
+        .bossAttackBonus  = 8,
+        .bossGoldReward   = 250,
 
+        .requiredRuns     = 0,
+        .requiredGold     = 0,
+        .requiredLevelId  = 1,
+
+        .bossIntroLine   = "I've watched every fight since the cave.\n\n"
+                           "You swing like someone trying to survive.\n\n"
+                           "But survival is not the same as victory.",
+
+        .bossDefeatLine  = "So the cave was not luck.\n\n"
+                           "Fine.\n\n"
+                           "The dead forest was only the warning.",
+
+        .bossVictoryLine = "The forest keeps what it catches.\n\n"
+                           "Come back when your fear is useful.",
+
+        .unlockHint      = "Requires: defeat Goblin Cave first.",
+
+        .storyPages = {
+            "The cave falls silent behind you.\n\n"
+            "No cheering. No relief.\n\n"
+            "Only trees moving when there is no wind.",
+
+            "The path bends east into a dead forest.\n\n"
+            "Something has been watching from between the trunks.\n\n"
+            "Something patient.",
+
+            "The goblins were hired.\n\n"
+            "The watcher is not.\n\n"
+            "This time, the forest itself wants an answer."
+        },
+
+        .enterPrompt = "► ENTER THE FOREST"
+    });
     // ─────────────────────────────────────────────────────────────────────────
     //  Level 3 — Frozen Peak
     // ─────────────────────────────────────────────────────────────────────────
