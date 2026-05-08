@@ -8,6 +8,7 @@
 #include <QPen>
 #include <QString>
 #include <QtGlobal>
+#include <QtMath>
 
 PvpArenaWidget::PvpArenaWidget(QWidget* parent)
     : QWidget(parent)
@@ -39,6 +40,7 @@ void PvpArenaWidget::deactivate()
 {
     m_ticker.stop();
     m_heldKeys.clear();
+    m_projectiles.clear();
 }
 
 QString PvpArenaWidget::movementSheetFor(CharacterType type) const
@@ -71,6 +73,9 @@ QString PvpArenaWidget::attackSheetFor(CharacterType type) const
 
 void PvpArenaWidget::setFighters(CharacterType p1Type, CharacterType p2Type)
 {
+    m_p1.type = p1Type;
+    m_p2.type = p2Type;
+
     m_p1.movementSheet.load(movementSheetFor(p1Type));
     m_p1.attackSheet.load(attackSheetFor(p1Type));
 
@@ -105,6 +110,8 @@ void PvpArenaWidget::resetPlayers()
 
     m_p1.attackTickAccum = 0;
     m_p2.attackTickAccum = 0;
+
+    m_projectiles.clear();
 }
 
 QPointF PvpArenaWidget::velocityForPlayer1() const
@@ -213,7 +220,7 @@ void PvpArenaWidget::updateFighterAnimation(PvpFighterAnim& fighter, bool isMovi
     }
 }
 
-void PvpArenaWidget::startAttack(PvpFighterAnim& fighter)
+void PvpArenaWidget::startAttack(PvpFighterAnim& fighter, int owner)
 {
     if (fighter.attackSheet.isNull())
         return;
@@ -224,6 +231,103 @@ void PvpArenaWidget::startAttack(PvpFighterAnim& fighter)
     fighter.isAttacking = true;
     fighter.attackFrameIndex = 0;
     fighter.attackTickAccum = 0;
+
+    if (fighter.type == CharacterType::Archer) {
+        spawnProjectile(fighter, owner);
+    }
+
+    update();
+}
+
+QPointF PvpArenaWidget::directionVector(PvpDirection dir) const
+{
+    switch (dir) {
+    case PvpDirection::Down:
+        return QPointF(0.0, 1.0);
+    case PvpDirection::DownRight:
+        return QPointF(0.7071, 0.7071);
+    case PvpDirection::Right:
+        return QPointF(1.0, 0.0);
+    case PvpDirection::UpRight:
+        return QPointF(0.7071, -0.7071);
+    case PvpDirection::Up:
+        return QPointF(0.0, -1.0);
+    case PvpDirection::UpLeft:
+        return QPointF(-0.7071, -0.7071);
+    case PvpDirection::Left:
+        return QPointF(-1.0, 0.0);
+    case PvpDirection::DownLeft:
+        return QPointF(-0.7071, 0.7071);
+    }
+
+    return QPointF(1.0, 0.0);
+}
+
+void PvpArenaWidget::spawnProjectile(const PvpFighterAnim& fighter, int owner)
+{
+    QPointF dir = directionVector(fighter.facing);
+
+    PvpProjectile projectile;
+    projectile.owner = owner;
+    projectile.lifeTicks = 0;
+
+    projectile.pos = QPointF(
+        fighter.pos.x() + PLAYER_W / 2.0,
+        fighter.pos.y() + PLAYER_H / 2.0
+    ) + dir * 42.0;
+
+    projectile.velocity = dir * PROJECTILE_SPEED;
+
+    m_projectiles.append(projectile);
+}
+
+void PvpArenaWidget::updateProjectiles()
+{
+    for (int i = m_projectiles.size() - 1; i >= 0; --i) {
+        PvpProjectile& projectile = m_projectiles[i];
+
+        projectile.pos += projectile.velocity;
+        projectile.lifeTicks++;
+
+        const bool outOfBounds =
+            projectile.pos.x() < 0.0 ||
+            projectile.pos.x() > WORLD_W ||
+            projectile.pos.y() < 0.0 ||
+            projectile.pos.y() > WORLD_H;
+
+        if (outOfBounds || projectile.lifeTicks > PROJECTILE_MAX_TICKS) {
+            m_projectiles.removeAt(i);
+        }
+    }
+}
+
+void PvpArenaWidget::drawProjectiles(QPainter& painter)
+{
+    painter.save();
+
+    QPen arrowPen(QColor("#FDE68A"), 4);
+    arrowPen.setCapStyle(Qt::RoundCap);
+
+    painter.setPen(arrowPen);
+    painter.setBrush(QColor("#FACC15"));
+
+    for (const PvpProjectile& projectile : m_projectiles) {
+        QPointF dir = projectile.velocity;
+
+        const qreal length = qSqrt(dir.x() * dir.x() + dir.y() * dir.y());
+        if (length <= 0.0)
+            continue;
+
+        dir /= length;
+
+        QPointF tail = projectile.pos - dir * 24.0;
+        QPointF head = projectile.pos;
+
+        painter.drawLine(tail, head);
+        painter.drawEllipse(head, 4.0, 4.0);
+    }
+
+    painter.restore();
 }
 
 void PvpArenaWidget::onTick()
@@ -242,6 +346,8 @@ void PvpArenaWidget::onTick()
 
     updateFighterAnimation(m_p1, p1Moving);
     updateFighterAnimation(m_p2, p2Moving);
+
+    updateProjectiles();
 
     update();
 }
@@ -310,6 +416,8 @@ void PvpArenaWidget::paintEvent(QPaintEvent* event)
         painter.drawRoundedRect(QRectF(80, 80, WORLD_W - 160, WORLD_H - 160), 20, 20);
     }
 
+    drawProjectiles(painter);
+
     drawPlayer(painter, m_p1, "P1", QColor("#3A86FF"));
     drawPlayer(painter, m_p2, "P2", QColor("#FF4D6D"));
 
@@ -327,7 +435,7 @@ void PvpArenaWidget::paintEvent(QPaintEvent* event)
     painter.drawText(
         controlsRect,
         Qt::AlignCenter,
-        "P1: WASD + F Attack    |    P2: Arrows + / Attack    |    ESC: Back"
+        "P1: WASD + F Attack    |    P2: Arrows + / or K Attack    |    ESC: Back"
     );
 }
 
@@ -387,13 +495,13 @@ void PvpArenaWidget::keyPressEvent(QKeyEvent* event)
     }
 
     if (event->key() == Qt::Key_F) {
-        startAttack(m_p1);
+        startAttack(m_p1, 1);
         event->accept();
         return;
     }
 
-    if (event->key() == Qt::Key_Slash) {
-        startAttack(m_p2);
+    if (event->key() == Qt::Key_Slash || event->key() == Qt::Key_K) {
+        startAttack(m_p2, 2);
         event->accept();
         return;
     }

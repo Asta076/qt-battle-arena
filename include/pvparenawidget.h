@@ -1,5 +1,6 @@
 #pragma once
 
+#include <QList>
 #include <QPixmap>
 #include <QPointF>
 #include <QSet>
@@ -24,6 +25,8 @@ enum class PvpDirection {
 };
 
 struct PvpFighterAnim {
+    CharacterType type = CharacterType::Warrior;
+
     QPixmap movementSheet;
     QPixmap attackSheet;
 
@@ -39,6 +42,13 @@ struct PvpFighterAnim {
     bool isAttacking = false;
     int attackFrameIndex = 0;
     int attackTickAccum = 0;
+};
+
+struct PvpProjectile {
+    QPointF pos;
+    QPointF velocity;
+    int owner = 0;
+    int lifeTicks = 0;
 };
 
 class PvpArenaWidget : public QWidget {
@@ -74,7 +84,12 @@ private:
                                        PvpDirection fallback) const;
 
     void updateFighterAnimation(PvpFighterAnim& fighter, bool isMoving);
-    void startAttack(PvpFighterAnim& fighter);
+    void startAttack(PvpFighterAnim& fighter, int owner);
+
+    QPointF directionVector(PvpDirection dir) const;
+    void spawnProjectile(const PvpFighterAnim& fighter, int owner);
+    void updateProjectiles();
+    void drawProjectiles(QPainter& painter);
 
     void drawPlayer(QPainter& painter,
                     const PvpFighterAnim& fighter,
@@ -103,10 +118,15 @@ private:
 
     static constexpr qreal SPEED = 4.0;
 
+    static constexpr qreal PROJECTILE_SPEED = 9.0;
+    static constexpr int PROJECTILE_MAX_TICKS = 90;
+
     QPixmap m_arenaBackground;
 
     PvpFighterAnim m_p1;
     PvpFighterAnim m_p2;
+
+    QList<PvpProjectile> m_projectiles;
 
     QTimer m_ticker;
     QSet<int> m_heldKeys;
