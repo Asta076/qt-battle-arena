@@ -3,7 +3,9 @@
 #include <QList>
 #include <QPixmap>
 #include <QPointF>
+#include <QRectF>
 #include <QSet>
+#include <QString>
 #include <QTimer>
 #include <QWidget>
 
@@ -42,6 +44,9 @@ struct PvpFighterAnim {
     bool isAttacking = false;
     int attackFrameIndex = 0;
     int attackTickAccum = 0;
+
+    int hp = 100;
+    bool hasHitDuringAttack = false;
 };
 
 struct PvpProjectile {
@@ -92,6 +97,11 @@ private:
     void updateProjectiles();
     void drawProjectiles(QPainter& painter);
 
+    QRectF fighterRect(const PvpFighterAnim& fighter) const;
+    QRectF meleeHitBox(const PvpFighterAnim& fighter) const;
+    void updateCombatHits();
+    void applyDamage(PvpFighterAnim& target, int damage, const QString& winnerText);
+
     void drawPlayer(QPainter& painter,
                     const PvpFighterAnim& fighter,
                     const QString& label,
@@ -119,6 +129,11 @@ private:
 
     static constexpr qreal SPEED = 4.0;
 
+    static constexpr int MAX_HP = 100;
+    static constexpr int PROJECTILE_DAMAGE = 12;
+    static constexpr int MAGE_PROJECTILE_DAMAGE = 15;
+    static constexpr int MELEE_DAMAGE = 18;
+
     static constexpr qreal PROJECTILE_SPEED = 9.0;
     static constexpr int PROJECTILE_MAX_TICKS = 90;
 
@@ -128,6 +143,9 @@ private:
     PvpFighterAnim m_p2;
 
     QList<PvpProjectile> m_projectiles;
+
+    bool m_roundOver = false;
+    QString m_winnerText;
 
     QTimer m_ticker;
     QSet<int> m_heldKeys;

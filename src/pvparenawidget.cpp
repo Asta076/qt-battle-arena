@@ -111,6 +111,15 @@ void PvpArenaWidget::resetPlayers()
     m_p1.attackTickAccum = 0;
     m_p2.attackTickAccum = 0;
 
+    m_p1.hp = MAX_HP;
+    m_p2.hp = MAX_HP;
+
+    m_p1.hasHitDuringAttack = false;
+    m_p2.hasHitDuringAttack = false;
+
+    m_roundOver = false;
+    m_winnerText.clear();
+
     m_projectiles.clear();
 }
 
@@ -200,6 +209,7 @@ void PvpArenaWidget::updateFighterAnimation(PvpFighterAnim& fighter, bool isMovi
                 fighter.isAttacking = false;
                 fighter.attackFrameIndex = 0;
                 fighter.attackTickAccum = 0;
+                fighter.hasHitDuringAttack = false;
             }
         }
 
@@ -222,6 +232,9 @@ void PvpArenaWidget::updateFighterAnimation(PvpFighterAnim& fighter, bool isMovi
 
 void PvpArenaWidget::startAttack(PvpFighterAnim& fighter, int owner)
 {
+    if (m_roundOver)
+        return;
+
     if (fighter.attackSheet.isNull())
         return;
 
@@ -231,11 +244,12 @@ void PvpArenaWidget::startAttack(PvpFighterAnim& fighter, int owner)
     fighter.isAttacking = true;
     fighter.attackFrameIndex = 0;
     fighter.attackTickAccum = 0;
+    fighter.hasHitDuringAttack = false;
 
     if (fighter.type == CharacterType::Archer ||
-    fighter.type == CharacterType::Mage) {
-    spawnProjectile(fighter, owner);
-}
+        fighter.type == CharacterType::Mage) {
+        spawnProjectile(fighter, owner);
+    }
 
     update();
 }
@@ -328,11 +342,9 @@ void PvpArenaWidget::drawProjectiles(QPainter& painter)
 
             painter.drawLine(tail, head);
             painter.drawEllipse(head, 4.0, 4.0);
-        }
-        else if (projectile.type == CharacterType::Mage) {
+        } else if (projectile.type == CharacterType::Mage) {
             painter.setPen(QPen(QColor("#FDBA74"), 2));
             painter.setBrush(QColor("#F97316"));
-
             painter.drawEllipse(projectile.pos, 9.0, 9.0);
 
             painter.setBrush(QColor("#FACC15"));
@@ -343,8 +355,116 @@ void PvpArenaWidget::drawProjectiles(QPainter& painter)
     painter.restore();
 }
 
+QRectF PvpArenaWidget::fighterRect(const PvpFighterAnim& fighter) const
+{
+    return QRectF(
+        fighter.pos.x() + 10.0,
+        fighter.pos.y() + 10.0,
+        PLAYER_W - 20.0,
+        PLAYER_H - 14.0
+    );
+}
+
+QRectF PvpArenaWidget::meleeHitBox(const PvpFighterAnim& fighter) const
+{
+    QPointF dir = directionVector(fighter.facing);
+
+    QPointF center(
+        fighter.pos.x() + PLAYER_W / 2.0,
+        fighter.pos.y() + PLAYER_H / 2.0
+    );
+
+    QPointF hitCenter = center + dir * 48.0;
+
+    return QRectF(
+        hitCenter.x() - 28.0,
+        hitCenter.y() - 28.0,
+        56.0,
+        56.0
+    );
+}
+
+void PvpArenaWidget::applyDamage(PvpFighterAnim& target,
+                                 int damage,
+                                 const QString& winnerText)
+{
+    if (m_roundOver)
+        return;
+
+    target.hp -= damage;
+
+    if (target.hp <= 0) {
+        target.hp = 0;
+        m_roundOver = true;
+        m_winnerText = winnerText;
+        m_projectiles.clear();
+    }
+}
+
+void PvpArenaWidget::updateCombatHits()
+{
+    if (m_roundOver)
+        return;
+
+    QRectF p1Rect = fighterRect(m_p1);
+    QRectF p2Rect = fighterRect(m_p2);
+
+    for (int i = m_projectiles.size() - 1; i >= 0; --i) {
+        const PvpProjectile& projectile = m_projectiles[i];
+
+        QRectF projectileRect(
+            projectile.pos.x() - 8.0,
+            projectile.pos.y() - 8.0,
+            16.0,
+            16.0
+        );
+
+        int damage = PROJECTILE_DAMAGE;
+
+        if (projectile.type == CharacterType::Mage)
+            damage = MAGE_PROJECTILE_DAMAGE;
+
+        if (projectile.owner == 1 && projectileRect.intersects(p2Rect)) {
+            applyDamage(m_p2, damage, "PLAYER 1 WINS");
+            m_projectiles.removeAt(i);
+            continue;
+        }
+
+        if (projectile.owner == 2 && projectileRect.intersects(p1Rect)) {
+            applyDamage(m_p1, damage, "PLAYER 2 WINS");
+            m_projectiles.removeAt(i);
+            continue;
+        }
+    }
+
+    if (m_p1.type == CharacterType::Warrior &&
+        m_p1.isAttacking &&
+        !m_p1.hasHitDuringAttack &&
+        m_p1.attackFrameIndex >= 2 &&
+        meleeHitBox(m_p1).intersects(p2Rect)) {
+
+        applyDamage(m_p2, MELEE_DAMAGE, "PLAYER 1 WINS");
+        m_p1.hasHitDuringAttack = true;
+    }
+
+    if (m_p2.type == CharacterType::Warrior &&
+        m_p2.isAttacking &&
+        !m_p2.hasHitDuringAttack &&
+        m_p2.attackFrameIndex >= 2 &&
+        meleeHitBox(m_p2).intersects(p1Rect)) {
+
+        applyDamage(m_p1, MELEE_DAMAGE, "PLAYER 2 WINS");
+        m_p2.hasHitDuringAttack = true;
+    }
+}
+
 void PvpArenaWidget::onTick()
 {
+    if (m_roundOver) {
+        update();
+        return;
+    }
+
     const QPointF p1Velocity = velocityForPlayer1();
     const QPointF p2Velocity = velocityForPlayer2();
 
@@ -361,6 +481,7 @@ void PvpArenaWidget::onTick()
     updateFighterAnimation(m_p2, p2Moving);
 
     updateProjectiles();
+    updateCombatHits();
 
     update();
 }
@@ -448,8 +569,23 @@ void PvpArenaWidget::paintEvent(QPaintEvent* event)
     painter.drawText(
         controlsRect,
         Qt::AlignCenter,
-        "P1: WASD + F Attack    |    P2: Arrows + / or K Attack    |    ESC: Back"
+        "P1: WASD + F Attack    |    P2: Arrows + / or K Attack    |    R: Restart"
     );
+
+    if (m_roundOver) {
+        QRect overlayRect(0, 0, width(), height());
+
+        painter.fillRect(overlayRect, QColor(0, 0, 0, 150));
+
+        painter.setPen(QColor("#FACC15"));
+        painter.setFont(QFont("Arial", 34, QFont::Bold));
+
+        painter.drawText(
+            overlayRect,
+            Qt::AlignCenter,
+            m_winnerText + "\n\nPress R to restart or ESC to leave"
+        );
+    }
 }
 
 void PvpArenaWidget::drawPlayer(QPainter& painter,
@@ -491,6 +627,30 @@ void PvpArenaWidget::drawPlayer(QPainter& painter,
         Qt::AlignCenter,
         label
     );
+
+    QRectF hpBack(
+        body.x() - 4.0,
+        body.y() - 42.0,
+        body.width() + 8.0,
+        8.0
+    );
+
+    qreal hpPercent = static_cast<qreal>(fighter.hp) / MAX_HP;
+    hpPercent = qBound(0.0, hpPercent, 1.0);
+
+    QRectF hpFill = hpBack;
+    hpFill.setWidth(hpBack.width() * hpPercent);
+
+    painter.setPen(Qt::NoPen);
+    painter.setBrush(QColor(30, 30, 30, 210));
+    painter.drawRect(hpBack);
+
+    painter.setBrush(QColor("#22C55E"));
+    painter.drawRect(hpFill);
+
+    painter.setPen(QPen(QColor("#FFFFFF"), 1));
+    painter.setBrush(Qt::NoBrush);
+    painter.drawRect(hpBack);
 }
 
 void PvpArenaWidget::keyPressEvent(QKeyEvent* event)
@@ -503,6 +663,13 @@ void PvpArenaWidget::keyPressEvent(QKeyEvent* event)
     if (event->key() == Qt::Key_Escape) {
         deactivate();
         emit backToMenu();
+        event->accept();
+        return;
+    }
+
+    if (event->key() == Qt::Key_R && m_roundOver) {
+        resetPlayers();
+        update();
         event->accept();
         return;
     }
