@@ -39,10 +39,24 @@ struct DungeonSpriteSheet
     }
 };
 
+struct DungeonAttackSheet
+{
+    QPixmap pixmap;
+
+    static constexpr int FRAME_W = 68;
+    static constexpr int FRAME_H = 68;
+
+    QPixmap frame(int col, int row) const
+    {
+        return pixmap.copy(col * FRAME_W, row * FRAME_H, FRAME_W, FRAME_H);
+    }
+};
+
 class DungeonPlayerSprite : public QGraphicsPixmapItem
 {
 public:
     explicit DungeonPlayerSprite(const DungeonSpriteSheet& sheet,
+                                 const DungeonAttackSheet& attackSheet,
                                  QGraphicsItem* parent = nullptr);
 
     static constexpr qreal W = 96.0;
@@ -51,19 +65,34 @@ public:
     void updateAnimation(bool isMoving, Direction facingDir);
     void refreshFrame();
 
+    void startAttackAnimation(Direction dir);
+    bool isAttacking() const { return m_isAttacking; }
+
 private:
     void setWalkAnim(Direction dir);
     void setIdleFrame(Direction dir);
     void applyFrame();
+    void applyAttackFrame();
 
     const DungeonSpriteSheet& m_sheet;
+    const DungeonAttackSheet& m_attackSheet;
+
     bool m_isIdle = true;
+    bool m_isAttacking = false;
+
     Direction m_facing = Direction::Down;
+
     int m_frameIndex = 0;
     int m_tickAccum = 0;
 
+    int m_attackFrameIndex = 0;
+    int m_attackTickAccum = 0;
+
     static constexpr int TICKS_PER_FRAME = 5;
     static constexpr int WALK_FRAMES = 6;
+
+    static constexpr int ATTACK_TICKS_PER_FRAME = 4;
+    static constexpr int ATTACK_FRAMES = 7;
 
     QGraphicsEllipseItem* m_shadow = nullptr;
 };
@@ -109,10 +138,7 @@ public:
     void deactivate();
     void setGold(int gold);
 
-    // Your movement sprite-sheet function
     void setPlayerCharacterType(CharacterType type);
-
-    // Your friend's combat/player function
     void setPlayerCharacter(Character* player);
 
 signals:
@@ -150,6 +176,8 @@ private:
     static constexpr int SPEED = 3;
 
     DungeonSpriteSheet m_sheet;
+    DungeonAttackSheet m_attackSheet;
+
     CharacterType m_playerType = CharacterType::Archer;
 
     void buildScene();
@@ -162,7 +190,9 @@ private:
     void checkCollisions();
     void fitView();
     void togglePause();
+
     void loadPlayerSheet(CharacterType type);
+    void loadAttackSheet(CharacterType type);
 
     void handleClassAttack();
     void checkAttackCollisions();

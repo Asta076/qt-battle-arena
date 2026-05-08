@@ -20,11 +20,11 @@
 #include "pauseoverlaywidget.h"
 #include "overworldwidget.h"
 
-    // ═════════════════════════════════════════════════════════════════════════════
-    //  Movement sprite sheet helper
-    // ═════════════════════════════════════════════════════════════════════════════
+// ═════════════════════════════════════════════════════════════════════════════
+//  Movement / attack sprite sheet helpers
+// ═════════════════════════════════════════════════════════════════════════════
 
-    static QString movementSheetFor(CharacterType type)
+static QString movementSheetFor(CharacterType type)
 {
     switch (type) {
     case CharacterType::Warrior:
@@ -38,14 +38,30 @@
     return ":/sprites/archer_movement_8dir_6frames.png";
 }
 
+static QString attackSheetFor(CharacterType type)
+{
+    switch (type) {
+    case CharacterType::Warrior:
+        return ":/sprites/warrior_attack_8dir_7frames.png";
+    case CharacterType::Mage:
+        return ":/sprites/mage_attack_8dir_7frames.png";
+    case CharacterType::Archer:
+        return ":/sprites/archer_attack_8dir_7frames.png";
+    }
+
+    return ":/sprites/archer_attack_8dir_7frames.png";
+}
+
 // ═════════════════════════════════════════════════════════════════════════════
 //  DungeonPlayerSprite
 // ═════════════════════════════════════════════════════════════════════════════
 
-DungeonPlayerSprite::DungeonPlayerSprite(const DungeonSpriteSheet &sheet,
-                                         QGraphicsItem *parent)
+DungeonPlayerSprite::DungeonPlayerSprite(const DungeonSpriteSheet& sheet,
+                                         const DungeonAttackSheet& attackSheet,
+                                         QGraphicsItem* parent)
     : QGraphicsPixmapItem(parent)
     , m_sheet(sheet)
+    , m_attackSheet(attackSheet)
 {
     setTransformationMode(Qt::FastTransformation);
     setTransformOriginPoint(W / 2.0, H / 2.0);
@@ -70,10 +86,10 @@ DungeonPlayerSprite::DungeonPlayerSprite(const DungeonSpriteSheet &sheet,
 
 void DungeonPlayerSprite::setIdleFrame(Direction dir)
 {
-    m_isIdle     = true;
-    m_facing     = dir;
+    m_isIdle = true;
+    m_facing = dir;
     m_frameIndex = 0;
-    m_tickAccum  = 0;
+    m_tickAccum = 0;
     applyFrame();
 }
 
@@ -82,10 +98,10 @@ void DungeonPlayerSprite::setWalkAnim(Direction dir)
     if (!m_isIdle && m_facing == dir)
         return;
 
-    m_isIdle     = false;
-    m_facing     = dir;
+    m_isIdle = false;
+    m_facing = dir;
     m_frameIndex = 0;
-    m_tickAccum  = 0;
+    m_tickAccum = 0;
     applyFrame();
 }
 
@@ -103,22 +119,67 @@ void DungeonPlayerSprite::applyFrame()
     }
 
     QPixmap raw = m_sheet.frame(col, row);
+
     setPixmap(raw.scaled(
         static_cast<int>(W),
         static_cast<int>(H),
         Qt::KeepAspectRatio,
         Qt::FastTransformation
-        ));
+    ));
+}
+
+void DungeonPlayerSprite::applyAttackFrame()
+{
+    if (m_attackSheet.pixmap.isNull()) {
+        applyFrame();
+        return;
+    }
+
+    // Attack sheets are 8 rows:
+    // 0 = down, 1 = down-right, 2 = right, 3 = up-right,
+    // 4 = up, 5 = up-left, 6 = left, 7 = down-left.
+    // walkRow() returns directionIndex + 1, so subtract 1.
+    const int row = walkRow(m_facing) - 1;
+    const int col = m_attackFrameIndex;
+
+    QPixmap raw = m_attackSheet.frame(col, row);
+
+    setPixmap(raw.scaled(
+        static_cast<int>(W),
+        static_cast<int>(H),
+        Qt::KeepAspectRatio,
+        Qt::FastTransformation
+    ));
 }
 
 void DungeonPlayerSprite::updateAnimation(bool isMoving, Direction facingDir)
 {
+    if (m_isAttacking) {
+        ++m_attackTickAccum;
+
+        if (m_attackTickAccum >= ATTACK_TICKS_PER_FRAME) {
+            m_attackTickAccum = 0;
+            ++m_attackFrameIndex;
+
+            if (m_attackFrameIndex >= ATTACK_FRAMES) {
+                m_isAttacking = false;
+                m_attackFrameIndex = 0;
+                setIdleFrame(m_facing);
+                return;
+            }
+
+            applyAttackFrame();
+        }
+
+        return;
+    }
+
     if (isMoving) {
         setWalkAnim(facingDir);
         ++m_tickAccum;
 
         if (m_tickAccum >= TICKS_PER_FRAME) {
-            m_tickAccum  = 0;
+            m_tickAccum = 0;
             m_frameIndex = (m_frameIndex + 1) % WALK_FRAMES;
             applyFrame();
         }
@@ -133,15 +194,30 @@ void DungeonPlayerSprite::refreshFrame()
     applyFrame();
 }
 
+void DungeonPlayerSprite::startAttackAnimation(Direction dir)
+{
+    if (m_attackSheet.pixmap.isNull())
+        return;
+
+    m_isAttacking = true;
+    m_isIdle = false;
+    m_facing = dir;
+
+    m_attackFrameIndex = 0;
+    m_attackTickAccum = 0;
+
+    applyAttackFrame();
+}
+
 // ═════════════════════════════════════════════════════════════════════════════
 //  EnemySprite
 // ═════════════════════════════════════════════════════════════════════════════
 
-static QPixmap getEnemySprite(CharacterType t)
+static QPixmap getEnemySprite(CharacterType type)
 {
     QString path;
 
-    switch (t) {
+    switch (type) {
     case CharacterType::Warrior:
         path = ":/sprites/warrior_front.png";
         break;
@@ -157,12 +233,12 @@ static QPixmap getEnemySprite(CharacterType t)
         path,
         static_cast<int>(EnemySprite::W),
         static_cast<int>(EnemySprite::H)
-        );
+    );
 }
 
 EnemySprite::EnemySprite(CharacterType type,
-                         const QString &name,
-                         QGraphicsItem *parent)
+                         const QString& name,
+                         QGraphicsItem* parent)
     : QGraphicsPixmapItem(parent)
     , m_type(type)
     , m_name(name)
@@ -222,13 +298,13 @@ void EnemySprite::chasePlayer(const QRectF& playerBounds, const QRectF& worldBou
         nextPos.x(),
         worldBounds.left(),
         worldBounds.right() - W
-        );
+    );
 
     qreal clampedY = std::clamp(
         nextPos.y(),
         worldBounds.top() + 60,
         worldBounds.bottom() - H
-        );
+    );
 
     setPos(clampedX, clampedY);
 }
@@ -250,13 +326,14 @@ void EnemySprite::updateAnimation()
 //  DungeonWidget
 // ═════════════════════════════════════════════════════════════════════════════
 
-DungeonWidget::DungeonWidget(AudioManager *audio, QWidget *parent)
+DungeonWidget::DungeonWidget(AudioManager* audio, QWidget* parent)
     : QWidget(parent)
     , m_audio(audio)
 {
     loadPlayerSheet(m_playerType);
+    loadAttackSheet(m_playerType);
 
-    auto *layout = new QVBoxLayout(this);
+    auto* layout = new QVBoxLayout(this);
     layout->setContentsMargins(0, 0, 0, 0);
     layout->setSpacing(0);
 
@@ -341,10 +418,17 @@ void DungeonWidget::loadPlayerSheet(CharacterType type)
     }
 }
 
+void DungeonWidget::loadAttackSheet(CharacterType type)
+{
+    m_attackSheet.pixmap = SpriteCache::instance().get(attackSheetFor(type));
+}
+
 void DungeonWidget::setPlayerCharacterType(CharacterType type)
 {
     m_playerType = type;
+
     loadPlayerSheet(type);
+    loadAttackSheet(type);
 
     if (m_player) {
         m_player->refreshFrame();
@@ -367,58 +451,58 @@ void DungeonWidget::buildScene()
     for (int col = 0; col < WORLD_W / tileW; ++col) {
         for (int row = 0; row < WORLD_H / tileH; ++row) {
             m_scene->addRect(
-                       col * tileW + 1,
-                       row * tileH + 1,
-                       tileW - 2,
-                       tileH - 2,
-                       QPen(QColor("#263238"), 1),
-                       QBrush(QColor("#263238"))
-                       )->setZValue(0);
+                col * tileW + 1,
+                row * tileH + 1,
+                tileW - 2,
+                tileH - 2,
+                QPen(QColor("#263238"), 1),
+                QBrush(QColor("#263238"))
+            )->setZValue(0);
         }
     }
 
     const QList<QPointF> pillars = {
-                                    {160, 120}, {400, 120}, {620, 120},
-                                    {160, 340}, {400, 340}, {620, 340},
-                                    {80,  460}, {500, 460},
-                                    };
+        {160, 120}, {400, 120}, {620, 120},
+        {160, 340}, {400, 340}, {620, 340},
+        {80,  460}, {500, 460},
+    };
 
-    for (const QPointF &p : pillars) {
+    for (const QPointF& p : pillars) {
         m_scene->addRect(
-                   p.x(),
-                   p.y(),
-                   32,
-                   48,
-                   QPen(QColor("#37474f"), 2),
-                   QBrush(QColor("#455a64"))
-                   )->setZValue(1);
+            p.x(),
+            p.y(),
+            32,
+            48,
+            QPen(QColor("#37474f"), 2),
+            QBrush(QColor("#455a64"))
+        )->setZValue(1);
     }
 
     const QList<QPointF> torches = {
-                                    {100, 80},  {440, 80},  {720, 80},
-                                    {100, 480}, {440, 480}, {720, 480},
-                                    };
+        {100, 80},  {440, 80},  {720, 80},
+        {100, 480}, {440, 480}, {720, 480},
+    };
 
-    for (const QPointF &t : torches) {
-        auto *glow = m_scene->addEllipse(
+    for (const QPointF& t : torches) {
+        auto* glow = m_scene->addEllipse(
             t.x() - 8,
             t.y() - 8,
             20,
             20,
             Qt::NoPen,
             QBrush(QColor("#ff6f0080"))
-            );
+        );
 
         glow->setZValue(1);
 
         m_scene->addEllipse(
-                   t.x() - 2,
-                   t.y() - 2,
-                   8,
-                   8,
-                   Qt::NoPen,
-                   QBrush(QColor("#ffca28"))
-                   )->setZValue(2);
+            t.x() - 2,
+            t.y() - 2,
+            8,
+            8,
+            Qt::NoPen,
+            QBrush(QColor("#ffca28"))
+        )->setZValue(2);
     }
 
     const qreal ew = 80;
@@ -427,13 +511,13 @@ void DungeonWidget::buildScene()
     const qreal ey = WORLD_H - eh - 6;
 
     m_scene->addRect(
-               ex - 10,
-               ey - 6,
-               ew + 20,
-               eh + 10,
-               Qt::NoPen,
-               QBrush(QColor("#1b5e20"))
-               )->setZValue(1);
+        ex - 10,
+        ey - 6,
+        ew + 20,
+        eh + 10,
+        Qt::NoPen,
+        QBrush(QColor("#1b5e20"))
+    )->setZValue(1);
 
     m_exitZone = m_scene->addRect(
         ex,
@@ -442,25 +526,25 @@ void DungeonWidget::buildScene()
         eh,
         Qt::NoPen,
         QBrush(QColor("#00c853"))
-        );
+    );
 
     m_exitZone->setZValue(2);
 
-    auto *exitLabel = m_scene->addText("EXIT ↑", QFont("Arial", 8, QFont::Bold));
+    auto* exitLabel = m_scene->addText("EXIT ↑", QFont("Arial", 8, QFont::Bold));
     exitLabel->setDefaultTextColor(Qt::white);
     exitLabel->setPos(ex + 12, ey + 18);
     exitLabel->setZValue(3);
 
-    auto *hint = m_scene->addText(
+    auto* hint = m_scene->addText(
         "J = attack    ESC = menu",
         QFont("Arial", 7)
-        );
+    );
 
     hint->setDefaultTextColor(QColor("#ffffff88"));
     hint->setPos(8, 4);
     hint->setZValue(10);
 
-    m_player = new DungeonPlayerSprite(m_sheet);
+    m_player = new DungeonPlayerSprite(m_sheet, m_attackSheet);
     m_scene->addItem(m_player);
     m_player->setZValue(9);
 }
@@ -479,7 +563,7 @@ void DungeonWidget::placePlayer()
     m_player->setPos(
         (WORLD_W - DungeonPlayerSprite::W) / 2.0,
         WORLD_H - DungeonPlayerSprite::H - 90
-        );
+    );
 }
 
 void DungeonWidget::clearEnemies()
@@ -610,7 +694,7 @@ void DungeonWidget::movePlayer()
         DungeonPlayerSprite::H,
         WORLD_W,
         WORLD_H
-        );
+    );
 
     m_player->setPos(nextPos);
 
@@ -682,25 +766,25 @@ void DungeonWidget::patrolEnemies()
                 aNext.x(),
                 worldBounds.left(),
                 worldBounds.right() - EnemySprite::W
-                ));
+            ));
 
             aNext.setY(std::clamp(
                 aNext.y(),
                 worldBounds.top() + 60,
                 worldBounds.bottom() - EnemySprite::H
-                ));
+            ));
 
             bNext.setX(std::clamp(
                 bNext.x(),
                 worldBounds.left(),
                 worldBounds.right() - EnemySprite::W
-                ));
+            ));
 
             bNext.setY(std::clamp(
                 bNext.y(),
                 worldBounds.top() + 60,
                 worldBounds.bottom() - EnemySprite::H
-                ));
+            ));
 
             a->setPos(aNext);
             b->setPos(bNext);
@@ -787,8 +871,12 @@ void DungeonWidget::handleClassAttack()
 
     ActiveAttack* attack = m_combat.createPlayerAttack(playerBounds, m_facing);
 
-    if (attack && m_audio)
-        m_audio->playSfx("/sfx/special.wav");
+    if (attack) {
+        m_player->startAttackAnimation(m_facing);
+
+        if (m_audio)
+            m_audio->playSfx("/sfx/special.wav");
+    }
 }
 
 void DungeonWidget::checkAttackCollisions()
@@ -868,7 +956,7 @@ void DungeonWidget::buildPlayerHud()
         " color: #F0E8D0;"
         " font-size: 8px;"
         "}"
-        );
+    );
 
     auto* root = new QVBoxLayout(m_playerHud);
     root->setContentsMargins(10, 8, 10, 8);
@@ -934,7 +1022,7 @@ void DungeonWidget::positionPlayerHud()
     m_playerHud->move(
         width() - m_playerHud->width() - margin,
         height() - m_playerHud->height() - margin
-        );
+    );
 
     m_playerHud->raise();
 }

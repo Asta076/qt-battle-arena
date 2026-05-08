@@ -76,6 +76,11 @@ qt_add_resources(CS2-Battle-Arena "assets"
         resources/sprites/mage_movement_8dir_6frames.png
         resources/sprites/warrior_movement_8dir_6frames.png
 
+        # attack sprites
+        resources/sprites/warrior_attack_8dir_7frames.png
+        resources/sprites/mage_attack_8dir_7frames.png
+        resources/sprites/archer_attack_8dir_7frames.png
+
         # Old/fallback player sheet
         resources/sprites/player.png
 
@@ -92,6 +97,7 @@ qt_add_resources(CS2-Battle-Arena "assets"
         resources/sprites/tree_pine.png
         resources/sprites/dirt_wall.png
         resources/sprites/shop.png
+        resources/sprites/dungeon_entrance.png
 
         # Backgrounds
         resources/backgrounds/battle_bg.png
