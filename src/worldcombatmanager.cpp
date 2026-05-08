@@ -289,8 +289,8 @@ ActiveAttack* WorldCombatManager::createSwordSwing(const QRectF& playerBounds, D
     if (m_scene) {
         QGraphicsRectItem* item = m_scene->addRect(
             attack->bounds,
-            QPen(QColor("#ffe066")),
-            QBrush(QColor(255, 224, 102, 90))
+            Qt::NoPen,
+            Qt::NoBrush
         );
 
         item->setZValue(10);
