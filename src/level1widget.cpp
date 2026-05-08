@@ -279,26 +279,47 @@ void Level1Widget::placePlayer()
 void Level1Widget::spawnEnemies()
 {
     // Clear previous run's enemies
-    for (EnemySprite* e : m_enemies) {
-        m_scene->removeItem(e);
-        delete e;
-    }
-    m_enemies.clear();
+   for (EnemySprite* e : m_enemies) {
+    m_scene->removeItem(e);
+    delete e;
+}
+m_enemies.clear();
 
-    // Level 1 has two enemies — easier than the dungeon's three
-    struct EInfo { CharacterType type; QString name; QPointF pos; };
-    const QList<EInfo> defs = {
-        { CharacterType::Warrior, "Forest Guard",    {175, 160} },
-        { CharacterType::Archer,  "Woodland Scout",  {575, 230} },
+struct EInfo {
+    CharacterType type;
+    QString name;
+    QPointF pos;
+};
+
+QList<EInfo> defs;
+
+if (m_level.id == 1) {
+    defs = {
+        { CharacterType::Warrior, "Forest Guard",   {175, 160} },
+        { CharacterType::Archer,  "Woodland Scout", {575, 230} },
     };
+}
+else if (m_level.id == 2) {
+    defs = {
+        { CharacterType::Archer, "Forest Stalker", {160, 150} },
+        { CharacterType::Archer, "Shadow Scout",   {560, 210} },
+        { CharacterType::Mage,   "Cursed Root",    {370, 330} },
+    };
+}
+else {
+    defs = {
+        { CharacterType::Mage,   "Crimson Acolyte", {170, 160} },
+        { CharacterType::Warrior,"Blood Guard",     {570, 240} },
+        { CharacterType::Mage,   "Ruin Keeper",     {380, 350} },
+    };
+}
 
-    for (const EInfo& d : defs) {
-        auto* e = new EnemySprite(d.type, d.name);
-        e->setPos(d.pos);
-        e->setZValue(8);
-        m_scene->addItem(e);
-        m_enemies.append(e);
-    }
+for (const EInfo& d : defs) {
+    EnemySprite* enemy = new EnemySprite(d.type, d.name);
+    enemy->setPos(d.pos);
+    m_scene->addItem(enemy);
+    m_enemies.append(enemy);
+}
 
     // ── Boss — waits at the top of the path ───────────────────────────────────
     m_bossSprite = new EnemySprite(m_level.bossType, m_level.bossName);

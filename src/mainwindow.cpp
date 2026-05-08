@@ -286,18 +286,21 @@ void MainWindow::onStateChanged(GameState newState)
 
         if (m_activeLevelId > 0) {
             // Boss fight just ended
-            const LevelDef* lvl = m_levelManager.level(m_activeLevelId);
+            int levelId = m_activeLevelId;
+            m_activeLevelId = 0;
+
             bool playerWon = m_engine->getPlayerScore() > m_engine->getEnemyScore();
+            const LevelDef* lvl = m_levelManager.level(levelId);
+
+            m_lastFinishedLevelId = levelId;
+            m_lastBossWon = playerWon;
 
             if (playerWon && lvl) {
-                m_levelManager.completeLevel(m_activeLevelId, m_profile);
+                m_levelManager.completeLevel(levelId, m_profile);
                 if (m_currentSlot >= 0)
                     m_profile.saveToFile(SaveSlotWidget::slotPath(m_currentSlot));
                 updateGoldHud();
             }
-
-            int levelId     = m_activeLevelId;
-            m_activeLevelId = 0;
 
             if (lvl) {
                 m_stack->setCurrentWidget(m_level1);
@@ -535,6 +538,9 @@ void MainWindow::onBattleItemChosen(ItemType type)
 
 void MainWindow::onBossTriggered(const LevelDef& level)
 {
+    m_activeLevelId = level.id;
+    m_pendingLevelId = level.id;
+
     m_bossDialog->resize(m_level1->size());
     m_bossDialog->setParent(m_level1);
     m_bossDialog->showIntro(level, m_profile.characterName);
@@ -546,7 +552,10 @@ void MainWindow::onBossTriggered(const LevelDef& level)
 void MainWindow::onBossFightAccepted()
 {
     m_bossDialog->hide();
-    m_activeLevelId = m_inLevel ? 1 : 0;
+
+    if (m_activeLevelId <= 0)
+    m_activeLevelId = m_pendingLevelId;
+
     m_battleOrigin  = BattleOrigin::Level;
 
     const LevelDef* lvl = m_levelManager.level(m_activeLevelId);
@@ -568,11 +577,33 @@ void MainWindow::onBossFightAccepted()
         static_cast<CharacterType>(m_profile.characterType),
         m_profile.characterName);
 }
-
 void MainWindow::onBossOutroDismissed()
 {
     m_bossDialog->hide();
     m_level1->deactivate();
+
+    if (m_lastBossWon) {
+        int nextLevelId = m_lastFinishedLevelId + 1;
+        const LevelDef* next = m_levelManager.level(nextLevelId);
+
+        if (next && m_levelManager.isUnlocked(nextLevelId, m_profile)) {
+            m_inLevel = true;
+            m_pendingLevelId = nextLevelId;
+
+            if (!next->storyPages.isEmpty()) {
+                m_storySlide->resize(size());
+                m_storySlide->show(next->name, next->storyPages, next->enterPrompt);
+                m_storySlide->raise();
+                m_storySlide->setFocus();
+                return;
+            }
+
+            m_level1->activate(*next, m_profile);
+            m_stack->setCurrentWidget(m_level1);
+            return;
+        }
+    }
+
     m_inLevel = false;
     updateGoldHud();
     m_overworld->activate();

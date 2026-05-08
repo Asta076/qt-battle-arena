@@ -67,7 +67,7 @@ void LevelManager::buildLevels()
         .bossAttackBonus  = 8,
         .bossGoldReward   = 250,
 
-        .requiredRuns     = 3,
+        .requiredRuns     = 0,
         .requiredGold     = 0,
         .requiredLevelId  = 1,
 

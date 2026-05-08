@@ -81,7 +81,8 @@ private:
     int             m_currentSlot      = -1;
     bool            m_playerHasChosen  = false;
     bool            m_hasPendingBattle = false;
-
+    int  m_lastFinishedLevelId = 0;
+    bool m_lastBossWon = false;
     CharacterType   m_pendingEnemyType = CharacterType::Warrior;
     QString         m_pendingEnemyName;
 
