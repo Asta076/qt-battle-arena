@@ -441,7 +441,7 @@ void OverworldWidget::buildScene()
     caveShadow->setZValue(5);
 
     // Visible dungeon entrance image
-    QPixmap dungeonPx("resources/sprites/dungeon_entrance.png");
+    QPixmap dungeonPx(":/sprites/dungeon_entrance.png");
 
     if (!dungeonPx.isNull()) {
         QGraphicsPixmapItem* dungeonItem = m_scene->addPixmap(

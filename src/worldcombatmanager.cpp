@@ -328,7 +328,7 @@ ActiveAttack* WorldCombatManager::shootArrow(const QRectF& playerBounds, Directi
 
     if (m_scene) {
 
-        QPixmap px("resources/sprites/arrow.png");
+        QPixmap px(":/sprites/arrow.png");
 
         QGraphicsPixmapItem* item = new QGraphicsPixmapItem(
             px.scaled(
@@ -377,7 +377,7 @@ ActiveAttack* WorldCombatManager::shootFireball(const QRectF& playerBounds, Dire
     attack->lifetime = 1.5f;
 
     if (m_scene) {
-        QPixmap px("resources/sprites/fireball.png");
+        QPixmap px(":/sprites/fireball.png");
 
         QGraphicsPixmapItem* item = new QGraphicsPixmapItem(
             px.scaled(
