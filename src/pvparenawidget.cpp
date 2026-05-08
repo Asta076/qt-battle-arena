@@ -232,9 +232,10 @@ void PvpArenaWidget::startAttack(PvpFighterAnim& fighter, int owner)
     fighter.attackFrameIndex = 0;
     fighter.attackTickAccum = 0;
 
-    if (fighter.type == CharacterType::Archer) {
-        spawnProjectile(fighter, owner);
-    }
+    if (fighter.type == CharacterType::Archer ||
+    fighter.type == CharacterType::Mage) {
+    spawnProjectile(fighter, owner);
+}
 
     update();
 }
@@ -268,6 +269,7 @@ void PvpArenaWidget::spawnProjectile(const PvpFighterAnim& fighter, int owner)
     QPointF dir = directionVector(fighter.facing);
 
     PvpProjectile projectile;
+    projectile.type = fighter.type;
     projectile.owner = owner;
     projectile.lifeTicks = 0;
 
@@ -305,12 +307,6 @@ void PvpArenaWidget::drawProjectiles(QPainter& painter)
 {
     painter.save();
 
-    QPen arrowPen(QColor("#FDE68A"), 4);
-    arrowPen.setCapStyle(Qt::RoundCap);
-
-    painter.setPen(arrowPen);
-    painter.setBrush(QColor("#FACC15"));
-
     for (const PvpProjectile& projectile : m_projectiles) {
         QPointF dir = projectile.velocity;
 
@@ -320,11 +316,28 @@ void PvpArenaWidget::drawProjectiles(QPainter& painter)
 
         dir /= length;
 
-        QPointF tail = projectile.pos - dir * 24.0;
-        QPointF head = projectile.pos;
+        if (projectile.type == CharacterType::Archer) {
+            QPen arrowPen(QColor("#FDE68A"), 4);
+            arrowPen.setCapStyle(Qt::RoundCap);
 
-        painter.drawLine(tail, head);
-        painter.drawEllipse(head, 4.0, 4.0);
+            painter.setPen(arrowPen);
+            painter.setBrush(QColor("#FACC15"));
+
+            QPointF tail = projectile.pos - dir * 24.0;
+            QPointF head = projectile.pos;
+
+            painter.drawLine(tail, head);
+            painter.drawEllipse(head, 4.0, 4.0);
+        }
+        else if (projectile.type == CharacterType::Mage) {
+            painter.setPen(QPen(QColor("#FDBA74"), 2));
+            painter.setBrush(QColor("#F97316"));
+
+            painter.drawEllipse(projectile.pos, 9.0, 9.0);
+
+            painter.setBrush(QColor("#FACC15"));
+            painter.drawEllipse(projectile.pos, 4.0, 4.0);
+        }
     }
 
     painter.restore();

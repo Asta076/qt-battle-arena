@@ -45,6 +45,7 @@ struct PvpFighterAnim {
 };
 
 struct PvpProjectile {
+    CharacterType type = CharacterType::Archer;
     QPointF pos;
     QPointF velocity;
     int owner = 0;
