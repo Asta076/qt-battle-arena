@@ -302,6 +302,11 @@ void MainWindow::onExitedDungeon()
 {
     m_profile.dungeonRuns++;
 
+    Character* player = m_engine->playerCharacter();
+    if (player) {
+        player->resetHealth();
+    }
+
     if (m_currentSlot >= 0) {
         m_profile.saveToFile(SaveSlotWidget::slotPath(m_currentSlot));
     }
