@@ -102,6 +102,7 @@ qt_add_resources(CS2-Battle-Arena "assets"
         # Backgrounds
         resources/backgrounds/battle_bg.png
         resources/backgrounds/pvp_arena.png
+        resources/backgrounds/dungeon_bg.png
 
         # Music
         resources/music/battle.ogg

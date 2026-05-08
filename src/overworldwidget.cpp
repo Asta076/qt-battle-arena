@@ -308,9 +308,7 @@ void OverworldWidget::buildScene()
         qWarning("Could not load resources/sprites/house.png");
     }
 
-    // ── House solid collider — covers the whole house body ───────────────────
-    // Slightly inset on the sides so the player can walk right up to the wall.
-    // Tall enough that the player can never jump over it from the south.
+
     const qreal colliderInset = HOUSE_W * 0.05;
     const qreal colliderY     = HOUSE_Y + HOUSE_H * 0.45;  // starts higher up
     const qreal colliderH     = HOUSE_H * 0.50;             // taller — covers more
@@ -321,9 +319,7 @@ void OverworldWidget::buildScene()
         );
     m_houseCollider->setZValue(1);
 
-    // ── House entrance zone — sits BELOW the collider, no overlap ────────────
-    // The collider bottom is at colliderY + colliderH.
-    // The entrance zone starts 2px below that so they never overlap.
+
     const qreal entranceW = HOUSE_W * 0.30;
     const qreal entranceX = HOUSE_X + (HOUSE_W - entranceW) / 2.0;
     const qreal entranceY = colliderY + colliderH + 2.0;   // flush below collider
@@ -332,10 +328,10 @@ void OverworldWidget::buildScene()
         Qt::NoPen, Qt::NoBrush);
     m_houseEntranceZone->setZValue(1);
     // ── Shop ────────────────────────────────────────────────────────────────
-    const qreal SHOP_X = 600;
-    const qreal SHOP_Y = 165;
-    const qreal SHOP_W = 120;
-    const qreal SHOP_H = 95;
+    const qreal SHOP_X = 450;
+    const qreal SHOP_Y = 250;
+    const qreal SHOP_W = 360;
+    const qreal SHOP_H = 360;
 
     // 1. Load the shop image from your resources
     QPixmap shopPixmap(":/sprites/shop.png");
@@ -382,8 +378,6 @@ void OverworldWidget::buildScene()
         {{640, 130}, false},
         {{60,  430}, true },
         {{130, 510}, false},
-        {{690, 420}, false},
-        {{650, 300}, true },
         {{550, 480}, true },
         {{580, 80},  false},
     };

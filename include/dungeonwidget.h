@@ -13,6 +13,7 @@
 #include <QList>
 #include <QHash>
 #include <QPixmap>
+#include <QRectF>
 
 #include "character.h"
 #include "enemy.h"
@@ -161,7 +162,7 @@ private:
     GoldHudWidget* m_goldHud = nullptr;
 
     DungeonPlayerSprite* m_player = nullptr;
-    QGraphicsRectItem* m_exitZone = nullptr;
+    QRectF m_exitArea;
 
     QList<EnemySprite*> m_enemies;
 
@@ -180,9 +181,12 @@ private:
 
     CharacterType m_playerType = CharacterType::Archer;
 
+    int m_waveNumber = 1;
+
     void buildScene();
     void placePlayer();
     void spawnEnemies();
+    void startNextWave();
     void clearEnemies();
 
     void movePlayer();
@@ -195,6 +199,7 @@ private:
     void loadAttackSheet(CharacterType type);
 
     void handleClassAttack();
+    void handleSpecialAbility();
     void checkAttackCollisions();
 
     void buildPlayerHud();

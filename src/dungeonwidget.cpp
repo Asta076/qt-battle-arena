@@ -14,6 +14,9 @@
 #include <QLabel>
 #include <QGraphicsEllipseItem>
 #include <QRadialGradient>
+#include <QRandomGenerator>
+#include <QDebug>
+#include <QPixmap>
 
 #include "audiomanager.h"
 #include "spritecache.h"
@@ -135,10 +138,6 @@ void DungeonPlayerSprite::applyAttackFrame()
         return;
     }
 
-    // Attack sheets are 8 rows:
-    // 0 = down, 1 = down-right, 2 = right, 3 = up-right,
-    // 4 = up, 5 = up-left, 6 = left, 7 = down-left.
-    // walkRow() returns directionIndex + 1, so subtract 1.
     const int row = walkRow(m_facing) - 1;
     const int col = m_attackFrameIndex;
 
@@ -391,6 +390,9 @@ void DungeonWidget::activate()
 
     m_heldKeys.clear();
     m_combat.clearAttacks();
+    m_combat.resetSpecialMeter();
+
+    m_waveNumber = 1;
 
     placePlayer();
     spawnEnemies();
@@ -413,9 +415,8 @@ void DungeonWidget::loadPlayerSheet(CharacterType type)
 {
     m_sheet.pixmap = SpriteCache::instance().get(movementSheetFor(type));
 
-    if (m_sheet.pixmap.isNull()) {
+    if (m_sheet.pixmap.isNull())
         m_sheet.pixmap = SpriteCache::instance().get(":/sprites/player.png");
-    }
 }
 
 void DungeonWidget::loadAttackSheet(CharacterType type)
@@ -430,9 +431,8 @@ void DungeonWidget::setPlayerCharacterType(CharacterType type)
     loadPlayerSheet(type);
     loadAttackSheet(type);
 
-    if (m_player) {
+    if (m_player)
         m_player->refreshFrame();
-    }
 }
 
 void DungeonWidget::setPlayerCharacter(Character* player)
@@ -443,66 +443,27 @@ void DungeonWidget::setPlayerCharacter(Character* player)
 
 void DungeonWidget::buildScene()
 {
-    m_scene->setBackgroundBrush(QColor("#1a1a2e"));
+    m_scene->clear();
+    m_scene->setSceneRect(0, 0, WORLD_W, WORLD_H);
+    m_combat.setScene(m_scene);
 
-    const int tileW = 80;
-    const int tileH = 60;
+    QPixmap dungeonBg(":/backgrounds/dungeon_bg.png");
 
-    for (int col = 0; col < WORLD_W / tileW; ++col) {
-        for (int row = 0; row < WORLD_H / tileH; ++row) {
-            m_scene->addRect(
-                col * tileW + 1,
-                row * tileH + 1,
-                tileW - 2,
-                tileH - 2,
-                QPen(QColor("#263238"), 1),
-                QBrush(QColor("#263238"))
-            )->setZValue(0);
-        }
-    }
-
-    const QList<QPointF> pillars = {
-        {160, 120}, {400, 120}, {620, 120},
-        {160, 340}, {400, 340}, {620, 340},
-        {80,  460}, {500, 460},
-    };
-
-    for (const QPointF& p : pillars) {
-        m_scene->addRect(
-            p.x(),
-            p.y(),
-            32,
-            48,
-            QPen(QColor("#37474f"), 2),
-            QBrush(QColor("#455a64"))
-        )->setZValue(1);
-    }
-
-    const QList<QPointF> torches = {
-        {100, 80},  {440, 80},  {720, 80},
-        {100, 480}, {440, 480}, {720, 480},
-    };
-
-    for (const QPointF& t : torches) {
-        auto* glow = m_scene->addEllipse(
-            t.x() - 8,
-            t.y() - 8,
-            20,
-            20,
-            Qt::NoPen,
-            QBrush(QColor("#ff6f0080"))
+    if (!dungeonBg.isNull()) {
+        QGraphicsPixmapItem* bgItem = m_scene->addPixmap(
+            dungeonBg.scaled(
+                WORLD_W,
+                WORLD_H,
+                Qt::IgnoreAspectRatio,
+                Qt::FastTransformation
+            )
         );
 
-        glow->setZValue(1);
-
-        m_scene->addEllipse(
-            t.x() - 2,
-            t.y() - 2,
-            8,
-            8,
-            Qt::NoPen,
-            QBrush(QColor("#ffca28"))
-        )->setZValue(2);
+        bgItem->setPos(0, 0);
+        bgItem->setZValue(0);
+    } else {
+        m_scene->setBackgroundBrush(QColor("#1a1a2e"));
+        qWarning("Could not load dungeon background: :/backgrounds/dungeon_bg.png");
     }
 
     const qreal ew = 80;
@@ -510,39 +471,7 @@ void DungeonWidget::buildScene()
     const qreal ex = (WORLD_W - ew) / 2.0;
     const qreal ey = WORLD_H - eh - 6;
 
-    m_scene->addRect(
-        ex - 10,
-        ey - 6,
-        ew + 20,
-        eh + 10,
-        Qt::NoPen,
-        QBrush(QColor("#1b5e20"))
-    )->setZValue(1);
-
-    m_exitZone = m_scene->addRect(
-        ex,
-        ey,
-        ew,
-        eh,
-        Qt::NoPen,
-        QBrush(QColor("#00c853"))
-    );
-
-    m_exitZone->setZValue(2);
-
-    auto* exitLabel = m_scene->addText("EXIT ↑", QFont("Arial", 8, QFont::Bold));
-    exitLabel->setDefaultTextColor(Qt::white);
-    exitLabel->setPos(ex + 12, ey + 18);
-    exitLabel->setZValue(3);
-
-    auto* hint = m_scene->addText(
-        "J = attack    ESC = menu",
-        QFont("Arial", 7)
-    );
-
-    hint->setDefaultTextColor(QColor("#ffffff88"));
-    hint->setPos(8, 4);
-    hint->setZValue(10);
+    m_exitArea = QRectF(ex, ey, ew, eh);
 
     m_player = new DungeonPlayerSprite(m_sheet, m_attackSheet);
     m_scene->addItem(m_player);
@@ -592,26 +521,77 @@ void DungeonWidget::spawnEnemies()
 {
     clearEnemies();
 
-    struct EnemyInfo {
+    const int enemyCount = 3 + (m_waveNumber - 1) * 2;
+    const int hpBonus = (m_waveNumber - 1) * 10;
+    const int damageBonus = (m_waveNumber - 1) * 2;
+
+    const QList<QPointF> spawnPoints = {
+        QPointF(90, 100),
+        QPointF(690, 100),
+        QPointF(90, 450),
+        QPointF(690, 450),
+        QPointF(400, 90),
+        QPointF(400, 470),
+        QPointF(150, 260),
+        QPointF(650, 260)
+    };
+
+    for (int i = 0; i < enemyCount; ++i) {
         CharacterType type;
+
+        switch (i % 3) {
+        case 0:
+            type = CharacterType::Warrior;
+            break;
+        case 1:
+            type = CharacterType::Mage;
+            break;
+        default:
+            type = CharacterType::Archer;
+            break;
+        }
+
         QString name;
-        QPointF pos;
-        int hp;
-        int damage;
-    };
+        int baseHp = 60;
+        int baseDamage = 8;
 
-    const QList<EnemyInfo> enemies = {
-        { CharacterType::Warrior, "Guard",  QPointF(120, 130), 70, 10 },
-        { CharacterType::Mage,    "Mage",   QPointF(380, 210), 45, 14 },
-        { CharacterType::Archer,  "Archer", QPointF(620, 150), 55, 8  }
-    };
+        switch (type) {
+        case CharacterType::Warrior:
+            name = "Guard";
+            baseHp = 75;
+            baseDamage = 10;
+            break;
+        case CharacterType::Mage:
+            name = "Mage";
+            baseHp = 50;
+            baseDamage = 14;
+            break;
+        case CharacterType::Archer:
+            name = "Archer";
+            baseHp = 55;
+            baseDamage = 8;
+            break;
+        }
 
-    for (const EnemyInfo& info : enemies) {
-        EnemySprite* sprite = new EnemySprite(info.type, info.name);
-        sprite->setPos(info.pos);
+        QPointF pos = spawnPoints[i % spawnPoints.size()];
+
+        if (i >= spawnPoints.size()) {
+            pos += QPointF(
+                QRandomGenerator::global()->bounded(-40, 41),
+                QRandomGenerator::global()->bounded(-40, 41)
+            );
+        }
+
+        EnemySprite* sprite = new EnemySprite(type, name);
+        sprite->setPos(pos);
         sprite->setZValue(8);
 
-        Enemy* enemy = new Enemy(info.type, info.name, info.hp, info.damage);
+        Enemy* enemy = new Enemy(
+            type,
+            name,
+            baseHp + hpBonus,
+            baseDamage + damageBonus
+        );
 
         m_scene->addItem(sprite);
         m_enemies.append(sprite);
@@ -619,6 +599,12 @@ void DungeonWidget::spawnEnemies()
         m_enemyLogic.insert(sprite, enemy);
         m_combat.registerEnemy(enemy);
     }
+}
+
+void DungeonWidget::startNextWave()
+{
+    ++m_waveNumber;
+    spawnEnemies();
 }
 
 void DungeonWidget::keyPressEvent(QKeyEvent* e)
@@ -630,6 +616,11 @@ void DungeonWidget::keyPressEvent(QKeyEvent* e)
 
     if (e->key() == Qt::Key_J && !e->isAutoRepeat()) {
         handleClassAttack();
+        return;
+    }
+
+    if (e->key() == Qt::Key_K && !e->isAutoRepeat()) {
+        handleSpecialAbility();
         return;
     }
 
@@ -804,7 +795,8 @@ void DungeonWidget::checkCollisions()
     if (!m_player)
         return;
 
-    if (m_exitZone && m_player->collidesWithItem(m_exitZone)) {
+    if (m_exitArea.isValid() &&
+        m_player->sceneBoundingRect().intersects(m_exitArea)) {
         deactivate();
         emit exitedDungeon();
         return;
@@ -819,7 +811,17 @@ void DungeonWidget::checkCollisions()
         if (!enemy || !enemy->isAlive())
             continue;
 
-        if (m_player->sceneBoundingRect().intersects(sprite->hitBox()) &&
+        QRectF playerHurtBox = m_player->sceneBoundingRect().adjusted(
+                28, 28,
+                -28, -12
+            );
+
+        QRectF enemyMeleeBox = sprite->hitBox().adjusted(
+            14, 14,
+            -14, -8
+        );
+
+        if (playerHurtBox.intersects(enemyMeleeBox) &&
             m_combat.canEnemyAttack(enemy)) {
 
             int damage = m_combat.enemyAttackDamage(enemy);
@@ -830,7 +832,7 @@ void DungeonWidget::checkCollisions()
                 m_audio->playSfx("/sfx/hit.wav");
 
             updatePlayerHud();
-        }
+            }
     }
 }
 
@@ -879,6 +881,29 @@ void DungeonWidget::handleClassAttack()
     }
 }
 
+void DungeonWidget::handleSpecialAbility()
+{
+    if (!m_player)
+        return;
+
+    QRectF playerBounds = m_player->sceneBoundingRect();
+
+    const bool warriorWasActive = m_combat.warriorSpecialActive();
+
+    QList<ActiveAttack*> attacks = m_combat.createPlayerSpecial(playerBounds, m_facing);
+
+    const bool warriorChanged = warriorWasActive != m_combat.warriorSpecialActive();
+
+    if (!attacks.isEmpty() || warriorChanged) {
+        m_player->startAttackAnimation(m_facing);
+
+        if (m_audio)
+            m_audio->playSfx("/sfx/special.wav");
+    }
+
+    updatePlayerHud();
+}
+
 void DungeonWidget::checkAttackCollisions()
 {
     const QList<ActiveAttack*>& attacks = m_combat.activeAttacks();
@@ -896,17 +921,26 @@ void DungeonWidget::checkAttackCollisions()
             if (!enemy || !enemy->isAlive())
                 continue;
 
-            if (attack->bounds.intersects(sprite->hitBox())) {
-                m_combat.damageEnemy(enemy, attack->damage);
+            if (!attack->bounds.intersects(sprite->hitBox()))
+                continue;
+
+            // Piercing attacks should not damage the same enemy every frame.
+            if (attack->enemiesHit.contains(enemy))
+                continue;
+
+            attack->enemiesHit.insert(enemy);
+
+            m_combat.damageEnemy(enemy, attack->damage);
+
+            if (!attack->piercing)
                 m_combat.expireAttack(attack);
 
-                if (m_audio)
-                    m_audio->playSfx("/sfx/hit.wav");
+            if (m_audio)
+                m_audio->playSfx("/sfx/hit.wav");
 
+            if (!attack->piercing)
                 break;
-            }
         }
-    }
 
     for (int i = m_enemies.size() - 1; i >= 0; --i) {
         EnemySprite* sprite = m_enemies[i];
@@ -917,6 +951,8 @@ void DungeonWidget::checkAttackCollisions()
         Enemy* enemy = m_enemyLogic.value(sprite, nullptr);
 
         if (enemy && !enemy->isAlive()) {
+            m_combat.addSpecialFromKill();
+
             if (m_audio)
                 m_audio->playSfx("/sfx/faint.wav");
 
@@ -931,10 +967,37 @@ void DungeonWidget::checkAttackCollisions()
         }
     }
 
-    if (m_enemies.isEmpty()) {
-        deactivate();
-        emit exitedDungeon();
+    if (m_enemies.isEmpty())
+        startNextWave();
+}
+
+    for (int i = m_enemies.size() - 1; i >= 0; --i) {
+        EnemySprite* sprite = m_enemies[i];
+
+        if (!sprite)
+            continue;
+
+        Enemy* enemy = m_enemyLogic.value(sprite, nullptr);
+
+        if (enemy && !enemy->isAlive()) {
+            m_combat.addSpecialFromKill();
+
+            if (m_audio)
+                m_audio->playSfx("/sfx/faint.wav");
+
+            m_combat.unregisterEnemy(enemy);
+            m_enemyLogic.remove(sprite);
+            m_enemies.removeAt(i);
+
+            m_scene->removeItem(sprite);
+
+            delete sprite;
+            delete enemy;
+        }
     }
+
+    if (m_enemies.isEmpty())
+        startNextWave();
 }
 
 void DungeonWidget::buildPlayerHud()
@@ -1009,7 +1072,7 @@ void DungeonWidget::updatePlayerHud()
     }
 
     m_healthBar->setBarPercent(player->getHealthPercent());
-    m_specialBar->setBarPercent(player->getSpPercent());
+    m_specialBar->setBarPercent(m_combat.specialMeter());
 }
 
 void DungeonWidget::positionPlayerHud()
