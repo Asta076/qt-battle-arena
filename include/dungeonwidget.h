@@ -114,17 +114,45 @@ public:
 
     void chasePlayer(const QRectF& playerBounds, const QRectF& worldBounds);
     void updateAnimation();
+    void startAttackAnimation(Direction dir);
+
+    Direction facingDirection() const { return m_facing; }
 
 private:
+    void applyFrame();
+    void applyAttackFrame();
+    void setFacingFromMovement(const QPointF& oldPos, const QPointF& newPos);
+
     CharacterType m_type;
     QString m_name;
 
-    QPixmap m_sprite;
+    QPixmap m_movementSheet;
+    QPixmap m_attackSheet;
+
     QGraphicsEllipseItem* m_shadow = nullptr;
     QGraphicsTextItem* m_nameLabel = nullptr;
 
+    Direction m_facing = Direction::Down;
+
+    bool m_isMoving = false;
+    bool m_isAttacking = false;
+
     int m_frameIndex = 0;
     int m_tickAccum = 0;
+
+    int m_attackFrameIndex = 0;
+    int m_attackTickAccum = 0;
+
+    QPointF m_lastPos;
+
+    static constexpr int FRAME_W = 68;
+    static constexpr int FRAME_H = 68;
+
+    static constexpr int WALK_FRAMES = 6;
+    static constexpr int TICKS_PER_FRAME = 7;
+
+    static constexpr int ATTACK_FRAMES = 7;
+    static constexpr int ATTACK_TICKS_PER_FRAME = 4;
 };
 
 class DungeonWidget : public QWidget

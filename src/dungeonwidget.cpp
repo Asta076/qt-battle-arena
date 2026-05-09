@@ -17,6 +17,7 @@
 #include <QRandomGenerator>
 #include <QDebug>
 #include <QPixmap>
+#include <QtGlobal>
 
 #include "audiomanager.h"
 #include "spritecache.h"
@@ -24,7 +25,7 @@
 #include "overworldwidget.h"
 
 // ═════════════════════════════════════════════════════════════════════════════
-//  Movement / attack sprite sheet helpers
+//  Player movement / attack sprite sheet helpers
 // ═════════════════════════════════════════════════════════════════════════════
 
 static QString movementSheetFor(CharacterType type)
@@ -209,31 +210,40 @@ void DungeonPlayerSprite::startAttackAnimation(Direction dir)
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
-//  EnemySprite
+//  Enemy monster sprite sheet helpers
 // ═════════════════════════════════════════════════════════════════════════════
 
-static QPixmap getEnemySprite(CharacterType type)
+static QString enemyMovementSheetFor(CharacterType type)
 {
-    QString path;
-
     switch (type) {
     case CharacterType::Warrior:
-        path = ":/sprites/warrior_front.png";
-        break;
+        return ":/sprites/skeleton_guard_movement_8dir_6frames.png";
     case CharacterType::Mage:
-        path = ":/sprites/mage_front.png";
-        break;
+        return ":/sprites/goblin_brute_movement_8dir_6frames.png";
     case CharacterType::Archer:
-        path = ":/sprites/archer_front.png";
-        break;
+        return ":/sprites/goblin_movement_8dir_6frames.png";
     }
 
-    return SpriteCache::instance().getScaled(
-        path,
-        static_cast<int>(EnemySprite::W),
-        static_cast<int>(EnemySprite::H)
-    );
+    return ":/sprites/goblin_movement_8dir_6frames.png";
 }
+
+static QString enemyAttackSheetFor(CharacterType type)
+{
+    switch (type) {
+    case CharacterType::Warrior:
+        return ":/sprites/skeleton_guard_attack_8dir_7frames.png";
+    case CharacterType::Mage:
+        return ":/sprites/goblin_brute_attack_8dir_7frames.png";
+    case CharacterType::Archer:
+        return ":/sprites/goblin_attack_8dir_7frames.png";
+    }
+
+    return ":/sprites/goblin_attack_8dir_7frames.png";
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+//  EnemySprite
+// ═════════════════════════════════════════════════════════════════════════════
 
 EnemySprite::EnemySprite(CharacterType type,
                          const QString& name,
@@ -242,11 +252,22 @@ EnemySprite::EnemySprite(CharacterType type,
     , m_type(type)
     , m_name(name)
 {
-    m_sprite = getEnemySprite(type);
-    setPixmap(m_sprite);
+    m_movementSheet = SpriteCache::instance().get(enemyMovementSheetFor(type));
+    m_attackSheet = SpriteCache::instance().get(enemyAttackSheetFor(type));
+
     setTransformationMode(Qt::FastTransformation);
 
-    const qreal shadowW = W * 0.60;
+    m_facing = Direction::Down;
+    m_frameIndex = 0;
+    m_tickAccum = 0;
+    m_attackFrameIndex = 0;
+    m_attackTickAccum = 0;
+    m_isMoving = false;
+    m_isAttacking = false;
+
+    applyFrame();
+
+    const qreal shadowW = W * 0.70;
     const qreal shadowH = H * 0.25;
 
     m_shadow = new QGraphicsEllipseItem(0, 0, shadowW, shadowH, this);
@@ -268,6 +289,8 @@ EnemySprite::EnemySprite(CharacterType type,
     qreal labelW = m_nameLabel->boundingRect().width();
     m_nameLabel->setPos((W - labelW) / 2.0, -14);
     m_nameLabel->setZValue(1);
+
+    m_lastPos = pos();
 }
 
 QRectF EnemySprite::hitBox() const
@@ -275,8 +298,89 @@ QRectF EnemySprite::hitBox() const
     return sceneBoundingRect();
 }
 
-void EnemySprite::chasePlayer(const QRectF& playerBounds, const QRectF& worldBounds)
+void EnemySprite::applyFrame()
 {
+    if (m_movementSheet.isNull())
+        return;
+
+    int row;
+    int col;
+
+    if (m_isMoving) {
+        row = walkRow(m_facing);
+        col = m_frameIndex;
+    } else {
+        row = 0;
+        col = idleCol(m_facing);
+    }
+
+    QPixmap raw = m_movementSheet.copy(
+        col * FRAME_W,
+        row * FRAME_H,
+        FRAME_W,
+        FRAME_H
+    );
+
+    setPixmap(raw.scaled(
+        static_cast<int>(W),
+        static_cast<int>(H),
+        Qt::KeepAspectRatio,
+        Qt::FastTransformation
+    ));
+}
+
+void EnemySprite::applyAttackFrame()
+{
+    if (m_attackSheet.isNull()) {
+        applyFrame();
+        return;
+    }
+
+    const int row = walkRow(m_facing) - 1;
+    const int col = m_attackFrameIndex;
+
+    QPixmap raw = m_attackSheet.copy(
+        col * FRAME_W,
+        row * FRAME_H,
+        FRAME_W,
+        FRAME_H
+    );
+
+    setPixmap(raw.scaled(
+        static_cast<int>(W),
+        static_cast<int>(H),
+        Qt::KeepAspectRatio,
+        Qt::FastTransformation
+    ));
+}
+
+void EnemySprite::setFacingFromMovement(const QPointF& oldPos,
+                                        const QPointF& newPos)
+{
+    qreal dx = newPos.x() - oldPos.x();
+    qreal dy = newPos.y() - oldPos.y();
+
+    if (qAbs(dx) < 0.01 && qAbs(dy) < 0.01)
+        return;
+
+    if (qAbs(dx) > qAbs(dy)) {
+        if (dx > 0)
+            m_facing = Direction::Right;
+        else
+            m_facing = Direction::Left;
+    } else {
+        if (dy > 0)
+            m_facing = Direction::Down;
+        else
+            m_facing = Direction::Up;
+    }
+}
+
+void EnemySprite::chasePlayer(const QRectF& playerBounds,
+                              const QRectF& worldBounds)
+{
+    QPointF oldPos = pos();
+
     QPointF enemyCenter = sceneBoundingRect().center();
     QPointF playerCenter = playerBounds.center();
 
@@ -284,8 +388,10 @@ void EnemySprite::chasePlayer(const QRectF& playerBounds, const QRectF& worldBou
 
     qreal length = std::sqrt(delta.x() * delta.x() + delta.y() * delta.y());
 
-    if (length < 4.0)
+    if (length < 4.0) {
+        m_isMoving = false;
         return;
+    }
 
     QPointF dir(delta.x() / length, delta.y() / length);
 
@@ -305,20 +411,67 @@ void EnemySprite::chasePlayer(const QRectF& playerBounds, const QRectF& worldBou
         worldBounds.bottom() - H
     );
 
-    setPos(clampedX, clampedY);
+    QPointF newPos(clampedX, clampedY);
+
+    setFacingFromMovement(oldPos, newPos);
+
+    m_isMoving = true;
+    setPos(newPos);
+}
+
+void EnemySprite::startAttackAnimation(Direction dir)
+{
+    if (m_attackSheet.isNull())
+        return;
+
+    m_isAttacking = true;
+    m_isMoving = false;
+    m_facing = dir;
+
+    m_attackFrameIndex = 0;
+    m_attackTickAccum = 0;
+
+    applyAttackFrame();
 }
 
 void EnemySprite::updateAnimation()
 {
+    if (m_isAttacking) {
+        ++m_attackTickAccum;
+
+        if (m_attackTickAccum >= ATTACK_TICKS_PER_FRAME) {
+            m_attackTickAccum = 0;
+            ++m_attackFrameIndex;
+
+            if (m_attackFrameIndex >= ATTACK_FRAMES) {
+                m_isAttacking = false;
+                m_attackFrameIndex = 0;
+                applyFrame();
+                return;
+            }
+
+            applyAttackFrame();
+        }
+
+        return;
+    }
+
+    if (!m_isMoving) {
+        m_frameIndex = 0;
+        m_tickAccum = 0;
+        applyFrame();
+        return;
+    }
+
     ++m_tickAccum;
 
-    if (m_tickAccum >= 30) {
+    if (m_tickAccum >= TICKS_PER_FRAME) {
         m_tickAccum = 0;
-        m_frameIndex = (m_frameIndex + 1) % 2;
-
-        qreal bob = (m_frameIndex == 0) ? 0.0 : 1.0;
-        setY(y() - bob);
+        m_frameIndex = (m_frameIndex + 1) % WALK_FRAMES;
+        applyFrame();
     }
+
+    m_isMoving = false;
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -557,17 +710,19 @@ void DungeonWidget::spawnEnemies()
 
         switch (type) {
         case CharacterType::Warrior:
-            name = "Guard";
+            name = "Skeleton Guard";
             baseHp = 75;
             baseDamage = 10;
             break;
+
         case CharacterType::Mage:
-            name = "Mage";
+            name = "Goblin Brute";
             baseHp = 50;
             baseDamage = 14;
             break;
+
         case CharacterType::Archer:
-            name = "Archer";
+            name = "Goblin";
             baseHp = 55;
             baseDamage = 8;
             break;
@@ -814,9 +969,9 @@ void DungeonWidget::checkCollisions()
             continue;
 
         QRectF playerHurtBox = m_player->sceneBoundingRect().adjusted(
-                28, 28,
-                -28, -12
-            );
+            28, 28,
+            -28, -12
+        );
 
         QRectF enemyMeleeBox = sprite->hitBox().adjusted(
             14, 14,
@@ -829,12 +984,13 @@ void DungeonWidget::checkCollisions()
             int damage = m_combat.enemyAttackDamage(enemy);
             m_combat.damagePlayer(damage);
             m_combat.startEnemyAttackCooldown(enemy);
+            sprite->startAttackAnimation(sprite->facingDirection());
 
             if (m_audio)
                 m_audio->playSfx("/sfx/hit.wav");
 
             updatePlayerHud();
-            }
+        }
     }
 }
 
@@ -926,7 +1082,6 @@ void DungeonWidget::checkAttackCollisions()
             if (!attack->bounds.intersects(sprite->hitBox()))
                 continue;
 
-            // Piercing attacks should not damage the same enemy every frame.
             if (attack->enemiesHit.contains(enemy))
                 continue;
 
@@ -943,35 +1098,7 @@ void DungeonWidget::checkAttackCollisions()
             if (!attack->piercing)
                 break;
         }
-
-    for (int i = m_enemies.size() - 1; i >= 0; --i) {
-        EnemySprite* sprite = m_enemies[i];
-
-        if (!sprite)
-            continue;
-
-        Enemy* enemy = m_enemyLogic.value(sprite, nullptr);
-
-        if (enemy && !enemy->isAlive()) {
-            m_combat.addSpecialFromKill();
-
-            if (m_audio)
-                m_audio->playSfx("/sfx/faint.wav");
-
-            m_combat.unregisterEnemy(enemy);
-            m_enemyLogic.remove(sprite);
-            m_enemies.removeAt(i);
-
-            m_scene->removeItem(sprite);
-
-            delete sprite;
-            delete enemy;
-        }
     }
-
-    if (m_enemies.isEmpty())
-        startNextWave();
-}
 
     for (int i = m_enemies.size() - 1; i >= 0; --i) {
         EnemySprite* sprite = m_enemies[i];

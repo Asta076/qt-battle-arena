@@ -51,6 +51,7 @@ qt_add_executable(CS2-Battle-Arena
     include/shopwidget.h           src/shopwidget.cpp
     include/pvparenawidget.h       src/pvparenawidget.cpp
     src/shopwidget.ui
+
 )
 
 target_include_directories(CS2-Battle-Arena PRIVATE include)
@@ -113,6 +114,16 @@ qt_add_resources(CS2-Battle-Arena "assets"
         resources/sfx/hit.wav
         resources/sfx/faint.wav
         resources/sfx/special.wav
+
+        #enemies 
+        resources/sprites/goblin_movement_8dir_6frames.png
+        resources/sprites/goblin_attack_8dir_7frames.png
+
+        resources/sprites/goblin_brute_movement_8dir_6frames.png
+        resources/sprites/goblin_brute_attack_8dir_7frames.png
+
+        resources/sprites/skeleton_guard_movement_8dir_6frames.png
+        resources/sprites/skeleton_guard_attack_8dir_7frames.png
 )
 
 target_link_libraries(CS2-Battle-Arena
