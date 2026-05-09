@@ -45,6 +45,9 @@ struct PvpFighterAnim {
     int attackFrameIndex = 0;
     int attackTickAccum = 0;
 
+    bool isBlocking = false;
+    int blockTickAccum = 0;
+
     int hp = 100;
     bool hasHitDuringAttack = false;
 };
@@ -82,6 +85,9 @@ private slots:
 private:
     void resetPlayers();
 
+    bool isPlayer1Blocking() const;
+    bool isPlayer2Blocking() const;
+
     QPointF velocityForPlayer1() const;
     QPointF velocityForPlayer2() const;
     QPointF clampToArena(const QPointF& pos) const;
@@ -90,6 +96,8 @@ private:
                                        PvpDirection fallback) const;
 
     void updateFighterAnimation(PvpFighterAnim& fighter, bool isMoving);
+    void updateBlockState();
+
     void startAttack(PvpFighterAnim& fighter, int owner);
 
     QPointF directionVector(PvpDirection dir) const;
@@ -100,12 +108,16 @@ private:
     QRectF fighterRect(const PvpFighterAnim& fighter) const;
     QRectF meleeHitBox(const PvpFighterAnim& fighter) const;
     void updateCombatHits();
+
+    int finalDamageForTarget(const PvpFighterAnim& target, int damage) const;
     void applyDamage(PvpFighterAnim& target, int damage, const QString& winnerText);
 
     void drawPlayer(QPainter& painter,
                     const PvpFighterAnim& fighter,
                     const QString& label,
                     const QColor& outlineColor);
+
+    void drawBlockEffect(QPainter& painter, const PvpFighterAnim& fighter);
 
     QPixmap cropFrame(const PvpFighterAnim& fighter) const;
 
@@ -128,11 +140,14 @@ private:
     static constexpr int ATTACK_TICKS_PER_FRAME = 4;
 
     static constexpr qreal SPEED = 4.0;
+    static constexpr qreal BLOCK_SPEED_MULTIPLIER = 0.45;
 
     static constexpr int MAX_HP = 100;
     static constexpr int PROJECTILE_DAMAGE = 12;
     static constexpr int MAGE_PROJECTILE_DAMAGE = 15;
     static constexpr int MELEE_DAMAGE = 18;
+
+    static constexpr int BLOCK_DAMAGE_PERCENT = 30;
 
     static constexpr qreal PROJECTILE_SPEED = 9.0;
     static constexpr int PROJECTILE_MAX_TICKS = 90;

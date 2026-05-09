@@ -6,6 +6,7 @@
 #include <QPainter>
 #include <QPaintEvent>
 #include <QPen>
+#include <QPolygonF>
 #include <QString>
 #include <QtGlobal>
 #include <QtMath>
@@ -112,6 +113,12 @@ void PvpArenaWidget::resetPlayers()
     m_p1.attackTickAccum = 0;
     m_p2.attackTickAccum = 0;
 
+    m_p1.isBlocking = false;
+    m_p2.isBlocking = false;
+
+    m_p1.blockTickAccum = 0;
+    m_p2.blockTickAccum = 0;
+
     m_p1.hp = MAX_HP;
     m_p2.hp = MAX_HP;
 
@@ -124,15 +131,44 @@ void PvpArenaWidget::resetPlayers()
     m_projectiles.clear();
 }
 
+bool PvpArenaWidget::isPlayer1Blocking() const
+{
+    return m_heldKeys.contains(Qt::Key_G);
+}
+
+bool PvpArenaWidget::isPlayer2Blocking() const
+{
+    return m_heldKeys.contains(Qt::Key_L);
+}
+
+void PvpArenaWidget::updateBlockState()
+{
+    m_p1.isBlocking = isPlayer1Blocking() && !m_p1.isAttacking && !m_roundOver;
+    m_p2.isBlocking = isPlayer2Blocking() && !m_p2.isAttacking && !m_roundOver;
+
+    if (m_p1.isBlocking)
+        ++m_p1.blockTickAccum;
+    else
+        m_p1.blockTickAccum = 0;
+
+    if (m_p2.isBlocking)
+        ++m_p2.blockTickAccum;
+    else
+        m_p2.blockTickAccum = 0;
+}
+
 QPointF PvpArenaWidget::velocityForPlayer1() const
 {
     qreal dx = 0.0;
     qreal dy = 0.0;
 
-    if (m_heldKeys.contains(Qt::Key_W)) dy -= SPEED;
-    if (m_heldKeys.contains(Qt::Key_S)) dy += SPEED;
-    if (m_heldKeys.contains(Qt::Key_A)) dx -= SPEED;
-    if (m_heldKeys.contains(Qt::Key_D)) dx += SPEED;
+    const qreal currentSpeed =
+        isPlayer1Blocking() ? SPEED * BLOCK_SPEED_MULTIPLIER : SPEED;
+
+    if (m_heldKeys.contains(Qt::Key_W)) dy -= currentSpeed;
+    if (m_heldKeys.contains(Qt::Key_S)) dy += currentSpeed;
+    if (m_heldKeys.contains(Qt::Key_A)) dx -= currentSpeed;
+    if (m_heldKeys.contains(Qt::Key_D)) dx += currentSpeed;
 
     if (dx != 0.0 && dy != 0.0) {
         dx *= 0.7071;
@@ -147,10 +183,13 @@ QPointF PvpArenaWidget::velocityForPlayer2() const
     qreal dx = 0.0;
     qreal dy = 0.0;
 
-    if (m_heldKeys.contains(Qt::Key_Up)) dy -= SPEED;
-    if (m_heldKeys.contains(Qt::Key_Down)) dy += SPEED;
-    if (m_heldKeys.contains(Qt::Key_Left)) dx -= SPEED;
-    if (m_heldKeys.contains(Qt::Key_Right)) dx += SPEED;
+    const qreal currentSpeed =
+        isPlayer2Blocking() ? SPEED * BLOCK_SPEED_MULTIPLIER : SPEED;
+
+    if (m_heldKeys.contains(Qt::Key_Up)) dy -= currentSpeed;
+    if (m_heldKeys.contains(Qt::Key_Down)) dy += currentSpeed;
+    if (m_heldKeys.contains(Qt::Key_Left)) dx -= currentSpeed;
+    if (m_heldKeys.contains(Qt::Key_Right)) dx += currentSpeed;
 
     if (dx != 0.0 && dy != 0.0) {
         dx *= 0.7071;
@@ -234,6 +273,9 @@ void PvpArenaWidget::updateFighterAnimation(PvpFighterAnim& fighter, bool isMovi
 void PvpArenaWidget::startAttack(PvpFighterAnim& fighter, int owner)
 {
     if (m_roundOver)
+        return;
+
+    if (fighter.isBlocking)
         return;
 
     if (fighter.attackSheet.isNull())
@@ -410,12 +452,27 @@ QRectF PvpArenaWidget::meleeHitBox(const PvpFighterAnim& fighter) const
     );
 }
 
+int PvpArenaWidget::finalDamageForTarget(const PvpFighterAnim& target, int damage) const
+{
+    if (!target.isBlocking)
+        return damage;
+
+    int reduced = damage * BLOCK_DAMAGE_PERCENT / 100;
+
+    if (reduced < 1)
+        reduced = 1;
+
+    return reduced;
+}
+
 void PvpArenaWidget::applyDamage(PvpFighterAnim& target,
                                  int damage,
                                  const QString& winnerText)
 {
     if (m_roundOver)
         return;
+
+    damage = finalDamageForTarget(target, damage);
 
     target.hp -= damage;
 
@@ -511,6 +568,8 @@ void PvpArenaWidget::onTick()
         update();
         return;
     }
+
+    updateBlockState();
 
     const QPointF p1Velocity = velocityForPlayer1();
     const QPointF p2Velocity = velocityForPlayer2();
@@ -612,11 +671,11 @@ void PvpArenaWidget::paintEvent(QPaintEvent* event)
     );
 
     painter.setPen(QColor("#F9FAFB"));
-    painter.setFont(QFont("Arial", 14, QFont::Bold));
+    painter.setFont(QFont("Arial", 13, QFont::Bold));
     painter.drawText(
         controlsRect,
         Qt::AlignCenter,
-        "P1: WASD + F Attack    |    P2: Arrows + / or K Attack    |    R: Restart    |    ESC: Back"
+        "P1: WASD + F Attack + G Block    |    P2: Arrows + / or K Attack + L Block    |    ESC: Back"
     );
 
     if (m_roundOver) {
@@ -633,6 +692,86 @@ void PvpArenaWidget::paintEvent(QPaintEvent* event)
             m_winnerText + "\n\nPress R to restart or ESC to leave"
         );
     }
+}
+
+void PvpArenaWidget::drawBlockEffect(QPainter& painter, const PvpFighterAnim& fighter)
+{
+    if (!fighter.isBlocking)
+        return;
+
+    QRectF body(fighter.pos.x(), fighter.pos.y(), PLAYER_W, PLAYER_H);
+
+    QPointF center(
+        body.x() + body.width() / 2.0,
+        body.y() + body.height() / 2.0
+    );
+
+    QPointF dir = directionVector(fighter.facing);
+
+    const qreal angle = qRadiansToDegrees(qAtan2(dir.y(), dir.x()));
+    const qreal pulse = 1.0 + 0.08 * qSin(fighter.blockTickAccum * 0.25);
+
+    if (fighter.type == CharacterType::Mage) {
+        painter.save();
+
+        painter.setPen(QPen(QColor(34, 197, 94, 210), 4));
+        painter.setBrush(QColor(34, 197, 94, 60));
+
+        QRectF barrier(
+            center.x() - 46.0 * pulse,
+            center.y() - 54.0 * pulse,
+            92.0 * pulse,
+            108.0 * pulse
+        );
+
+        painter.drawEllipse(barrier);
+
+        painter.setPen(QPen(QColor(187, 247, 208, 190), 2));
+        painter.setBrush(Qt::NoBrush);
+        painter.drawEllipse(barrier.adjusted(7, 7, -7, -7));
+
+        painter.restore();
+        return;
+    }
+
+    painter.save();
+
+    QPointF shieldCenter = center + dir * 44.0;
+
+    painter.translate(shieldCenter);
+    painter.rotate(angle);
+
+    if (fighter.type == CharacterType::Warrior) {
+        QPolygonF shield;
+        shield << QPointF(-16.0, -24.0)
+               << QPointF(16.0, -24.0)
+               << QPointF(22.0, -4.0)
+               << QPointF(0.0, 28.0)
+               << QPointF(-22.0, -4.0);
+
+        painter.setPen(QPen(QColor("#FACC15"), 3));
+        painter.setBrush(QColor(160, 160, 170, 230));
+        painter.drawPolygon(shield);
+
+        painter.setPen(QPen(QColor("#E5E7EB"), 2));
+        painter.drawLine(QPointF(0.0, -20.0), QPointF(0.0, 20.0));
+        painter.drawLine(QPointF(-13.0, -5.0), QPointF(13.0, -5.0));
+    } else if (fighter.type == CharacterType::Archer) {
+        QRectF woodShield(-21.0, -26.0, 42.0, 52.0);
+
+        painter.setPen(QPen(QColor("#78350F"), 3));
+        painter.setBrush(QColor(146, 64, 14, 230));
+        painter.drawRoundedRect(woodShield, 8.0, 8.0);
+
+        painter.setPen(QPen(QColor("#FDE68A"), 2));
+        painter.drawLine(QPointF(-8.0, -22.0), QPointF(-8.0, 22.0));
+        painter.drawLine(QPointF(8.0, -22.0), QPointF(8.0, 22.0));
+
+        painter.setPen(QPen(QColor("#451A03"), 2));
+        painter.drawLine(QPointF(-17.0, 0.0), QPointF(17.0, 0.0));
+    }
+
+    painter.restore();
 }
 
 void PvpArenaWidget::drawPlayer(QPainter& painter,
@@ -663,6 +802,8 @@ void PvpArenaWidget::drawPlayer(QPainter& painter,
         painter.drawRoundedRect(body, 8, 8);
     }
 
+    drawBlockEffect(painter, fighter);
+
     painter.setBrush(Qt::NoBrush);
     painter.setPen(QPen(outlineColor, 3));
     painter.drawRoundedRect(body, 6, 6);
@@ -674,6 +815,16 @@ void PvpArenaWidget::drawPlayer(QPainter& painter,
         Qt::AlignCenter,
         label
     );
+
+    if (fighter.isBlocking) {
+        painter.setPen(QColor("#BBF7D0"));
+        painter.setFont(QFont("Arial", 9, QFont::Bold));
+        painter.drawText(
+            QRectF(body.x() - 20, body.y() - 58, body.width() + 40, 16),
+            Qt::AlignCenter,
+            "BLOCK"
+        );
+    }
 
     QRectF hpBack(
         body.x() - 4.0,
