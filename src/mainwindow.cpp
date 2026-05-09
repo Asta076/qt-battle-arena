@@ -56,8 +56,10 @@ void MainWindow::buildUI()
     m_house        = new HouseWidget(m_audio, this);
     m_shop         = new ShopWidget(this);
     m_battleWidget = new BattleWidget(m_engine, m_audio, &m_profile, this);
-    m_gameOver     = new GameOverWidget(m_engine, this);
+    m_levelBattle  = new LevelBattleWidget(m_engine, m_audio, &m_profile, this);
     m_scoreboard   = new ScoreboardWidget(m_engine, this);
+    m_gameOver     = new GameOverWidget(m_engine, this);
+
 
     m_stack->addWidget(m_startScreen);
     m_stack->addWidget(m_slotScreen);
@@ -65,6 +67,7 @@ void MainWindow::buildUI()
     m_stack->addWidget(m_overworld);
     m_stack->addWidget(m_dungeon);
     m_stack->addWidget(m_level1);
+    m_stack->addWidget(m_levelBattle);
     m_stack->addWidget(m_house);
     m_stack->addWidget(m_shop);
     m_stack->addWidget(m_battleWidget);
@@ -119,6 +122,9 @@ void MainWindow::buildUI()
             this, &MainWindow::onExitedLevel1);
     connect(m_level1, &Level1Widget::backToMenu,
             this, &MainWindow::onBackToMenu);
+
+    connect(m_levelBattle, &LevelBattleWidget::itemChosen,
+            this, &MainWindow::onLevelItemChosen);
 
     // ── Boss dialog overlay ───────────────────────────────────────────────────
     m_bossDialog = new BossDialogWidget(this);
@@ -246,20 +252,21 @@ void MainWindow::onStateChanged(GameState newState)
         m_stack->setCurrentWidget(m_charSelect);
         break;
 
-    case GameState::PlayerTurn:
+  case GameState::PlayerTurn:
         if (m_stack->currentWidget() == m_charSelect) {
             m_playerHasChosen = true;
-
             m_profile.characterName = m_engine->getPlayerName();
             m_profile.characterType = static_cast<int>(m_engine->getPlayerType());
-
             if (m_hasPendingBattle) {
                 m_hasPendingBattle = false;
                 m_engine->setStatBonuses(
                     m_profile.upgrades.bonusMaxHp,
                     m_profile.upgrades.bonusAttack,
                     m_profile.upgrades.bonusSpPerAtk);
-                m_stack->setCurrentWidget(m_battleWidget);
+                if (m_inLevel)
+                    m_stack->setCurrentWidget(m_levelBattle);
+                else
+                    m_stack->setCurrentWidget(m_battleWidget);
                 m_audio->playMusic("/music/battle.ogg");
             } else {
                 m_engine->setStatBonuses(0, 0, 0);
@@ -269,7 +276,10 @@ void MainWindow::onStateChanged(GameState newState)
                 m_stack->setCurrentWidget(m_overworld);
             }
         } else {
-            m_stack->setCurrentWidget(m_battleWidget);
+            if (m_inLevel)
+                m_stack->setCurrentWidget(m_levelBattle);
+            else
+                m_stack->setCurrentWidget(m_battleWidget);
             m_audio->playMusic("/music/battle.ogg");
         }
         break;
@@ -445,7 +455,12 @@ void MainWindow::onBattleTriggered(CharacterType enemyType, const QString& enemy
 
     m_battleOrigin = m_inLevel ? BattleOrigin::Level : BattleOrigin::Dungeon;
 
-    if (!m_playerHasChosen) {
+   // Set level battle context if in a level
+    if (m_inLevel) {
+        const LevelDef* lvl = m_levelManager.level(m_pendingLevelId);
+        if (lvl) m_levelBattle->setContext(lvl->name, false, lvl->theme);
+    }
+ if (!m_playerHasChosen) {
         m_hasPendingBattle = true;
         m_stack->setCurrentWidget(m_charSelect);
     } else {
@@ -577,6 +592,8 @@ void MainWindow::onBossFightAccepted()
 {
     m_bossDialog->hide();
 
+    const LevelDef* ctx = m_levelManager.level(m_activeLevelId);
+    if (ctx) m_levelBattle->setContext(ctx->name, true, ctx->theme);
     if (m_activeLevelId <= 0)
     m_activeLevelId = m_pendingLevelId;
 
@@ -633,4 +650,21 @@ void MainWindow::onBossOutroDismissed()
     m_inLevel = false;
     m_overworld->activate();
     m_stack->setCurrentWidget(m_overworld);
+}
+void MainWindow::onLevelItemChosen(ItemType type)
+{
+    if (!m_profile.hasItem(type)) return;
+    m_profile.removeItem(type, 1);
+    switch (type) {
+    case ItemType::HealthPotion: {
+        int maxHp = 0;
+        const auto& chars = m_engine->getAllCharacters();
+        if (!chars.isEmpty()) maxHp = chars[0]->getMaxHealth();
+        m_engine->onPlayerHealed(static_cast<int>(maxHp * 0.35f));
+        break;
+    }
+    case ItemType::SpPotion:     m_engine->onPlayerSpRestored(50);        break;
+    case ItemType::AttackBoost:  m_engine->onPlayerAttackBoosted();       break;
+    case ItemType::DefenseBoost: m_engine->onPlayerDefenseActivated();    break;
+    }
 }

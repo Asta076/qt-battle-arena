@@ -8,7 +8,8 @@
 #include "character.h"
 #include "levelmanager.h"
 #include "bossdialogwidget.h"
-#include "storyslidedialog.h"       // ← NEW
+#include "storyslidedialog.h"      
+#include "levelbattlewidget.h"
 
 class StartScreenWidget;
 class CharacterSelectWidget;
@@ -54,7 +55,7 @@ private slots:
     void onShopEntered();
     void onShopExited();
     void onBuyItemRequested(ItemType type, int cost);
-
+    void onLevelItemChosen(ItemType type);
     // ── Profile events ────────────────────────────────────────────────────────
     void onGoldEarned(int amount);
     void onSaveRequested();
@@ -99,6 +100,7 @@ private:
     BattleWidget*          m_battleWidget = nullptr;
     GameOverWidget*        m_gameOver     = nullptr;
     ScoreboardWidget*      m_scoreboard   = nullptr;
+    LevelBattleWidget*     m_levelBattle  = nullptr;
 
     // ── Level system ──────────────────────────────────────────────────────────
     LevelManager      m_levelManager;

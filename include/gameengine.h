@@ -71,6 +71,11 @@ public slots:
     bool onLoadGame(const QString& path);
     void setPlayerIdentity(CharacterType type, const QString& name);
     void setStatBonuses(int bonusHp, int bonusAttack, int bonusSpPerAtk);
+    void setNextEnemy(CharacterType type, const QString& name);
+    void setMaxRounds(int rounds);
+    void setEnemyBonuses(int bonusHp, int bonusAttack);
+
+
 private slots:
     void enemyTakeTurn();
 
@@ -98,6 +103,13 @@ private:
     int  m_itemsUsedThisBattle = 0;
     bool m_defenseActive       = false;   // set by DefenseBoost, consumed on next hit
     bool m_attackBoosted       = false;
+    bool          m_hasNextEnemy    = false;
+    CharacterType m_nextEnemyType   = CharacterType::Warrior;
+    QString       m_nextEnemyName;
+    int           m_enemyBonusHp    = 0;
+    int           m_enemyBonusAtk   = 0;
+
+
     QList<bool>   m_playerMoveHistory;
     ScoreTracker  m_tracker;
     CharacterType m_playerType   = CharacterType::Warrior;

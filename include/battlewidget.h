@@ -4,6 +4,8 @@
 #include "battleresult.h"
 #include "audiomanager.h"
 #include "playerprofile.h"
+#include "leveldef.h"
+
 class HealthBarWidget;
 class SpriteWidget;
 class BattleLogWidget;
@@ -19,6 +21,8 @@ class BattleWidget : public QWidget {
 public:
     explicit BattleWidget(GameEngine* engine, AudioManager* audio,
                           PlayerProfile* profile, QWidget* parent = nullptr);
+    
+
 
 protected:
     void paintEvent(QPaintEvent*) override;
