@@ -7,12 +7,11 @@ LevelManager::LevelManager()
 
 void LevelManager::buildLevels()
 {
-    // ─────────────────────────────────────────────────────────────────────────
-    //  Level 1 — Goblin Cave
-    // ─────────────────────────────────────────────────────────────────────────
+    // ── Level 1 — Goblin Cave ─────────────────────────────────────────────────
     m_levels.append({
         .id               = 1,
         .name             = "Goblin Cave",
+        .theme            = LevelTheme::Cave,
 
         .bossName         = "Grunt Chief",
         .bossType         = CharacterType::Warrior,
@@ -29,7 +28,7 @@ void LevelManager::buildLevels()
                            "Let's see if brave is enough.",
 
         .bossDefeatLine  = "Stronger than I expected.\n\n"
-                           "The one who hired me came from the dead forest east of here.\n\n"
+                           "The one who hired me came from the dead forest east.\n\n"
                            "And they already knew your name.",
 
         .bossVictoryLine = "Not your day, wanderer.\n\n"
@@ -53,13 +52,11 @@ void LevelManager::buildLevels()
         .enterPrompt = "► ENTER THE CAVE"
     });
 
-
-    // ─────────────────────────────────────────────────────────────────────────
-    //  Level 2 — Haunted Forest
-    // ─────────────────────────────────────────────────────────────────────────
+    // ── Level 2 — Haunted Forest ──────────────────────────────────────────────
     m_levels.append({
         .id               = 2,
         .name             = "Haunted Forest",
+        .theme            = LevelTheme::Forest,
 
         .bossName         = "Shadow Walker",
         .bossType         = CharacterType::Archer,
@@ -67,7 +64,7 @@ void LevelManager::buildLevels()
         .bossAttackBonus  = 8,
         .bossGoldReward   = 250,
 
-        .requiredRuns     = 0,
+        .requiredRuns     = 3,
         .requiredGold     = 0,
         .requiredLevelId  = 1,
 
@@ -103,58 +100,12 @@ void LevelManager::buildLevels()
 
         .enterPrompt = "► ENTER THE FOREST"
     });
-    // ─────────────────────────────────────────────────────────────────────────
-    //  Level 2 — Haunted Forest
-    // ─────────────────────────────────────────────────────────────────────────
-    m_levels.append({
-        .id               = 2,
-        .name             = "Haunted Forest",
 
-        .bossName         = "Shadow Walker",
-        .bossType         = CharacterType::Archer,
-        .bossHpMultiplier = 2,
-        .bossAttackBonus  = 8,
-        .bossGoldReward   = 250,
-
-        .requiredRuns     = 0,
-        .requiredGold     = 0,
-        .requiredLevelId  = 1,
-
-        .bossIntroLine   = "I've watched every fight since the cave.\n\n"
-                           "You swing like someone trying to survive.\n\n"
-                           "But survival is not the same as victory.",
-
-        .bossDefeatLine  = "So the cave was not luck.\n\n"
-                           "Fine.\n\n"
-                           "The dead forest was only the warning.",
-
-        .bossVictoryLine = "The forest keeps what it catches.\n\n"
-                           "Come back when your fear is useful.",
-
-        .unlockHint      = "Requires: defeat Goblin Cave first.",
-
-        .storyPages = {
-            "The cave falls silent behind you.\n\n"
-            "No cheering. No relief.\n\n"
-            "Only trees moving when there is no wind.",
-
-            "The path bends east into a dead forest.\n\n"
-            "Something has been watching from between the trunks.\n\n"
-            "Something patient.",
-
-            "The goblins were hired.\n\n"
-            "The watcher is not.\n\n"
-            "This time, the forest itself wants an answer."
-        },
-
-        .enterPrompt = "► ENTER THE FOREST"
-    });
-    // ─────────────────────────────────────────────────────────────────────────
-    //  Level 3 — Frozen Peak
-    // ─────────────────────────────────────────────────────────────────────────
+    // ── Level 3 — Frozen Peak ─────────────────────────────────────────────────
     m_levels.append({
         .id               = 3,
         .name             = "Frozen Peak",
+        .theme            = LevelTheme::Peak,
 
         .bossName         = "Veyrath",
         .bossType         = CharacterType::Mage,
@@ -200,13 +151,11 @@ void LevelManager::buildLevels()
         .enterPrompt = "► CLIMB THE PEAK"
     });
 
-
-    // ─────────────────────────────────────────────────────────────────────────
-    //  Level 4 — Volcanic Dungeon
-    // ─────────────────────────────────────────────────────────────────────────
+    // ── Level 4 — Volcanic Dungeon ────────────────────────────────────────────
     m_levels.append({
         .id               = 4,
         .name             = "Volcanic Dungeon",
+        .theme            = LevelTheme::Volcano,
 
         .bossName         = "Ember Warrior",
         .bossType         = CharacterType::Warrior,
@@ -250,13 +199,11 @@ void LevelManager::buildLevels()
         .enterPrompt = "► DESCEND INTO THE VOLCANO"
     });
 
-
-    // ─────────────────────────────────────────────────────────────────────────
-    //  Level 5 — The Final Arena
-    // ─────────────────────────────────────────────────────────────────────────
+    // ── Level 5 — The Final Arena ─────────────────────────────────────────────
     m_levels.append({
         .id               = 5,
         .name             = "The Final Arena",
+        .theme            = LevelTheme::Arena,
 
         .bossName         = "The Champion",
         .bossType         = CharacterType::Warrior,   // overridden to player class at runtime
@@ -305,8 +252,6 @@ void LevelManager::buildLevels()
     });
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-//  Lookup / unlock / completion
 // ─────────────────────────────────────────────────────────────────────────────
 
 const LevelDef* LevelManager::level(int id) const

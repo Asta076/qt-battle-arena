@@ -108,6 +108,7 @@ private:
 
     // ── Private helpers ───────────────────────────────────────────────────────
     void buildScene();
+    void buildThemeElements();
     void placePlayer();
     void spawnEnemies();
     void movePlayer();

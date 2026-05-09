@@ -91,7 +91,7 @@ void MainWindow::buildUI()
     // ── Overworld ────────────────────────────────────────────────────────────
     connect(m_overworld, &OverworldWidget::dungeonEntered,
             this, &MainWindow::onDungeonEntered);
-    connect(m_overworld, &OverworldWidget::level1Entered,
+   connect(m_overworld, &OverworldWidget::levelsEntered,
             this, &MainWindow::onLevel1Entered);
     connect(m_overworld, &OverworldWidget::backToMenu,
             this, &MainWindow::onBackToMenu);
@@ -370,7 +370,31 @@ void MainWindow::onLevel1Entered()
     }
 }
 
-// ── NEW: fires when player presses the enter button on the last story page ──
+void MainWindow::onLevel2Entered()
+{
+    const LevelDef* lvl = m_levelManager.level(2);
+    if (!lvl) return;
+
+    if (!m_levelManager.isUnlocked(2, m_profile)) {
+        m_overworld->activate();
+        return;
+    }
+
+    m_inLevel        = true;
+    m_activeLevelId  = 0;
+    m_pendingLevelId = 2;
+
+    if (!lvl->storyPages.isEmpty()) {
+        m_storySlide->resize(size());
+        m_storySlide->show(lvl->name, lvl->storyPages, lvl->enterPrompt);
+        m_storySlide->raise();
+    } else {
+        m_level1->activate(*lvl, m_profile);
+        m_stack->setCurrentWidget(m_level1);
+    }
+}
+
+
 void MainWindow::onStoryFinished()
 {
     m_storySlide->hide();
@@ -581,31 +605,32 @@ void MainWindow::onBossOutroDismissed()
 {
     m_bossDialog->hide();
     m_level1->deactivate();
+    updateGoldHud();
 
+    // If player won, flow directly into the next level
     if (m_lastBossWon) {
-        int nextLevelId = m_lastFinishedLevelId + 1;
-        const LevelDef* next = m_levelManager.level(nextLevelId);
+        int nextId = m_lastFinishedLevelId + 1;
+        const LevelDef* next = m_levelManager.level(nextId);
 
-        if (next && m_levelManager.isUnlocked(nextLevelId, m_profile)) {
-            m_inLevel = true;
-            m_pendingLevelId = nextLevelId;
+        if (next) {
+            m_inLevel        = true;
+            m_activeLevelId  = 0;
+            m_pendingLevelId = nextId;
 
             if (!next->storyPages.isEmpty()) {
                 m_storySlide->resize(size());
                 m_storySlide->show(next->name, next->storyPages, next->enterPrompt);
                 m_storySlide->raise();
-                m_storySlide->setFocus();
-                return;
+            } else {
+                m_level1->activate(*next, m_profile);
+                m_stack->setCurrentWidget(m_level1);
             }
-
-            m_level1->activate(*next, m_profile);
-            m_stack->setCurrentWidget(m_level1);
             return;
         }
     }
 
+    // Player lost, or all levels complete → back to overworld
     m_inLevel = false;
-    updateGoldHud();
     m_overworld->activate();
     m_stack->setCurrentWidget(m_overworld);
 }

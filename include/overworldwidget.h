@@ -1,5 +1,6 @@
 #pragma once
 
+
 // Qt stuff we need
 #include <QWidget>
 #include <QGraphicsView>
@@ -116,7 +117,7 @@ signals:
     void dungeonEntered();
     void houseEntered();
     void shopEntered();
-    void level1Entered();       // ← NEW: triggers Level 1 screen
+    void levelsEntered();
     void backToMenu();
     void saveRequested();
 
@@ -157,7 +158,7 @@ private:
     QGraphicsRectItem *m_houseCollider     = nullptr;
     QGraphicsRectItem *m_shopZone          = nullptr;
     QGraphicsRectItem *m_houseEntranceZone = nullptr;
-    QGraphicsRectItem *m_level1Zone        = nullptr;   // ← NEW: Level 1 entrance zone
+    QGraphicsRectItem *m_level1Zone        = nullptr; 
     GoldHudWidget     *m_goldHud           = nullptr;
 
     // --- game loop stuff ---

@@ -408,26 +408,20 @@ void OverworldWidget::buildScene()
     skull->setPos(dx + 2, dy + dh + 4);
     skull->setZValue(3);
 
-    // ── Level 1 entrance (top-right corner) ──────────────────────────────────
-    const qreal l1w = 80, l1h = 56;
-    const qreal l1x = WORLD_W - l1w - 6;
-    const qreal l1y = 6;
+// ── LEVELS portal — positioned below the wall so it's reachable ──────────
+    const qreal lw = 100, lh = 56;
+    const qreal lx = WORLD_W - lw - 40;
+    const qreal ly = 80;
 
-    // green border around the entrance
-    m_scene->addRect(l1x - 10, l1y - 6, l1w + 20, l1h + 10,
+    m_scene->addRect(lx-10, ly-6, lw+20, lh+10,
                      Qt::NoPen, QBrush(QColor("#1a3a1a")))->setZValue(1);
-
-    // the zone that triggers level 1 entry
-    m_level1Zone = m_scene->addRect(l1x, l1y, l1w, l1h,
+    m_level1Zone = m_scene->addRect(lx, ly, lw, lh,
                                     Qt::NoPen, QBrush(QColor("#00e676")));
     m_level1Zone->setZValue(2);
-
-    auto *l1label = m_scene->addText("LEVEL 1", QFont("Arial", 8, QFont::Bold));
-    l1label->setDefaultTextColor(QColor("#a5d6a7"));
-    l1label->setPos(l1x + 6, l1y + l1h + 4);
-    l1label->setZValue(3);
-
-    // --- controls hint at the bottom ---
+    auto* llabel = m_scene->addText("► LEVELS", QFont("Arial", 8, QFont::Bold));
+    llabel->setDefaultTextColor(QColor("#a5d6a7"));
+    llabel->setPos(lx+10, ly+16); llabel->setZValue(3);
+// --- controls hint at the bottom ---
     auto *hint = m_scene->addText(
         "WASD / Arrow keys to move    ESC = menu",
         QFont("Arial", 7)
@@ -442,6 +436,7 @@ void OverworldWidget::buildScene()
     m_scene->addItem(m_player);
     placePlayer();
 }
+
 
 // put the player in the center of the map
 void OverworldWidget::placePlayer()
@@ -525,9 +520,9 @@ void OverworldWidget::checkTriggers()
     }
 
     // ── Level 1 entrance ─────────────────────────────────────────────────────
-    if (m_level1Zone && m_player->collidesWithItem(m_level1Zone)) {
+  if (m_level1Zone && m_player->collidesWithItem(m_level1Zone)) {
         deactivate();
-        emit level1Entered();
+        emit levelsEntered();
         return;
     }
 }

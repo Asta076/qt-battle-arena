@@ -45,6 +45,7 @@ private slots:
     void onDungeonEntered();
     void onExitedDungeon();
     void onLevel1Entered();
+    void onLevel2Entered(); 
     void onExitedLevel1();
     void onBattleTriggered(CharacterType enemyType, const QString& enemyName);
     void onBackToMenu();
