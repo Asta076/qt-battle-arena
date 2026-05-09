@@ -348,7 +348,7 @@ DungeonWidget::DungeonWidget(AudioManager* audio, QWidget* parent)
     m_view = new QGraphicsView(m_scene, this);
     m_view->setFrameShape(QFrame::NoFrame);
     m_view->setAlignment(Qt::AlignLeft | Qt::AlignTop);
-    m_view->setViewportUpdateMode(QGraphicsView::FullViewportUpdate);
+    m_view->setViewportUpdateMode(QGraphicsView::BoundingRectViewportUpdate);
     m_view->setOptimizationFlag(QGraphicsView::DontAdjustForAntialiasing);
     m_view->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     m_view->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
@@ -521,7 +521,7 @@ void DungeonWidget::spawnEnemies()
 {
     clearEnemies();
 
-    const int enemyCount = 3 + (m_waveNumber - 1) * 2;
+    const int enemyCount = std::min(10, 3 + (m_waveNumber - 1) * 2);
     const int hpBonus = (m_waveNumber - 1) * 10;
     const int damageBonus = (m_waveNumber - 1) * 2;
 
@@ -664,7 +664,9 @@ void DungeonWidget::onTick()
     checkAttackCollisions();
 
     checkCollisions();
-    fitView();
+
+    if (m_player && m_view)
+        m_view->centerOn(m_player);
 
     updatePlayerHud();
 }
