@@ -138,6 +138,8 @@ private:
     static constexpr int PROJECTILE_MAX_TICKS = 90;
 
     QPixmap m_arenaBackground;
+    QPixmap m_arrowProjectileSprite;
+    QPixmap m_fireballProjectileSprite;
 
     PvpFighterAnim m_p1;
     PvpFighterAnim m_p2;

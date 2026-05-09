@@ -16,12 +16,13 @@ PvpArenaWidget::PvpArenaWidget(QWidget* parent)
     setFocusPolicy(Qt::StrongFocus);
 
     m_arenaBackground.load(":/backgrounds/pvp_arena.png");
+    m_arrowProjectileSprite.load(":/sprites/arrow.png");
+    m_fireballProjectileSprite.load(":/sprites/fireball.png");
 
     setFighters(CharacterType::Warrior, CharacterType::Archer);
     resetPlayers();
 
     m_ticker.setInterval(16);
-
     connect(&m_ticker, &QTimer::timeout,
             this, &PvpArenaWidget::onTick);
 }
@@ -330,26 +331,51 @@ void PvpArenaWidget::drawProjectiles(QPainter& painter)
 
         dir /= length;
 
+        const qreal angle = qRadiansToDegrees(qAtan2(dir.y(), dir.x()));
+
+        painter.save();
+        painter.translate(projectile.pos);
+        painter.rotate(angle);
+
         if (projectile.type == CharacterType::Archer) {
-            QPen arrowPen(QColor("#FDE68A"), 4);
-            arrowPen.setCapStyle(Qt::RoundCap);
+            if (!m_arrowProjectileSprite.isNull()) {
+                QRectF target(-24.0, -9.0, 48.0, 18.0);
 
-            painter.setPen(arrowPen);
-            painter.setBrush(QColor("#FACC15"));
+                painter.drawPixmap(
+                    target,
+                    m_arrowProjectileSprite,
+                    m_arrowProjectileSprite.rect()
+                );
+            } else {
+                QPen arrowPen(QColor("#FDE68A"), 4);
+                arrowPen.setCapStyle(Qt::RoundCap);
 
-            QPointF tail = projectile.pos - dir * 24.0;
-            QPointF head = projectile.pos;
+                painter.setPen(arrowPen);
+                painter.setBrush(QColor("#FACC15"));
 
-            painter.drawLine(tail, head);
-            painter.drawEllipse(head, 4.0, 4.0);
+                painter.drawLine(QPointF(-24.0, 0.0), QPointF(24.0, 0.0));
+                painter.drawEllipse(QPointF(24.0, 0.0), 4.0, 4.0);
+            }
         } else if (projectile.type == CharacterType::Mage) {
-            painter.setPen(QPen(QColor("#FDBA74"), 2));
-            painter.setBrush(QColor("#F97316"));
-            painter.drawEllipse(projectile.pos, 9.0, 9.0);
+            if (!m_fireballProjectileSprite.isNull()) {
+                QRectF target(-20.0, -20.0, 40.0, 40.0);
 
-            painter.setBrush(QColor("#FACC15"));
-            painter.drawEllipse(projectile.pos, 4.0, 4.0);
+                painter.drawPixmap(
+                    target,
+                    m_fireballProjectileSprite,
+                    m_fireballProjectileSprite.rect()
+                );
+            } else {
+                painter.setPen(QPen(QColor("#FDBA74"), 2));
+                painter.setBrush(QColor("#F97316"));
+                painter.drawEllipse(QPointF(0.0, 0.0), 9.0, 9.0);
+
+                painter.setBrush(QColor("#FACC15"));
+                painter.drawEllipse(QPointF(0.0, 0.0), 4.0, 4.0);
+            }
         }
+
+        painter.restore();
     }
 
     painter.restore();
@@ -397,9 +423,6 @@ void PvpArenaWidget::applyDamage(PvpFighterAnim& target,
         target.hp = 0;
         m_roundOver = true;
         m_winnerText = winnerText;
-
-        // Do NOT clear projectiles here.
-        // updateCombatHits() may still be looping through m_projectiles.
     }
 }
 
@@ -411,7 +434,6 @@ void PvpArenaWidget::updateCombatHits()
     QRectF p1Rect = fighterRect(m_p1);
     QRectF p2Rect = fighterRect(m_p2);
 
-    // Projectile hits
     for (int i = m_projectiles.size() - 1; i >= 0; --i) {
         const PvpProjectile projectile = m_projectiles[i];
 
@@ -452,7 +474,6 @@ void PvpArenaWidget::updateCombatHits()
         }
     }
 
-    // Warrior melee hits
     if (m_p1.type == CharacterType::Warrior &&
         m_p1.isAttacking &&
         !m_p1.hasHitDuringAttack &&
@@ -595,7 +616,7 @@ void PvpArenaWidget::paintEvent(QPaintEvent* event)
     painter.drawText(
         controlsRect,
         Qt::AlignCenter,
-        "P1: WASD + F Attack    |    P2: Arrows + / or K Attack    |    R: Restart"
+        "P1: WASD + F Attack    |    P2: Arrows + / or K Attack    |    R: Restart    |    ESC: Back"
     );
 
     if (m_roundOver) {
