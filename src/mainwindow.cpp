@@ -56,6 +56,7 @@ void MainWindow::buildUI()
     m_house        = new HouseWidget(m_audio, this);
     m_shop         = new ShopWidget(this);
     m_battleWidget = new BattleWidget(m_engine, m_audio, &m_profile, this);
+    m_levelSelect = new LevelSelectWidget(&m_levelManager, this);
     m_levelBattle  = new LevelBattleWidget(m_engine, m_audio, &m_profile, this);
     m_scoreboard   = new ScoreboardWidget(m_engine, this);
     m_gameOver     = new GameOverWidget(m_engine, this);
@@ -73,6 +74,7 @@ void MainWindow::buildUI()
     m_stack->addWidget(m_battleWidget);
     m_stack->addWidget(m_gameOver);
     m_stack->addWidget(m_scoreboard);
+    m_stack->addWidget(m_levelSelect);
 
     setCentralWidget(m_stack);
     m_stack->setCurrentWidget(m_startScreen);
@@ -94,8 +96,8 @@ void MainWindow::buildUI()
     // ── Overworld ────────────────────────────────────────────────────────────
     connect(m_overworld, &OverworldWidget::dungeonEntered,
             this, &MainWindow::onDungeonEntered);
-   connect(m_overworld, &OverworldWidget::levelsEntered,
-            this, &MainWindow::onLevel1Entered);
+    connect(m_overworld, &OverworldWidget::levelsEntered,
+            this, &MainWindow::onLevelsPortalEntered);
     connect(m_overworld, &OverworldWidget::backToMenu,
             this, &MainWindow::onBackToMenu);
     connect(m_overworld, &OverworldWidget::saveRequested,
@@ -125,7 +127,10 @@ void MainWindow::buildUI()
 
     connect(m_levelBattle, &LevelBattleWidget::itemChosen,
             this, &MainWindow::onLevelItemChosen);
-
+    connect(m_levelSelect, &LevelSelectWidget::levelSelected,
+            this, &MainWindow::onLevelSelected);
+    connect(m_levelSelect, &LevelSelectWidget::backRequested,
+            this, &MainWindow::onLevelSelectBack);
     // ── Boss dialog overlay ───────────────────────────────────────────────────
     m_bossDialog = new BossDialogWidget(this);
     m_bossDialog->hide();
@@ -667,4 +672,34 @@ void MainWindow::onLevelItemChosen(ItemType type)
     case ItemType::AttackBoost:  m_engine->onPlayerAttackBoosted();       break;
     case ItemType::DefenseBoost: m_engine->onPlayerDefenseActivated();    break;
     }
+}
+void MainWindow::onLevelsPortalEntered()
+{
+    m_levelSelect->refresh(m_profile);
+    m_stack->setCurrentWidget(m_levelSelect);
+}
+
+void MainWindow::onLevelSelected(int levelId)
+{
+    const LevelDef* lvl = m_levelManager.level(levelId);
+    if (!lvl) return;
+
+    m_inLevel        = true;
+    m_activeLevelId  = 0;
+    m_pendingLevelId = levelId;
+
+    if (!lvl->storyPages.isEmpty()) {
+        m_storySlide->resize(size());
+        m_storySlide->show(lvl->name, lvl->storyPages, lvl->enterPrompt);
+        m_storySlide->raise();
+    } else {
+        m_level1->activate(*lvl, m_profile);
+        m_stack->setCurrentWidget(m_level1);
+    }
+}
+
+void MainWindow::onLevelSelectBack()
+{
+    m_overworld->activate();
+    m_stack->setCurrentWidget(m_overworld);
 }

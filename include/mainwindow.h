@@ -10,6 +10,7 @@
 #include "bossdialogwidget.h"
 #include "storyslidedialog.h"      
 #include "levelbattlewidget.h"
+#include "levelselectwidget.h"
 
 class StartScreenWidget;
 class CharacterSelectWidget;
@@ -41,6 +42,11 @@ private slots:
     void onNewGameInSlot(int slotIndex);
     void onLoadSlot(int slotIndex);
     void onSlotBackRequested();
+    void onLevelsPortalEntered();
+    void onLevelSelected(int levelId);
+    void onLevelSelectBack();
+
+
 
     // ── Exploration ───────────────────────────────────────────────────────────
     void onDungeonEntered();
@@ -101,6 +107,7 @@ private:
     GameOverWidget*        m_gameOver     = nullptr;
     ScoreboardWidget*      m_scoreboard   = nullptr;
     LevelBattleWidget*     m_levelBattle  = nullptr;
+    LevelSelectWidget* m_levelSelect      = nullptr;
 
     // ── Level system ──────────────────────────────────────────────────────────
     LevelManager      m_levelManager;

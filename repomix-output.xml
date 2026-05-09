@@ -59,6 +59,7 @@ include/
   housewidget.h
   itemmenuwidget.h
   level1widget.h
+  levelbattlewidget.h
   leveldef.h
   levelmanager.h
   mage.h
@@ -128,6 +129,7 @@ src/
   itemmenuwidget.cpp
   level1widget.cpp
   level1widget.ui
+  levelbattlewidget.cpp
   levelmanager.cpp
   mage.cpp
   main.cpp
@@ -1389,80 +1391,6 @@ signals:
 };
 </file>
 
-<file path="include/battlewidget.h">
-#pragma once
-#include <QWidget>
-#include "gameengine.h"
-#include "battleresult.h"
-#include "audiomanager.h"
-#include "playerprofile.h"
-class HealthBarWidget;
-class SpriteWidget;
-class BattleLogWidget;
-class BattleMenuWidget;
-class PauseOverlayWidget;
-class RoundOverWidget;
-class QLabel;
-class QKeyEvent;
-class ItemMenuWidget;
-
-class BattleWidget : public QWidget {
-    Q_OBJECT
-public:
-    explicit BattleWidget(GameEngine* engine, AudioManager* audio,
-                          PlayerProfile* profile, QWidget* parent = nullptr);
-
-protected:
-    void paintEvent(QPaintEvent*) override;
-    void resizeEvent(QResizeEvent*) override;
-    void keyPressEvent(QKeyEvent* event) override;
-
-private slots:
-    void onStateChanged(GameState state);
-    void onHealthUpdated(float playerPct, float enemyPct);
-    void onBattleActionResolved(const BattleResult& result);
-    void onRoundEnded(int pScore, int eScore, bool playerWon);
-    void onEnergyUpdated(float playerPct, float enemyPct);
-
-
-private:
-    void layoutChildren();
-    void onItemMenuChosen(ItemType type);
-    void onItemMenuCancelled();
-
-    GameEngine*      m_engine;
-    AudioManager* m_audio;
-    // ── Battle area ───────────────────────────────
-    SpriteWidget*    m_playerSprite;
-    SpriteWidget*    m_enemySprite;
-    HealthBarWidget* m_playerHP;
-    HealthBarWidget* m_enemyHP;
-    QLabel*          m_playerNameLabel;
-    QLabel*          m_enemyNameLabel;
-    QLabel*          m_roundLabel;
-    QLabel*          m_scoreLabel;
-    HealthBarWidget* m_playerSP;
-    HealthBarWidget* m_enemySP;
-    QLabel*          m_playerSpLabel;  // (shows "SP" text)
-    QLabel*          m_enemySpLabel;
-    ItemMenuWidget*  m_itemMenu  = nullptr;
-    PlayerProfile*   m_profile   = nullptr;
-
-    // ── Bottom panel ──────────────────────────────
-    BattleLogWidget* m_log;
-    BattleMenuWidget*m_menu;
-
-    // ── Overlays ──────────────────────────────────
-    PauseOverlayWidget* m_pauseOverlay;
-    RoundOverWidget*    m_roundOver;
-
-    QPixmap m_background;
-
-signals:
-    void itemChosen(ItemType type);
-};
-</file>
-
 <file path="include/bossdialogwidget.h">
 #pragma once
 #include <QWidget>
@@ -1651,6 +1579,118 @@ protected:
 
 private:
     int m_gold = 0;
+};
+</file>
+
+<file path="include/levelbattlewidget.h">
+#pragma once
+#include <QWidget>
+#include "gameengine.h"
+#include "battleresult.h"
+#include "audiomanager.h"
+#include "playerprofile.h"
+#include "leveldef.h"
+
+class HealthBarWidget;
+class SpriteWidget;
+class PauseOverlayWidget;
+class QLabel;
+class QPushButton;
+class QKeyEvent;
+class ItemMenuWidget;
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  LevelBattleWidget
+//
+//  A completely separate battle screen used only for level fights (both
+//  regular enemies and boss fights). Visually distinct from DungeonWidget's
+//  battle screen — full-screen, theme-colored, cinematic layout.
+//
+//  Reuses GameEngine signals/slots but has its own layout and paintEvent.
+// ─────────────────────────────────────────────────────────────────────────────
+class LevelBattleWidget : public QWidget {
+    Q_OBJECT
+
+public:
+    explicit LevelBattleWidget(GameEngine* engine,
+                               AudioManager* audio,
+                               PlayerProfile* profile,
+                               QWidget* parent = nullptr);
+
+    // Call before the fight starts to set context
+    void setContext(const QString& levelName,
+                    bool isBoss,
+                    LevelTheme theme);
+
+signals:
+    void itemChosen(ItemType type);
+
+protected:
+    void paintEvent    (QPaintEvent*)  override;
+    void resizeEvent   (QResizeEvent*) override;
+    void keyPressEvent (QKeyEvent*)    override;
+
+private slots:
+    void onStateChanged         (GameState state);
+    void onHealthUpdated        (float playerPct, float enemyPct);
+    void onBattleActionResolved (const BattleResult& result);
+    void onRoundEnded           (int pScore, int eScore, bool playerWon);
+    void onEnergyUpdated        (float playerPct, float enemyPct);
+
+private:
+    void layoutChildren();
+    void showMessage(const QString& msg);
+    void onItemMenuChosen    (ItemType type);
+    void onItemMenuCancelled ();
+    void setButtonsEnabled(bool on);
+
+    // ── Engine / data ─────────────────────────────────────────────────────────
+    GameEngine*    m_engine;
+    AudioManager*  m_audio;
+    PlayerProfile* m_profile;
+
+    // ── Context ───────────────────────────────────────────────────────────────
+    QString    m_levelName;
+    bool       m_isBoss  = false;
+    LevelTheme m_theme   = LevelTheme::Cave;
+
+    // ── Sprites ───────────────────────────────────────────────────────────────
+    SpriteWidget* m_playerSprite = nullptr;
+    SpriteWidget* m_enemySprite  = nullptr;
+
+    // ── HUD labels ────────────────────────────────────────────────────────────
+    QLabel* m_headerLabel     = nullptr;   // "LEVEL 2 — HAUNTED FOREST"
+    QLabel* m_subheaderLabel  = nullptr;   // "⚔ BOSS BATTLE" or "ENCOUNTER"
+    QLabel* m_playerNameLabel = nullptr;
+    QLabel* m_enemyNameLabel  = nullptr;
+    QLabel* m_messageLabel    = nullptr;   // single-line battle message
+    QLabel* m_scoreLabel      = nullptr;   // "2 — 1" for boss multi-round
+
+    // ── HP / SP bars ──────────────────────────────────────────────────────────
+    HealthBarWidget* m_playerHP = nullptr;
+    HealthBarWidget* m_enemyHP  = nullptr;
+    HealthBarWidget* m_playerSP = nullptr;
+    HealthBarWidget* m_enemySP  = nullptr;
+
+    // ── Action buttons ────────────────────────────────────────────────────────
+    QPushButton* m_fightBtn   = nullptr;
+    QPushButton* m_specialBtn = nullptr;
+    QPushButton* m_itemBtn    = nullptr;
+    QPushButton* m_runBtn     = nullptr;
+
+    int m_cursorIndex = 0;
+    void moveCursor(int delta);
+    void confirmSelection();
+    void updateCursor();
+
+    // ── Overlays ──────────────────────────────────────────────────────────────
+    PauseOverlayWidget* m_pauseOverlay = nullptr;
+    ItemMenuWidget*     m_itemMenu     = nullptr;
+
+    // ── Theme helper ─────────────────────────────────────────────────────────
+    QColor themeColor()       const;   // primary accent colour
+    QColor themeBgColor()     const;   // background tint
+    QColor themeOverlay()     const;   // semi-transparent overlay
 };
 </file>
 
@@ -2398,6 +2438,485 @@ void GoldHudWidget::paintEvent(QPaintEvent*)
 </ui>
 </file>
 
+<file path="src/levelbattlewidget.cpp">
+#include "levelbattlewidget.h"
+#include "healthbarwidget.h"
+#include "spritewidget.h"
+#include "pauseoverlaywidget.h"
+#include "itemmenuwidget.h"
+#include "spritecache.h"
+
+#include <QLabel>
+#include <QPushButton>
+#include <QVBoxLayout>
+#include <QHBoxLayout>
+#include <QPainter>
+#include <QKeyEvent>
+#include <QTimer>
+#include <QFont>
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  Constructor
+// ─────────────────────────────────────────────────────────────────────────────
+
+LevelBattleWidget::LevelBattleWidget(GameEngine* engine,
+                                     AudioManager* audio,
+                                     PlayerProfile* profile,
+                                     QWidget* parent)
+    : QWidget(parent)
+    , m_engine(engine)
+    , m_audio(audio)
+    , m_profile(profile)
+{
+    setFocusPolicy(Qt::StrongFocus);
+
+    // ── Header labels ─────────────────────────────────────────────────────────
+    m_headerLabel = new QLabel(this);
+    m_headerLabel->setAlignment(Qt::AlignCenter);
+    m_headerLabel->setFont(QFont("Press Start 2P", 9));
+    m_headerLabel->setStyleSheet("color: #FFE066;");
+
+    m_subheaderLabel = new QLabel(this);
+    m_subheaderLabel->setAlignment(Qt::AlignCenter);
+    m_subheaderLabel->setFont(QFont("Press Start 2P", 7));
+    m_subheaderLabel->setStyleSheet("color: #A0A0C0;");
+
+    // ── Enemy side ────────────────────────────────────────────────────────────
+    m_enemyNameLabel = new QLabel(this);
+    m_enemyNameLabel->setAlignment(Qt::AlignCenter);
+    m_enemyNameLabel->setFont(QFont("Press Start 2P", 8));
+    m_enemyNameLabel->setStyleSheet("color: #F0E8D0;");
+
+    m_enemySprite = new SpriteWidget(this);
+    m_enemySprite->setFixedSize(200, 200);
+    m_enemySprite->setMirrored(true);
+
+    m_enemyHP = new HealthBarWidget(this);
+    m_enemyHP->setFixedSize(220, 16);
+    m_enemySP = new HealthBarWidget(this);
+    m_enemySP->setFixedSize(220, 10);
+    m_enemySP->setFixedBarColor(QColor("#4A90D9"));
+    m_enemySP->animateTo(0.0f);
+
+    // ── Player side ───────────────────────────────────────────────────────────
+    m_playerNameLabel = new QLabel(this);
+    m_playerNameLabel->setAlignment(Qt::AlignCenter);
+    m_playerNameLabel->setFont(QFont("Press Start 2P", 8));
+    m_playerNameLabel->setStyleSheet("color: #F0E8D0;");
+
+    m_playerSprite = new SpriteWidget(this);
+    m_playerSprite->setFixedSize(200, 200);
+
+    m_playerHP = new HealthBarWidget(this);
+    m_playerHP->setFixedSize(220, 16);
+    m_playerSP = new HealthBarWidget(this);
+    m_playerSP->setFixedSize(220, 10);
+    m_playerSP->setFixedBarColor(QColor("#4A90D9"));
+    m_playerSP->animateTo(0.0f);
+
+    // ── Score (boss multi-round) ───────────────────────────────────────────────
+    m_scoreLabel = new QLabel("", this);
+    m_scoreLabel->setAlignment(Qt::AlignCenter);
+    m_scoreLabel->setFont(QFont("Press Start 2P", 7));
+    m_scoreLabel->setStyleSheet("color: #A0A0C0;");
+
+    // ── Battle message ────────────────────────────────────────────────────────
+    m_messageLabel = new QLabel("", this);
+    m_messageLabel->setAlignment(Qt::AlignCenter);
+    m_messageLabel->setWordWrap(true);
+    m_messageLabel->setFont(QFont("Press Start 2P", 7));
+    m_messageLabel->setStyleSheet("color: #F0E8D0;");
+
+    // ── Action buttons ────────────────────────────────────────────────────────
+    m_fightBtn   = new QPushButton("► FIGHT",   this);
+    m_specialBtn = new QPushButton("  SPECIAL", this);
+    m_itemBtn    = new QPushButton("  ITEM",    this);
+    m_runBtn     = new QPushButton("  RUN",     this);
+
+    for (auto* btn : {m_fightBtn, m_specialBtn, m_itemBtn, m_runBtn})
+        btn->setFixedWidth(160);
+
+    connect(m_fightBtn,   &QPushButton::clicked, m_engine, &GameEngine::onPlayerChoseFight);
+    connect(m_specialBtn, &QPushButton::clicked, m_engine, &GameEngine::onPlayerChoseSpecial);
+    connect(m_runBtn,     &QPushButton::clicked, m_engine, &GameEngine::onPlayerChoseRun);
+    connect(m_itemBtn,    &QPushButton::clicked, this, [this] {
+        if (!m_engine->itemAvailable()) return;
+        m_itemMenu->refresh(m_profile,
+                            m_engine->itemsUsedThisBattle(),
+                            m_engine->maxItemsPerBattle());
+        setButtonsEnabled(false);
+        m_itemMenu->show();
+        m_itemMenu->raise();
+        m_itemMenu->setFocus();
+    });
+
+    // ── Overlays ──────────────────────────────────────────────────────────────
+    m_pauseOverlay = new PauseOverlayWidget(false, this);
+    connect(m_pauseOverlay, &PauseOverlayWidget::resumeRequested, this, [this]{
+        m_engine->onPauseToggle();
+    });
+
+    m_itemMenu = new ItemMenuWidget(this);
+    m_itemMenu->hide();
+    connect(m_itemMenu, &ItemMenuWidget::itemChosen,    this, &LevelBattleWidget::onItemMenuChosen);
+    connect(m_itemMenu, &ItemMenuWidget::cancelled,     this, &LevelBattleWidget::onItemMenuCancelled);
+
+    // ── Engine signals ────────────────────────────────────────────────────────
+    connect(engine, &GameEngine::stateChanged,
+            this,   &LevelBattleWidget::onStateChanged);
+    connect(engine, &GameEngine::healthUpdated,
+            this,   &LevelBattleWidget::onHealthUpdated);
+    connect(engine, &GameEngine::battleActionResolved,
+            this,   &LevelBattleWidget::onBattleActionResolved);
+    connect(engine, &GameEngine::roundEnded,
+            this,   &LevelBattleWidget::onRoundEnded);
+    connect(engine, &GameEngine::energyUpdated,
+            this,   &LevelBattleWidget::onEnergyUpdated);
+    connect(engine, &GameEngine::battleLogMessage,
+            this,   &LevelBattleWidget::showMessage);
+
+    // Update sprites when battle starts
+    connect(engine, &GameEngine::stateChanged, this, [this](GameState s) {
+        if (s != GameState::PlayerTurn) return;
+        const auto& chars = m_engine->getAllCharacters();
+        if (chars.size() < 2) return;
+
+        auto spritePath = [](CharacterType t, bool back) -> QString {
+            switch (t) {
+            case CharacterType::Warrior:
+                return back ? ":/sprites/warrior_back.png" : ":/sprites/warrior_front.png";
+            case CharacterType::Mage:
+                return back ? ":/sprites/mage_back.png" : ":/sprites/mage_front.png";
+            case CharacterType::Archer:
+                return back ? ":/sprites/archer_back.png" : ":/sprites/archer_front.png";
+            }
+            return {};
+        };
+
+        m_playerNameLabel->setText(chars[0]->getName());
+        m_enemyNameLabel->setText(chars[1]->getName());
+        m_playerSprite->setSprite(spritePath(chars[0]->getType(), true));
+        m_enemySprite->setSprite(spritePath(chars[1]->getType(), false));
+        m_playerSprite->setFallbackColor(QColor("#4A6FA5"), chars[0]->getName());
+        m_enemySprite->setFallbackColor(QColor("#A54A4A"), chars[1]->getName());
+    });
+
+    updateCursor();
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  Context
+// ─────────────────────────────────────────────────────────────────────────────
+
+void LevelBattleWidget::setContext(const QString& levelName,
+                                   bool isBoss,
+                                   LevelTheme theme)
+{
+    m_levelName = levelName;
+    m_isBoss    = isBoss;
+    m_theme     = theme;
+
+    m_headerLabel->setText(levelName.toUpper());
+    m_subheaderLabel->setText(isBoss ? "⚔  BOSS BATTLE" : "— ENCOUNTER —");
+    m_scoreLabel->setVisible(isBoss);
+
+    // Tint the accent colour to match theme
+    m_headerLabel->setStyleSheet(
+        QString("color: %1;").arg(themeColor().name()));
+
+    update();
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  Theme helpers
+// ─────────────────────────────────────────────────────────────────────────────
+
+QColor LevelBattleWidget::themeColor() const
+{
+    switch (m_theme) {
+    case LevelTheme::Forest:  return QColor("#CE93D8");   // purple
+    case LevelTheme::Peak:    return QColor("#80D8FF");   // ice blue
+    case LevelTheme::Volcano: return QColor("#FF6E40");   // lava orange
+    case LevelTheme::Arena:   return QColor("#FFD700");   // gold
+    default:                  return QColor("#A5D6A7");   // cave green
+    }
+}
+
+QColor LevelBattleWidget::themeBgColor() const
+{
+    switch (m_theme) {
+    case LevelTheme::Forest:  return QColor("#0D001A");
+    case LevelTheme::Peak:    return QColor("#001929");
+    case LevelTheme::Volcano: return QColor("#1A0400");
+    case LevelTheme::Arena:   return QColor("#0A0A0A");
+    default:                  return QColor("#0A1A0A");
+    }
+}
+
+QColor LevelBattleWidget::themeOverlay() const
+{
+    switch (m_theme) {
+    case LevelTheme::Forest:  return QColor(50, 0, 80, 160);
+    case LevelTheme::Peak:    return QColor(0, 60, 120, 140);
+    case LevelTheme::Volcano: return QColor(140, 20, 0, 140);
+    case LevelTheme::Arena:   return QColor(10, 10, 10, 180);
+    default:                  return QColor(0, 40, 10, 140);
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  Engine slots
+// ─────────────────────────────────────────────────────────────────────────────
+
+void LevelBattleWidget::onStateChanged(GameState state)
+{
+    bool playerTurn = (state == GameState::PlayerTurn);
+    setButtonsEnabled(playerTurn);
+    if (playerTurn) {
+        setFocus();
+        m_specialBtn->setEnabled(m_engine->playerCanUseSpecial());
+        m_itemBtn->setEnabled(m_engine->itemAvailable());
+
+        if (m_isBoss) {
+            m_scoreLabel->setText(
+                QString("%1 — %2")
+                    .arg(m_engine->getPlayerScore())
+                    .arg(m_engine->getEnemyScore()));
+        }
+    }
+    m_pauseOverlay->setVisible(state == GameState::Paused);
+}
+
+void LevelBattleWidget::onHealthUpdated(float playerPct, float enemyPct)
+{
+    m_playerHP->animateTo(playerPct);
+    m_enemyHP->animateTo(enemyPct);
+}
+
+void LevelBattleWidget::onEnergyUpdated(float playerPct, float enemyPct)
+{
+    m_playerSP->animateTo(playerPct);
+    m_enemySP->animateTo(enemyPct);
+    m_specialBtn->setEnabled(m_engine->playerCanUseSpecial());
+}
+
+void LevelBattleWidget::onBattleActionResolved(const BattleResult& result)
+{
+    bool playerAttacked = !m_engine->getAllCharacters().isEmpty() &&
+        result.attackerName == m_engine->getAllCharacters()[0]->getName();
+
+    if (result.usedSpecial)
+        m_audio->playSfx("/sfx/special.wav");
+    else
+        m_audio->playSfx("/sfx/hit.wav");
+
+    if (playerAttacked) {
+        m_playerSprite->playAttackAnimation(true);
+        QTimer::singleShot(180, this, [this, result]{
+            m_enemySprite->playHitAnimation();
+            if (result.defenderFainted) {
+                m_enemySprite->playFaintAnimation();
+                m_audio->playSfx("/sfx/faint.wav");
+            }
+        });
+    } else {
+        m_enemySprite->playAttackAnimation(false);
+        QTimer::singleShot(180, this, [this, result]{
+            m_playerSprite->playHitAnimation();
+            if (result.defenderFainted) {
+                m_playerSprite->playFaintAnimation();
+                m_audio->playSfx("/sfx/faint.wav");
+            }
+        });
+    }
+}
+
+void LevelBattleWidget::onRoundEnded(int pScore, int eScore, bool playerWon)
+{
+    m_scoreLabel->setText(QString("%1 — %2").arg(pScore).arg(eScore));
+    showMessage(playerWon ? "✦ Round won!" : "✦ Round lost.");
+}
+
+void LevelBattleWidget::showMessage(const QString& msg)
+{
+    m_messageLabel->setText(msg);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  Item menu
+// ─────────────────────────────────────────────────────────────────────────────
+
+void LevelBattleWidget::onItemMenuChosen(ItemType type)
+{
+    m_itemMenu->hide();
+    setButtonsEnabled(false);
+    emit itemChosen(type);
+}
+
+void LevelBattleWidget::onItemMenuCancelled()
+{
+    m_itemMenu->hide();
+    setButtonsEnabled(true);
+    setFocus();
+}
+
+void LevelBattleWidget::setButtonsEnabled(bool on)
+{
+    m_fightBtn->setEnabled(on);
+    m_specialBtn->setEnabled(on && m_engine->playerCanUseSpecial());
+    m_itemBtn->setEnabled(on && m_engine->itemAvailable());
+    m_runBtn->setEnabled(on);
+    updateCursor();
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  Cursor navigation
+// ─────────────────────────────────────────────────────────────────────────────
+
+void LevelBattleWidget::moveCursor(int delta)
+{
+    QPushButton* btns[4] = {m_fightBtn, m_specialBtn, m_itemBtn, m_runBtn};
+    int next = m_cursorIndex;
+    do {
+        next = (next + delta + 4) % 4;
+    } while (!btns[next]->isEnabled() && next != m_cursorIndex);
+    m_cursorIndex = next;
+    updateCursor();
+}
+
+void LevelBattleWidget::updateCursor()
+{
+    const QStringList base = {"FIGHT", "SPECIAL", "ITEM", "RUN"};
+    QPushButton* btns[4] = {m_fightBtn, m_specialBtn, m_itemBtn, m_runBtn};
+    for (int i = 0; i < 4; ++i)
+        btns[i]->setText((i == m_cursorIndex ? "► " : "  ") + base[i]);
+}
+
+void LevelBattleWidget::confirmSelection()
+{
+    switch (m_cursorIndex) {
+    case 0: m_engine->onPlayerChoseFight();   break;
+    case 1: m_engine->onPlayerChoseSpecial(); break;
+    case 2: m_itemBtn->click();               break;
+    case 3: m_engine->onPlayerChoseRun();     break;
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  Paint — cinematic theme background
+// ─────────────────────────────────────────────────────────────────────────────
+
+void LevelBattleWidget::paintEvent(QPaintEvent*)
+{
+    QPainter p(this);
+    p.setRenderHint(QPainter::Antialiasing, false);
+
+    const int w = width(), h = height();
+
+    // Base dark background
+    p.fillRect(rect(), themeBgColor());
+
+    // Theme overlay gradient — darker at edges, lighter center
+    p.fillRect(rect(), themeOverlay());
+
+    // Decorative vertical separator between enemy and player halves
+    QColor sep = themeColor();
+    sep.setAlpha(60);
+    p.fillRect(w/2 - 1, 80, 2, h - 160, sep);
+
+    // Bottom button bar background
+    p.fillRect(0, h - 90, w, 90, QColor(0, 0, 0, 180));
+    p.setPen(QPen(themeColor(), 1));
+    p.drawLine(0, h - 90, w, h - 90);
+
+    // Top header bar
+    p.fillRect(0, 0, w, 70, QColor(0, 0, 0, 160));
+    p.drawLine(0, 70, w, 70);
+
+    // Corner accents
+    const int cs = 20;
+    p.setPen(QPen(themeColor(), 2));
+    p.drawLine(0, 0, cs, 0);   p.drawLine(0, 0, 0, cs);
+    p.drawLine(w-cs, 0, w, 0); p.drawLine(w, 0, w, cs);
+    p.drawLine(0, h-cs, 0, h); p.drawLine(0, h, cs, h);
+    p.drawLine(w, h-cs, w, h); p.drawLine(w-cs, h, w, h);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  Layout
+// ─────────────────────────────────────────────────────────────────────────────
+
+void LevelBattleWidget::resizeEvent(QResizeEvent* e)
+{
+    QWidget::resizeEvent(e);
+    layoutChildren();
+    if (m_pauseOverlay) m_pauseOverlay->resize(size());
+    if (m_itemMenu) {
+        int mx = (width()  - m_itemMenu->width())  / 2;
+        int my = height()  - 90 - m_itemMenu->height() - 8;
+        m_itemMenu->move(mx, my);
+    }
+}
+
+void LevelBattleWidget::layoutChildren()
+{
+    const int w = width(), h = height();
+    const int midY = 80;   // below header bar
+
+    // ── Header ────────────────────────────────────────────────────────────────
+    m_headerLabel->setGeometry(0, 8, w, 28);
+    m_subheaderLabel->setGeometry(0, 38, w, 20);
+    m_scoreLabel->setGeometry(0, 58, w, 16);
+
+    // ── Battle area height ────────────────────────────────────────────────────
+    const int battleH = h - midY - 90;   // between header and button bar
+
+    // ── Enemy (left half) ─────────────────────────────────────────────────────
+    const int halfW = w / 2;
+    m_enemyNameLabel->setGeometry(0, midY + 8, halfW, 24);
+    m_enemyHP->move(halfW/2 - 110, midY + 36);
+    m_enemySP->move(halfW/2 - 110, midY + 56);
+    m_enemySprite->move(halfW/2 - 100, midY + 70);
+
+    // ── Player (right half) ───────────────────────────────────────────────────
+    m_playerNameLabel->setGeometry(halfW, midY + 8, halfW, 24);
+    m_playerHP->move(halfW + halfW/2 - 110, midY + 36);
+    m_playerSP->move(halfW + halfW/2 - 110, midY + 56);
+    m_playerSprite->move(halfW + halfW/2 - 100, midY + 70);
+
+    // ── Message ───────────────────────────────────────────────────────────────
+    m_messageLabel->setGeometry(40, h - 96, w - 80, 20);
+
+    // ── Buttons ───────────────────────────────────────────────────────────────
+    const int btnY    = h - 82;
+    const int btnW    = 160;
+    const int spacing = (w - btnW * 4) / 5;
+
+    m_fightBtn->setGeometry  (spacing,             btnY, btnW, 36);
+    m_specialBtn->setGeometry(spacing*2 + btnW,    btnY, btnW, 36);
+    m_itemBtn->setGeometry   (spacing*3 + btnW*2,  btnY, btnW, 36);
+    m_runBtn->setGeometry    (spacing*4 + btnW*3,  btnY, btnW, 36);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  Input
+// ─────────────────────────────────────────────────────────────────────────────
+
+void LevelBattleWidget::keyPressEvent(QKeyEvent* e)
+{
+    if (e->key() == Qt::Key_Escape) { m_engine->onPauseToggle(); return; }
+    if (!m_fightBtn->isEnabled())   { QWidget::keyPressEvent(e); return; }
+
+    switch (e->key()) {
+    case Qt::Key_Left:               moveCursor(-1);       break;
+    case Qt::Key_Right:              moveCursor(+1);       break;
+    case Qt::Key_Return:
+    case Qt::Key_Space:              confirmSelection();    break;
+    default: QWidget::keyPressEvent(e);
+    }
+}
+</file>
+
 <file path="src/saveslotwidget.cpp">
 #include "saveslotwidget.h"
 #include <QLabel>
@@ -3101,6 +3620,84 @@ save_slot_1.json
 save_slot_2.json
 </file>
 
+<file path="include/battlewidget.h">
+#pragma once
+#include <QWidget>
+#include "gameengine.h"
+#include "battleresult.h"
+#include "audiomanager.h"
+#include "playerprofile.h"
+#include "leveldef.h"
+
+class HealthBarWidget;
+class SpriteWidget;
+class BattleLogWidget;
+class BattleMenuWidget;
+class PauseOverlayWidget;
+class RoundOverWidget;
+class QLabel;
+class QKeyEvent;
+class ItemMenuWidget;
+
+class BattleWidget : public QWidget {
+    Q_OBJECT
+public:
+    explicit BattleWidget(GameEngine* engine, AudioManager* audio,
+                          PlayerProfile* profile, QWidget* parent = nullptr);
+    
+
+
+protected:
+    void paintEvent(QPaintEvent*) override;
+    void resizeEvent(QResizeEvent*) override;
+    void keyPressEvent(QKeyEvent* event) override;
+
+private slots:
+    void onStateChanged(GameState state);
+    void onHealthUpdated(float playerPct, float enemyPct);
+    void onBattleActionResolved(const BattleResult& result);
+    void onRoundEnded(int pScore, int eScore, bool playerWon);
+    void onEnergyUpdated(float playerPct, float enemyPct);
+
+
+private:
+    void layoutChildren();
+    void onItemMenuChosen(ItemType type);
+    void onItemMenuCancelled();
+
+    GameEngine*      m_engine;
+    AudioManager* m_audio;
+    // ── Battle area ───────────────────────────────
+    SpriteWidget*    m_playerSprite;
+    SpriteWidget*    m_enemySprite;
+    HealthBarWidget* m_playerHP;
+    HealthBarWidget* m_enemyHP;
+    QLabel*          m_playerNameLabel;
+    QLabel*          m_enemyNameLabel;
+    QLabel*          m_roundLabel;
+    QLabel*          m_scoreLabel;
+    HealthBarWidget* m_playerSP;
+    HealthBarWidget* m_enemySP;
+    QLabel*          m_playerSpLabel;  // (shows "SP" text)
+    QLabel*          m_enemySpLabel;
+    ItemMenuWidget*  m_itemMenu  = nullptr;
+    PlayerProfile*   m_profile   = nullptr;
+
+    // ── Bottom panel ──────────────────────────────
+    BattleLogWidget* m_log;
+    BattleMenuWidget*m_menu;
+
+    // ── Overlays ──────────────────────────────────
+    PauseOverlayWidget* m_pauseOverlay;
+    RoundOverWidget*    m_roundOver;
+
+    QPixmap m_background;
+
+signals:
+    void itemChosen(ItemType type);
+};
+</file>
+
 <file path="include/itemmenuwidget.h">
 #pragma once
 #include <QWidget>
@@ -3163,48 +3760,6 @@ private:
     SlotInfo m_slots[TOTAL_SLOTS];
     int      m_cursorIndex      = 0;
     int      m_usesLeft         = 0;   // how many items can still be used this battle
-};
-</file>
-
-<file path="include/leveldef.h">
-#pragma once
-#include <QString>
-#include <QStringList>
-#include "character.h"
-
-// ─────────────────────────────────────────────────────────────────────────────
-//  LevelDef — pure data, no Qt, no dependencies beyond character.h
-//  Add a new level by adding a row to LevelManager::buildLevels()
-// ─────────────────────────────────────────────────────────────────────────────
-struct LevelDef {
-    int           id;
-    QString       name;
-
-    // ── Boss identity ─────────────────────────────────────────────────────────
-    QString       bossName;
-    CharacterType bossType;
-    int           bossHpMultiplier;    // e.g. 2 = double base HP
-    int           bossAttackBonus;     // flat attack bonus on top of base
-    int           bossGoldReward;
-
-    // ── Unlock criteria — all must be satisfied ───────────────────────────────
-    int           requiredRuns;        // dungeon runs needed  (0 = always open)
-    int           requiredGold;        // gold threshold       (0 = no requirement)
-    int           requiredLevelId;     // must beat this level first (0 = none)
-
-    // ── Boss dialogue — shown before/after the fight ──────────────────────────
-    QString       bossIntroLine;       // boss taunts player before fight
-    QString       bossDefeatLine;      // boss says on losing
-    QString       bossVictoryLine;     // boss says if player loses
-    QString       unlockHint;          // shown on locked zone: "Requires: ..."
-
-    // ── Story slides — shown before the level activates ───────────────────────
-    // Each QString is one full page of narrative text.
-    // Leave empty for no intro slide (level activates immediately).
-    QStringList   storyPages;
-
-    // ── Enter button label on the last story page ─────────────────────────────
-    QString       enterPrompt = "► CONTINUE";
 };
 </file>
 
@@ -4554,6 +5109,89 @@ void SpriteWidget::paintEvent(QPaintEvent*)
 }
 </file>
 
+<file path="include/housewidget.h">
+#pragma once
+
+#include <QWidget>
+#include "playerprofile.h"
+class QLabel;
+class QPushButton;
+class AudioManager;
+class PlayerProfile;
+class HouseWidget : public QWidget
+{
+    Q_OBJECT
+
+public:
+    explicit HouseWidget(AudioManager* audio, QWidget* parent = nullptr);
+void setProfile(PlayerProfile* profile);
+signals:
+    void backToOverworld();
+
+private:
+    QString getItemName(ItemType type) const;
+    AudioManager* m_audio = nullptr;
+    PlayerProfile* m_profile = nullptr;
+
+    QLabel* m_label = nullptr;
+    QPushButton* m_backButton = nullptr;
+
+    QLabel* m_statsLabel = nullptr;
+    QLabel* m_inventoryLabel = nullptr;
+};
+</file>
+
+<file path="include/leveldef.h">
+#pragma once
+#include <QString>
+#include <QStringList>
+#include "character.h"
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  LevelTheme — controls the visual mood of the level scene
+//  Used by Level1Widget::buildScene() to apply palette and atmosphere
+// ─────────────────────────────────────────────────────────────────────────────
+enum class LevelTheme {
+    Cave,      // Level 1 — green grass, dirt path, normal lighting
+    Forest,    // Level 2 — dark purple overlay, haunted mood
+    Peak,      // Level 3 — blue/grey icy overlay
+    Volcano,   // Level 4 — red/orange fiery overlay
+    Arena      // Level 5 — dark stone, minimal color
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  LevelDef — pure data, no Qt beyond QString/QStringList
+//  Add a new level by adding a row to LevelManager::buildLevels()
+// ─────────────────────────────────────────────────────────────────────────────
+struct LevelDef {
+    int           id;
+    QString       name;
+    LevelTheme    theme = LevelTheme::Cave;  // ← controls visual mood
+
+    // ── Boss identity ─────────────────────────────────────────────────────────
+    QString       bossName;
+    CharacterType bossType;
+    int           bossHpMultiplier;
+    int           bossAttackBonus;
+    int           bossGoldReward;
+
+    // ── Unlock criteria ───────────────────────────────────────────────────────
+    int           requiredRuns;
+    int           requiredGold;
+    int           requiredLevelId;
+
+    // ── Boss dialogue ─────────────────────────────────────────────────────────
+    QString       bossIntroLine;
+    QString       bossDefeatLine;
+    QString       bossVictoryLine;
+    QString       unlockHint;
+
+    // ── Story slides — shown before the level activates ───────────────────────
+    QStringList   storyPages;
+    QString       enterPrompt = "► CONTINUE";
+};
+</file>
+
 <file path="include/gameengine.h">
 #pragma once
 #include <QObject>
@@ -4628,6 +5266,11 @@ public slots:
     bool onLoadGame(const QString& path);
     void setPlayerIdentity(CharacterType type, const QString& name);
     void setStatBonuses(int bonusHp, int bonusAttack, int bonusSpPerAtk);
+    void setNextEnemy(CharacterType type, const QString& name);
+    void setMaxRounds(int rounds);
+    void setEnemyBonuses(int bonusHp, int bonusAttack);
+
+
 private slots:
     void enemyTakeTurn();
 
@@ -4655,6 +5298,13 @@ private:
     int  m_itemsUsedThisBattle = 0;
     bool m_defenseActive       = false;   // set by DefenseBoost, consumed on next hit
     bool m_attackBoosted       = false;
+    bool          m_hasNextEnemy    = false;
+    CharacterType m_nextEnemyType   = CharacterType::Warrior;
+    QString       m_nextEnemyName;
+    int           m_enemyBonusHp    = 0;
+    int           m_enemyBonusAtk   = 0;
+
+
     QList<bool>   m_playerMoveHistory;
     ScoreTracker  m_tracker;
     CharacterType m_playerType   = CharacterType::Warrior;
@@ -4667,38 +5317,6 @@ private:
     void applyPlayerBonuses();
 };
 Q_DECLARE_METATYPE(Difficulty)
-</file>
-
-<file path="include/housewidget.h">
-#pragma once
-
-#include <QWidget>
-#include "playerprofile.h"
-class QLabel;
-class QPushButton;
-class AudioManager;
-class PlayerProfile;
-class HouseWidget : public QWidget
-{
-    Q_OBJECT
-
-public:
-    explicit HouseWidget(AudioManager* audio, QWidget* parent = nullptr);
-void setProfile(PlayerProfile* profile);
-signals:
-    void backToOverworld();
-
-private:
-    QString getItemName(ItemType type) const;
-    AudioManager* m_audio = nullptr;
-    PlayerProfile* m_profile = nullptr;
-
-    QLabel* m_label = nullptr;
-    QPushButton* m_backButton = nullptr;
-
-    QLabel* m_statsLabel = nullptr;
-    QLabel* m_inventoryLabel = nullptr;
-};
 </file>
 
 <file path="include/level1widget.h">
@@ -4812,6 +5430,7 @@ private:
 
     // ── Private helpers ───────────────────────────────────────────────────────
     void buildScene();
+    void buildThemeElements();
     void placePlayer();
     void spawnEnemies();
     void movePlayer();
@@ -4878,15 +5497,25 @@ Character* GameEngine::createCharacter(CharacterType type, const QString& name)
 
 void GameEngine::spawnEnemy()
 {
-    const QStringList names = {
-        "Shadow Warrior", "Dark Mage", "Black Arrow",
-        "Iron Fist", "Void Caster", "Silent Hunter"
-    };
-    CharacterType type = static_cast<CharacterType>(
-        QRandomGenerator::global()->bounded(3));
-    QString name = names[QRandomGenerator::global()->bounded(names.size())];
-    delete m_enemy;
-    m_enemy = createCharacter(type, name);
+    if (m_hasNextEnemy) {
+        delete m_enemy;
+        m_enemy = createCharacter(m_nextEnemyType, m_nextEnemyName);
+        if (m_enemyBonusHp  > 0) m_enemy->applyBonusHealth(m_enemyBonusHp);
+        if (m_enemyBonusAtk > 0) m_enemy->applyBonusAttack(m_enemyBonusAtk);
+        m_hasNextEnemy  = false;
+        m_enemyBonusHp  = 0;
+        m_enemyBonusAtk = 0;
+    } else {
+        const QStringList names = {
+            "Shadow Warrior", "Dark Mage", "Black Arrow",
+            "Iron Fist", "Void Caster", "Silent Hunter"
+        };
+        CharacterType type = static_cast<CharacterType>(
+            QRandomGenerator::global()->bounded(3));
+        QString name = names[QRandomGenerator::global()->bounded(names.size())];
+        delete m_enemy;
+        m_enemy = createCharacter(type, name);
+    }
 }
 
 void GameEngine::resetRound()
@@ -5312,349 +5941,22 @@ void GameEngine::applyPlayerBonuses()
     m_player->applyBonusAttack   (m_bonusAttack);
     m_player->applyBonusSpPerAtk (m_bonusSpPerAtk);
 }
-</file>
-
-<file path="src/levelmanager.cpp">
-#include "levelmanager.h"
-
-LevelManager::LevelManager()
+void GameEngine::setNextEnemy(CharacterType type, const QString& name)
 {
-    buildLevels();
+    m_nextEnemyType = type;
+    m_nextEnemyName = name;
+    m_hasNextEnemy  = true;
 }
 
-void LevelManager::buildLevels()
+void GameEngine::setMaxRounds(int rounds)
 {
-    // ─────────────────────────────────────────────────────────────────────────
-    //  Level 1 — Goblin Cave
-    // ─────────────────────────────────────────────────────────────────────────
-    m_levels.append({
-        .id               = 1,
-        .name             = "Goblin Cave",
-
-        .bossName         = "Grunt Chief",
-        .bossType         = CharacterType::Warrior,
-        .bossHpMultiplier = 2,
-        .bossAttackBonus  = 5,
-        .bossGoldReward   = 150,
-
-        .requiredRuns     = 0,
-        .requiredGold     = 0,
-        .requiredLevelId  = 0,
-
-        .bossIntroLine   = "Another fool from the dungeon.\n\n"
-                           "You're brave — I'll give you that.\n\n"
-                           "Let's see if brave is enough.",
-
-        .bossDefeatLine  = "Stronger than I expected.\n\n"
-                           "The one who hired me came from the dead forest east of here.\n\n"
-                           "And they already knew your name.",
-
-        .bossVictoryLine = "Not your day, wanderer.\n\n"
-                           "Come back stronger.",
-
-        .unlockHint      = "",
-
-        .storyPages = {
-            "The dungeon is behind you.\n\n"
-            "Something about it felt arranged.\n\n"
-            "Like someone knew you were coming.",
-
-            "To the north — a cave.\n\n"
-            "Goblins. Armed. Organized.\n\n"
-            "Goblins don't organize themselves.",
-
-            "Whoever hired them knows you.\n\n"
-            "Time to find out who."
-        },
-
-        .enterPrompt = "► ENTER THE CAVE"
-    });
-
-
-    // ─────────────────────────────────────────────────────────────────────────
-    //  Level 2 — Haunted Forest
-    // ─────────────────────────────────────────────────────────────────────────
-    m_levels.append({
-        .id               = 2,
-        .name             = "Haunted Forest",
-
-        .bossName         = "Shadow Walker",
-        .bossType         = CharacterType::Archer,
-        .bossHpMultiplier = 2,
-        .bossAttackBonus  = 8,
-        .bossGoldReward   = 250,
-
-        .requiredRuns     = 0,
-        .requiredGold     = 0,
-        .requiredLevelId  = 1,
-
-        .bossIntroLine   = "I've watched every fight since the dungeon.\n\n"
-                           "You're not special. Just persistent.\n\n"
-                           "My employer thinks you're dangerous.\n\n"
-                           "I'm starting to agree.",
-
-        .bossDefeatLine  = "Fine. One name: Veyrath.\n\n"
-                           "Frozen Peak. He's building something that shouldn't exist.\n\n"
-                           "Go. And good luck — you'll need it.",
-
-        .bossVictoryLine = "This forest breaks stronger heroes.\n\n"
-                           "Veyrath will be waiting.\n\n"
-                           "If you ever make it out.",
-
-        .unlockHint      = "Beat Level 1 and complete 3 dungeon runs",
-
-        .storyPages = {
-            "Grunt Chief's last words:\n\n"
-            "\"She's been watching.\n"
-            "Since before you entered the dungeon.\"",
-
-            "Outside, the sun was gone.\n\n"
-            "The forest ahead looked like something\n"
-            "that had forgotten how to be alive.",
-
-            "The trail leads in.\n\n"
-            "You step forward.\n\n"
-            "Behind you, the cave collapses.\n\n"
-            "No going back."
-        },
-
-        .enterPrompt = "► ENTER THE FOREST"
-    });
-    // ─────────────────────────────────────────────────────────────────────────
-    //  Level 2 — Haunted Forest
-    // ─────────────────────────────────────────────────────────────────────────
-    m_levels.append({
-        .id               = 2,
-        .name             = "Haunted Forest",
-
-        .bossName         = "Shadow Walker",
-        .bossType         = CharacterType::Archer,
-        .bossHpMultiplier = 2,
-        .bossAttackBonus  = 8,
-        .bossGoldReward   = 250,
-
-        .requiredRuns     = 0,
-        .requiredGold     = 0,
-        .requiredLevelId  = 1,
-
-        .bossIntroLine   = "I've watched every fight since the cave.\n\n"
-                           "You swing like someone trying to survive.\n\n"
-                           "But survival is not the same as victory.",
-
-        .bossDefeatLine  = "So the cave was not luck.\n\n"
-                           "Fine.\n\n"
-                           "The dead forest was only the warning.",
-
-        .bossVictoryLine = "The forest keeps what it catches.\n\n"
-                           "Come back when your fear is useful.",
-
-        .unlockHint      = "Requires: defeat Goblin Cave first.",
-
-        .storyPages = {
-            "The cave falls silent behind you.\n\n"
-            "No cheering. No relief.\n\n"
-            "Only trees moving when there is no wind.",
-
-            "The path bends east into a dead forest.\n\n"
-            "Something has been watching from between the trunks.\n\n"
-            "Something patient.",
-
-            "The goblins were hired.\n\n"
-            "The watcher is not.\n\n"
-            "This time, the forest itself wants an answer."
-        },
-
-        .enterPrompt = "► ENTER THE FOREST"
-    });
-    // ─────────────────────────────────────────────────────────────────────────
-    //  Level 3 — Frozen Peak
-    // ─────────────────────────────────────────────────────────────────────────
-    m_levels.append({
-        .id               = 3,
-        .name             = "Frozen Peak",
-
-        .bossName         = "Veyrath",
-        .bossType         = CharacterType::Mage,
-        .bossHpMultiplier = 3,
-        .bossAttackBonus  = 10,
-        .bossGoldReward   = 400,
-
-        .requiredRuns     = 6,
-        .requiredGold     = 200,
-        .requiredLevelId  = 2,
-
-        .bossIntroLine   = "You climbed all this way.\n\n"
-                           "Through everything I sent to stop you.\n\n"
-                           "What I am building here will not be stopped\n"
-                           "by someone like you.",
-
-        .bossDefeatLine  = "I was building a door.\n\n"
-                           "To somewhere sealed for good reason.\n\n"
-                           "I thought I could control what came through.\n\n"
-                           "Stop it. Before it opens.",
-
-        .bossVictoryLine = "Your warmth fades here.\n\n"
-                           "Everything does, eventually.\n\n"
-                           "Go. Before the cold decides for you.",
-
-        .unlockHint      = "Beat Level 2, complete 6 dungeon runs, earn 200 Gold",
-
-        .storyPages = {
-            "Shadow Walker said one word\n"
-            "before she disappeared into the trees.\n\n"
-            "Veyrath.",
-
-            "The peak rose above the clouds.\n\n"
-            "The ice here was old. Ancient.\n\n"
-            "And it moved.",
-
-            "Veyrath was building a door.\n\n"
-            "You had to reach the top\n"
-            "before whatever was on the other side\n"
-            "finished knocking."
-        },
-
-        .enterPrompt = "► CLIMB THE PEAK"
-    });
-
-
-    // ─────────────────────────────────────────────────────────────────────────
-    //  Level 4 — Volcanic Dungeon
-    // ─────────────────────────────────────────────────────────────────────────
-    m_levels.append({
-        .id               = 4,
-        .name             = "Volcanic Dungeon",
-
-        .bossName         = "Ember Warrior",
-        .bossType         = CharacterType::Warrior,
-        .bossHpMultiplier = 3,
-        .bossAttackBonus  = 15,
-        .bossGoldReward   = 600,
-
-        .requiredRuns     = 10,
-        .requiredGold     = 0,
-        .requiredLevelId  = 3,
-
-        .bossIntroLine   = "The volcano burns away everything weak.\n\n"
-                           "You're still standing after all of it.\n\n"
-                           "Good. I was tired of waiting for someone worth fighting.",
-
-        .bossDefeatLine  = "The fire dies... as do I.\n\n"
-                           "What Veyrath opened is already here.\n\n"
-                           "The Final Arena is not a place. It's a choice.\n\n"
-                           "Choose carefully.",
-
-        .bossVictoryLine = "You will be ash before the summit.\n\n"
-                           "Come back with more fire than the mountain.\n\n"
-                           "Or don't come back at all.",
-
-        .unlockHint      = "Beat Level 3 and complete 10 dungeon runs",
-
-        .storyPages = {
-            "Veyrath's last words stayed with you.\n\n"
-            "A door. Something that shouldn't exist.\n\n"
-            "And the peak had already started to crack.",
-
-            "The volcano had no name on any map.\n\n"
-            "The people nearby called it The Waiting.\n\n"
-            "Nobody asked what it was waiting for.",
-
-            "At the center, something burned\n"
-            "that was not fire.\n\n"
-            "And it had been expecting you."
-        },
-
-        .enterPrompt = "► DESCEND INTO THE VOLCANO"
-    });
-
-
-    // ─────────────────────────────────────────────────────────────────────────
-    //  Level 5 — The Final Arena
-    // ─────────────────────────────────────────────────────────────────────────
-    m_levels.append({
-        .id               = 5,
-        .name             = "The Final Arena",
-
-        .bossName         = "The Champion",
-        .bossType         = CharacterType::Warrior,   // overridden to player class at runtime
-        .bossHpMultiplier = 4,
-        .bossAttackBonus  = 20,
-        .bossGoldReward   = 1000,
-
-        .requiredRuns     = 0,
-        .requiredGold     = 0,
-        .requiredLevelId  = 4,
-
-        .bossIntroLine   = "I am every version of you that didn't make it.\n\n"
-                           "Every choice that went wrong.\n\n"
-                           "Prove me wrong.",
-
-        .bossDefeatLine  = "You have surpassed all of us.\n\n"
-                           "The door is closed. Whatever came through went back.\n\n"
-                           "It turns out the answer was someone\n"
-                           "who simply refused to stop.\n\n"
-                           "Well fought.",
-
-        .bossVictoryLine = "You were not ready. Not yet.\n\n"
-                           "But you came further than anyone expected.\n\n"
-                           "The arena will be here.\n\n"
-                           "It always is.",
-
-        .unlockHint      = "Beat all 4 levels",
-
-        .storyPages = {
-            "Four worlds. Four bosses.\n\n"
-            "A cave. A forest. A peak. A volcano.\n\n"
-            "All of it leading here.",
-
-            "The arena appeared without warning.\n\n"
-            "No entrance. No gate.\n\n"
-            "One moment you were walking.\n"
-            "The next, you were already inside.",
-
-            "Across the sand, a figure stood\n"
-            "with your posture. Your weapon. Your stance.\n\n"
-            "It turned.\n\n"
-            "It had your face."
-        },
-
-        .enterPrompt = "► FACE YOUR SHADOW"
-    });
+    m_maxRounds = rounds;
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-//  Lookup / unlock / completion
-// ─────────────────────────────────────────────────────────────────────────────
-
-const LevelDef* LevelManager::level(int id) const
+void GameEngine::setEnemyBonuses(int bonusHp, int bonusAttack)
 {
-    for (const LevelDef& l : m_levels)
-        if (l.id == id) return &l;
-    return nullptr;
-}
-
-bool LevelManager::isUnlocked(int levelId, const PlayerProfile& p) const
-{
-    const LevelDef* l = level(levelId);
-    if (!l) return false;
-    if (l->requiredRuns    > 0 && p.dungeonRuns < l->requiredRuns)                 return false;
-    if (l->requiredGold    > 0 && p.gold        < l->requiredGold)                 return false;
-    if (l->requiredLevelId > 0 && !p.completedLevels.contains(l->requiredLevelId)) return false;
-    return true;
-}
-
-bool LevelManager::isCompleted(int levelId, const PlayerProfile& p) const
-{
-    return p.completedLevels.contains(levelId);
-}
-
-int LevelManager::completeLevel(int levelId, PlayerProfile& p) const
-{
-    const LevelDef* l = level(levelId);
-    if (!l) return 0;
-    p.completedLevels.insert(levelId);
-    p.addGold(l->bossGoldReward);
-    return l->bossGoldReward;
+    m_enemyBonusHp  = bonusHp;
+    m_enemyBonusAtk = bonusAttack;
 }
 </file>
 
@@ -5762,494 +6064,292 @@ void HouseWidget::setProfile(PlayerProfile* profile)
 }
 </file>
 
-<file path="src/level1widget.cpp">
-#include "level1widget.h"
-#include "ui_level1widget.h"
-#include "audiomanager.h"
-#include "spritecache.h"
-#include "pauseoverlaywidget.h"
+<file path="src/levelmanager.cpp">
+#include "levelmanager.h"
 
-// ── Qt ────────────────────────────────────────────────────────────────────────
-#include <QGraphicsScene>
-#include <QGraphicsView>
-#include <QGraphicsRectItem>
-#include <QGraphicsEllipseItem>
-#include <QGraphicsTextItem>
-#include <QGraphicsPixmapItem>
-#include <QRadialGradient>
-#include <QPainter>
-#include <QKeyEvent>
-#include <QResizeEvent>
-#include <QFont>
-#include <QRandomGenerator>
-
-// ─────────────────────────────────────────────────────────────────────────────
-//  Constructor / Destructor
-// ─────────────────────────────────────────────────────────────────────────────
-
-Level1Widget::Level1Widget(AudioManager* audio, QWidget* parent)
-    : QWidget(parent)
-    , ui(new Ui::Level1Widget)
-    , m_audio(audio)
+LevelManager::LevelManager()
 {
-    ui->setupUi(this);
+    buildLevels();
+}
 
-    // Load shared player sprite sheet (same asset as overworld / dungeon)
-    m_sheet.pixmap = SpriteCache::instance().get(":/sprites/player.png");
+void LevelManager::buildLevels()
+{
+    // ── Level 1 — Goblin Cave ─────────────────────────────────────────────────
+    m_levels.append({
+        .id               = 1,
+        .name             = "Goblin Cave",
+        .theme            = LevelTheme::Cave,
 
-    // Wire the QGraphicsView that came from the .ui file
-    m_view  = ui->graphicsView;
-    m_scene = new QGraphicsScene(0, 0, WORLD_W, WORLD_H, this);
-    m_view->setScene(m_scene);
-    m_view->setAlignment(Qt::AlignLeft | Qt::AlignTop);
-    m_view->setViewportUpdateMode(QGraphicsView::FullViewportUpdate);
-    m_view->setOptimizationFlag(QGraphicsView::DontAdjustForAntialiasing);
-    m_view->setFocusPolicy(Qt::NoFocus);
+        .bossName         = "Grunt Chief",
+        .bossType         = CharacterType::Warrior,
+        .bossHpMultiplier = 2,
+        .bossAttackBonus  = 5,
+        .bossGoldReward   = 150,
 
-    // Game loop — ~60 fps
-    m_ticker.setInterval(16);
-    connect(&m_ticker, &QTimer::timeout, this, &Level1Widget::onTick);
+        .requiredRuns     = 0,
+        .requiredGold     = 0,
+        .requiredLevelId  = 0,
 
-    buildScene();
+        .bossIntroLine   = "Another fool from the dungeon.\n\n"
+                           "You're brave — I'll give you that.\n\n"
+                           "Let's see if brave is enough.",
 
-    setFocusPolicy(Qt::StrongFocus);
-    m_view->setSceneRect(0, 0, WORLD_W, WORLD_H);
-// ── Enemy counter hint — updates every tick ───────────────────────────────
-    m_enemyHint = m_scene->addText("", QFont("Arial", 8, QFont::Bold));
-    m_enemyHint->setDefaultTextColor(QColor("#FFE066"));
-    m_enemyHint->setPos(8, WORLD_H - 40);
-    m_enemyHint->setZValue(10);
-    // Pause overlay — showSave=false (no mid-level saves, same as dungeon)
-    m_pauseOverlay = new PauseOverlayWidget(false, this);
-    connect(m_pauseOverlay, &PauseOverlayWidget::resumeRequested,
-            this, &Level1Widget::togglePause);
-    connect(m_pauseOverlay, &PauseOverlayWidget::menuRequested, this, [this] {
-        m_paused = false;
-        m_pauseOverlay->hide();
-        deactivate();
-        emit backToMenu();
+        .bossDefeatLine  = "Stronger than I expected.\n\n"
+                           "The one who hired me came from the dead forest east.\n\n"
+                           "And they already knew your name.",
+
+        .bossVictoryLine = "Not your day, wanderer.\n\n"
+                           "Come back stronger.",
+
+        .unlockHint      = "",
+
+        .storyPages = {
+            "The dungeon is behind you.\n\n"
+            "Something about it felt arranged.\n\n"
+            "Like someone knew you were coming.",
+
+            "To the north — a cave.\n\n"
+            "Goblins. Armed. Organized.\n\n"
+            "Goblins don't organize themselves.",
+
+            "Whoever hired them knows you.\n\n"
+            "Time to find out who."
+        },
+
+        .enterPrompt = "► ENTER THE CAVE"
     });
 
-    // Gold HUD — pinned to top-right in resizeEvent
-    m_goldHud = new GoldHudWidget(this);
-    m_goldHud->raise();
-}
+    // ── Level 2 — Haunted Forest ──────────────────────────────────────────────
+    m_levels.append({
+        .id               = 2,
+        .name             = "Haunted Forest",
+        .theme            = LevelTheme::Forest,
 
-Level1Widget::~Level1Widget()
-{
-    delete ui;
-}
+        .bossName         = "Shadow Walker",
+        .bossType         = CharacterType::Archer,
+        .bossHpMultiplier = 2,
+        .bossAttackBonus  = 8,
+        .bossGoldReward   = 250,
 
-// ─────────────────────────────────────────────────────────────────────────────
-//  Public API
-// ─────────────────────────────────────────────────────────────────────────────
+        .requiredRuns     = 3,
+        .requiredGold     = 0,
+        .requiredLevelId  = 1,
 
-void Level1Widget::activate(const LevelDef& level, const PlayerProfile& profile)
-{
-    m_level          = level;
-    m_bossTriggered  = false;
-    m_bossSprite     = nullptr;
+        .bossIntroLine   = "I've watched every fight since the dungeon.\n\n"
+                           "You're not special. Just persistent.\n\n"
+                           "My employer thinks you're dangerous.\n\n"
+                           "I'm starting to agree.",
 
-    if (m_audio) m_audio->playMusic("/music/overworld.ogg");
-    m_heldKeys.clear();
+        .bossDefeatLine  = "Fine. One name: Veyrath.\n\n"
+                           "Frozen Peak. He's building something that shouldn't exist.\n\n"
+                           "Go. And good luck — you'll need it.",
 
-    m_scene->clear();
-    m_player = nullptr;
-    m_bossSprite = nullptr;
-    m_enemies.clear();
-    m_enemyHint  = nullptr;
+        .bossVictoryLine = "This forest breaks stronger heroes.\n\n"
+                           "Veyrath will be waiting.\n\n"
+                           "If you ever make it out.",
 
-    buildScene();
-    placePlayer();
-    spawnEnemies();    // spawns regular enemies AND the boss
+        .unlockHint      = "Beat Level 1 and complete 3 dungeon runs",
 
-    m_enemyHint = m_scene->addText("", QFont("Arial", 8, QFont::Bold));
-    m_enemyHint->setDefaultTextColor(QColor("#FFE066"));
-    m_enemyHint->setPos(8, WORLD_H - 40);
-    m_enemyHint->setZValue(10);
+        .storyPages = {
+            "Grunt Chief's last words:\n\n"
+            "\"She's been watching.\n"
+            "Since before you entered the dungeon.\"",
 
-    m_goldHud->setGold(profile.gold);
-    m_ticker.start();
-    setFocus();
-}
+            "Outside, the sun was gone.\n\n"
+            "The forest ahead looked like something\n"
+            "that had forgotten how to be alive.",
 
-void Level1Widget::deactivate()
-{
-    m_ticker.stop();
-    m_heldKeys.clear();
-}
+            "The trail leads in.\n\n"
+            "You step forward.\n\n"
+            "Behind you, the cave collapses.\n\n"
+            "No going back."
+        },
 
-void Level1Widget::setGold(int gold)
-{
-    if (m_goldHud) m_goldHud->setGold(gold);
-}
+        .enterPrompt = "► ENTER THE FOREST"
+    });
 
-// ─────────────────────────────────────────────────────────────────────────────
-//  Scene construction  —  Forest Path visual theme
-// ─────────────────────────────────────────────────────────────────────────────
+    // ── Level 3 — Frozen Peak ─────────────────────────────────────────────────
+    m_levels.append({
+        .id               = 3,
+        .name             = "Frozen Peak",
+        .theme            = LevelTheme::Peak,
 
-void Level1Widget::buildScene()
-{
-     const int TILE = 64;
-    QColor tint;
-    if (m_level.id == 1)
-        tint = QColor(0, 0, 0, 0);
-    else if (m_level.id == 2)
-        tint = QColor(25, 0, 45, 90);
-    else
-        tint = QColor(60, 0, 0, 100);
-    QPixmap grassTile = SpriteCache::instance().get(":/sprites/grass.png")
-                            .scaled(TILE, TILE, Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
+        .bossName         = "Veyrath",
+        .bossType         = CharacterType::Mage,
+        .bossHpMultiplier = 3,
+        .bossAttackBonus  = 10,
+        .bossGoldReward   = 400,
 
-    for (int y = 0; y < WORLD_H; y += TILE) {
-        for (int x = 0; x < WORLD_W; x += TILE) {
-            auto* tile = m_scene->addPixmap(grassTile);
-            tile->setPos(x, y);
-            tile->setZValue(0);
-        }
-    }
+        .requiredRuns     = 6,
+        .requiredGold     = 200,
+        .requiredLevelId  = 2,
 
-    QPixmap d1 = SpriteCache::instance().get(":/sprites/dirt1.png")
-                     .scaled(TILE, TILE, Qt::IgnoreAspectRatio, Qt::FastTransformation);
-    QPixmap d2 = SpriteCache::instance().get(":/sprites/dirt2.png")
-                     .scaled(TILE, TILE, Qt::IgnoreAspectRatio, Qt::FastTransformation);
+        .bossIntroLine   = "You climbed all this way.\n\n"
+                           "Through everything I sent to stop you.\n\n"
+                           "What I am building here will not be stopped\n"
+                           "by someone like you.",
 
-    auto* rng = QRandomGenerator::global();
-    const int pathX = 340, pathW = 128;   // 2 tiles wide
-    for (int y = 0; y < WORLD_H; y += TILE) {
-        for (int x = pathX; x < pathX + pathW; x += TILE) {
-            bool alt = rng->bounded(100) < 24;
-            auto* tile = m_scene->addPixmap(alt ? d2 : d1);
-            tile->setPos(x, y);
-            tile->setZValue(1);
-        }
-    if (m_level.id == 2) {
-        auto* fog = m_scene->addRect(0, 0, WORLD_W, WORLD_H,
-                                     Qt::NoPen,
-                                     QBrush(tint));
-        fog->setZValue(4);
+        .bossDefeatLine  = "I was building a door.\n\n"
+                           "To somewhere sealed for good reason.\n\n"
+                           "I thought I could control what came through.\n\n"
+                           "Stop it. Before it opens.",
 
-        auto* title = m_scene->addText("HAUNTED FOREST", QFont("Arial", 14, QFont::Bold));
-        title->setDefaultTextColor(QColor("#D8B4FF"));
-        title->setPos(250, 24);
-        title->setZValue(12);
-    }
-    }
+        .bossVictoryLine = "Your warmth fades here.\n\n"
+                           "Everything does, eventually.\n\n"
+                           "Go. Before the cold decides for you.",
 
-    // ── Trees — uses the repo's existing tree sprites ─────────────────────────
-    const int TREE_W = 160, TREE_H = 160;
-    QPixmap treeRound = SpriteCache::instance().get(":/sprites/tree_round.png")
-                            .scaled(TREE_W, TREE_H, Qt::KeepAspectRatio, Qt::FastTransformation);
-    QPixmap treePine  = SpriteCache::instance().get(":/sprites/tree_pine.png")
-                            .scaled(TREE_W, TREE_H, Qt::KeepAspectRatio, Qt::FastTransformation);
+        .unlockHint      = "Beat Level 2, complete 6 dungeon runs, earn 200 Gold",
 
-    struct TreeInfo { QPointF pos; bool round; };
-    const QList<TreeInfo> trees = {
-        {{40,  40},  false}, {{80,  200}, true }, {{50,  370}, false},
-        {{90,  490}, true }, {{680, 55},  true }, {{720, 220}, false},
-        {{700, 360}, true }, {{660, 480}, false}, {{155, 130}, true },
-        {{575, 150}, false},
-    };
+        .storyPages = {
+            "Shadow Walker said one word\n"
+            "before she disappeared into the trees.\n\n"
+            "Veyrath.",
 
-    for (const TreeInfo& t : trees) {
-        const QPixmap& px = t.round ? treeRound : treePine;
-        if (px.isNull()) continue;
+            "The peak rose above the clouds.\n\n"
+            "The ice here was old. Ancient.\n\n"
+            "And it moved.",
 
-        // Shadow ellipse under each tree (same pattern as overworldwidget.cpp)
-        const qreal tw = px.width(), th = px.height();
-        const qreal sw = tw * 0.65,  sh = th * 0.15;
-        auto* shadow = m_scene->addEllipse(
-            t.pos.x() + (tw - sw) / 2.0,
-            t.pos.y() + th - sh * 0.8,
-            sw, sh, Qt::NoPen, Qt::NoBrush);
-        QRadialGradient grad(t.pos.x() + tw / 2.0,
-                             t.pos.y() + th - sh * 0.3,
-                             sw / 2.0);
-        grad.setColorAt(0.0, QColor(0, 0, 0, 100));
-        grad.setColorAt(0.6, QColor(0, 0, 0, 40));
-        grad.setColorAt(1.0, QColor(0, 0, 0, 0));
-        shadow->setBrush(grad);
-        shadow->setZValue(2);
+            "Veyrath was building a door.\n\n"
+            "You had to reach the top\n"
+            "before whatever was on the other side\n"
+            "finished knocking."
+        },
 
-        auto* treeItem = m_scene->addPixmap(px);
-        treeItem->setPos(t.pos);
-        treeItem->setZValue(3);
-    }
+        .enterPrompt = "► CLIMB THE PEAK"
+    });
 
-    // ── Dirt wall segments as level-border decoration ─────────────────────────
-    QPixmap wallPx = SpriteCache::instance().get(":/sprites/dirt_wall.png");
-    if (!wallPx.isNull()) {
-        QPixmap wall = wallPx.scaled(TILE, TILE, Qt::IgnoreAspectRatio, Qt::FastTransformation);
-        // Top border
-        for (int x = 0; x < WORLD_W; x += TILE) {
-            auto* w = m_scene->addPixmap(wall);
-            w->setPos(x, 0);
-            w->setZValue(4);
-        }
-    }
+    // ── Level 4 — Volcanic Dungeon ────────────────────────────────────────────
+    m_levels.append({
+        .id               = 4,
+        .name             = "Volcanic Dungeon",
+        .theme            = LevelTheme::Volcano,
 
-    // ── Exit portal at the top of the map ─────────────────────────────────────
-    const qreal ew = 100, eh = 48;
-    const qreal ex = (WORLD_W - ew) / 2.0;
-    const qreal ey = 4;
+        .bossName         = "Ember Warrior",
+        .bossType         = CharacterType::Warrior,
+        .bossHpMultiplier = 3,
+        .bossAttackBonus  = 15,
+        .bossGoldReward   = 600,
 
-    m_scene->addRect(ex - 10, ey - 5, ew + 20, eh + 10,
-                     Qt::NoPen, QBrush(QColor("#1b5e20")))->setZValue(1);
+        .requiredRuns     = 10,
+        .requiredGold     = 0,
+        .requiredLevelId  = 3,
 
-    m_exitZone = m_scene->addRect(ex, ey, ew, eh,
-                                  Qt::NoPen, QBrush(QColor("#00e676")));
-    m_exitZone->setZValue(2);
+        .bossIntroLine   = "The volcano burns away everything weak.\n\n"
+                           "You're still standing after all of it.\n\n"
+                           "Good. I was tired of waiting for someone worth fighting.",
 
-    auto* exitLabel = m_scene->addText("EXIT ↑", QFont("Arial", 8, QFont::Bold));
-    exitLabel->setDefaultTextColor(Qt::white);
-    exitLabel->setPos(ex + 20, ey + 14);
-    exitLabel->setZValue(3);
+        .bossDefeatLine  = "The fire dies... as do I.\n\n"
+                           "What Veyrath opened is already here.\n\n"
+                           "The Final Arena is not a place. It's a choice.\n\n"
+                           "Choose carefully.",
 
-    // ── Level title ───────────────────────────────────────────────────────────
-    QString title = m_level.name.isEmpty()
-                        ? "LEVEL 1 — FOREST PATH"
-                        : m_level.name.toUpper();
-    auto* titleText = m_scene->addText(title, QFont("Arial", 8, QFont::Bold));
-    titleText->setDefaultTextColor(QColor("#a5d6a7"));
-    titleText->setPos(8, 4);
-    titleText->setZValue(10);
+        .bossVictoryLine = "You will be ash before the summit.\n\n"
+                           "Come back with more fire than the mountain.\n\n"
+                           "Or don't come back at all.",
 
-    // ── Controls hint ─────────────────────────────────────────────────────────
-    auto* hint = m_scene->addText(
-        "Touch an enemy to fight!    ESC = menu",
-        QFont("Arial", 7));
-    hint->setDefaultTextColor(QColor("#ffffff80"));
-    hint->setPos(8, WORLD_H - 20);
-    hint->setZValue(10);
+        .unlockHint      = "Beat Level 3 and complete 10 dungeon runs",
 
-    // ── Player sprite ─────────────────────────────────────────────────────────
-    m_player = new DungeonPlayerSprite(m_sheet);
-    m_scene->addItem(m_player);
-    m_player->setZValue(9);
-}
+        .storyPages = {
+            "Veyrath's last words stayed with you.\n\n"
+            "A door. Something that shouldn't exist.\n\n"
+            "And the peak had already started to crack.",
 
-// ─────────────────────────────────────────────────────────────────────────────
-//  Player placement and enemy spawning
-// ─────────────────────────────────────────────────────────────────────────────
+            "The volcano had no name on any map.\n\n"
+            "The people nearby called it The Waiting.\n\n"
+            "Nobody asked what it was waiting for.",
 
-void Level1Widget::placePlayer()
-{
-    if (m_player)
-        m_player->setPos(
-            (WORLD_W - DungeonPlayerSprite::W) / 2.0,
-            WORLD_H - DungeonPlayerSprite::H - 60
-        );
-}
+            "At the center, something burned\n"
+            "that was not fire.\n\n"
+            "And it had been expecting you."
+        },
 
-void Level1Widget::spawnEnemies()
-{
-    // Clear previous run's enemies
-   for (EnemySprite* e : m_enemies) {
-    m_scene->removeItem(e);
-    delete e;
-}
-m_enemies.clear();
+        .enterPrompt = "► DESCEND INTO THE VOLCANO"
+    });
 
-struct EInfo {
-    CharacterType type;
-    QString name;
-    QPointF pos;
-};
+    // ── Level 5 — The Final Arena ─────────────────────────────────────────────
+    m_levels.append({
+        .id               = 5,
+        .name             = "The Final Arena",
+        .theme            = LevelTheme::Arena,
 
-QList<EInfo> defs;
+        .bossName         = "The Champion",
+        .bossType         = CharacterType::Warrior,   // overridden to player class at runtime
+        .bossHpMultiplier = 4,
+        .bossAttackBonus  = 20,
+        .bossGoldReward   = 1000,
 
-if (m_level.id == 1) {
-    defs = {
-        { CharacterType::Warrior, "Forest Guard",   {175, 160} },
-        { CharacterType::Archer,  "Woodland Scout", {575, 230} },
-    };
-}
-else if (m_level.id == 2) {
-    defs = {
-        { CharacterType::Archer, "Forest Stalker", {160, 150} },
-        { CharacterType::Archer, "Shadow Scout",   {560, 210} },
-        { CharacterType::Mage,   "Cursed Root",    {370, 330} },
-    };
-}
-else {
-    defs = {
-        { CharacterType::Mage,   "Crimson Acolyte", {170, 160} },
-        { CharacterType::Warrior,"Blood Guard",     {570, 240} },
-        { CharacterType::Mage,   "Ruin Keeper",     {380, 350} },
-    };
-}
+        .requiredRuns     = 0,
+        .requiredGold     = 0,
+        .requiredLevelId  = 4,
 
-for (const EInfo& d : defs) {
-    EnemySprite* enemy = new EnemySprite(d.type, d.name);
-    enemy->setPos(d.pos);
-    m_scene->addItem(enemy);
-    m_enemies.append(enemy);
-}
+        .bossIntroLine   = "I am every version of you that didn't make it.\n\n"
+                           "Every choice that went wrong.\n\n"
+                           "Prove me wrong.",
 
-    // ── Boss — waits at the top of the path ───────────────────────────────────
-    m_bossSprite = new EnemySprite(m_level.bossType, m_level.bossName);
-    m_bossSprite->setPos(
-        (WORLD_W - EnemySprite::W) / 2.0,
-        120   // near the top, just below the exit zone
-        );
-    m_bossSprite->setZValue(8);
-    m_scene->addItem(m_bossSprite);
-    // Note: boss is NOT added to m_enemies list — handled separately
+        .bossDefeatLine  = "You have surpassed all of us.\n\n"
+                           "The door is closed. Whatever came through went back.\n\n"
+                           "It turns out the answer was someone\n"
+                           "who simply refused to stop.\n\n"
+                           "Well fought.",
 
+        .bossVictoryLine = "You were not ready. Not yet.\n\n"
+                           "But you came further than anyone expected.\n\n"
+                           "The arena will be here.\n\n"
+                           "It always is.",
+
+        .unlockHint      = "Beat all 4 levels",
+
+        .storyPages = {
+            "Four worlds. Four bosses.\n\n"
+            "A cave. A forest. A peak. A volcano.\n\n"
+            "All of it leading here.",
+
+            "The arena appeared without warning.\n\n"
+            "No entrance. No gate.\n\n"
+            "One moment you were walking.\n"
+            "The next, you were already inside.",
+
+            "Across the sand, a figure stood\n"
+            "with your posture. Your weapon. Your stance.\n\n"
+            "It turned.\n\n"
+            "It had your face."
+        },
+
+        .enterPrompt = "► FACE YOUR SHADOW"
+    });
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-//  Game loop
-// ─────────────────────────────────────────────────────────────────────────────
 
-void Level1Widget::onTick()
+const LevelDef* LevelManager::level(int id) const
 {
-    if (m_paused) return;
-    movePlayer();
-    patrolEnemies();
-    checkCollisions();
-    fitView();
-// Update enemy hint text
-    if (m_enemyHint) {
-        if (!m_enemies.isEmpty())
-            m_enemyHint->setPlainText(
-                QString("⚠ Defeat all enemies first! (%1 remaining)").arg(m_enemies.size()));
-        else if (!m_bossTriggered)
-            m_enemyHint->setPlainText("✦ The boss awaits — move north!");
-        else
-            m_enemyHint->setPlainText("");
-    }
+    for (const LevelDef& l : m_levels)
+        if (l.id == id) return &l;
+    return nullptr;
 }
 
-void Level1Widget::movePlayer()
+bool LevelManager::isUnlocked(int levelId, const PlayerProfile& p) const
 {
-    if (!m_player) return;
-    m_controller.setSpeed(SPEED);
-
-    QPointF next = m_player->pos() + m_controller.computeVelocity(m_heldKeys);
-    next = m_controller.clampToWorld(
-        next,
-        DungeonPlayerSprite::W, DungeonPlayerSprite::H,
-        WORLD_W, WORLD_H
-    );
-    m_player->setPos(next);
-    m_player->updateAnimation(
-        m_controller.isMoving(m_heldKeys),
-        m_controller.computeDirection(m_heldKeys)
-    );
+    const LevelDef* l = level(levelId);
+    if (!l) return false;
+    if (l->requiredRuns    > 0 && p.dungeonRuns < l->requiredRuns)                 return false;
+    if (l->requiredGold    > 0 && p.gold        < l->requiredGold)                 return false;
+    if (l->requiredLevelId > 0 && !p.completedLevels.contains(l->requiredLevelId)) return false;
+    return true;
 }
 
-void Level1Widget::patrolEnemies()
+bool LevelManager::isCompleted(int levelId, const PlayerProfile& p) const
 {
-    QRectF bounds(0, 0, WORLD_W, WORLD_H);
-    for (EnemySprite* e : m_enemies) {
-        e->patrol(bounds);
-        e->updateAnimation();
-    }
+    return p.completedLevels.contains(levelId);
 }
 
-void Level1Widget::checkCollisions()
+int LevelManager::completeLevel(int levelId, PlayerProfile& p) const
 {
-    if (!m_player) return;
-
-    // ── Boss collision — checked BEFORE exit to prevent overlap-exit bug ──────
-    // Also requires all regular enemies defeated first (the "counter")
-    if (!m_bossTriggered && m_bossSprite
-        && m_enemies.isEmpty()
-        && m_player->collidesWithItem(m_bossSprite)) {
-        m_bossTriggered = true;
-        m_ticker.stop();
-        emit bossTriggered(m_level);
-        return;
-    }
-
-    // Exit portal — only reachable after boss is dealt with
-    if (m_exitZone && m_player->collidesWithItem(m_exitZone)) {
-        deactivate();
-        emit exitedLevel();
-        return;
-    }
-
-    // Enemy contact → trigger a battle (same signal shape as DungeonWidget)
-    for (int i = 0; i < m_enemies.size(); ++i) {
-        EnemySprite* e = m_enemies[i];
-        if (m_player->collidesWithItem(e)) {
-            CharacterType type = e->enemyType();
-            QString       name = e->enemyName();
-
-            m_scene->removeItem(e);
-            delete e;
-            m_enemies.removeAt(i);
-
-            deactivate();
-            emit battleTriggered(type, name);
-            return;
-        }
-    }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-//  View / camera
-// ─────────────────────────────────────────────────────────────────────────────
-
-void Level1Widget::fitView()
-{
-    if (!m_view || !m_player) return;
-    m_view->resetTransform();
-    m_view->scale(2.0, 2.0);          // same zoom as dungeon
-    m_view->centerOn(m_player);
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-//  Input handling
-// ─────────────────────────────────────────────────────────────────────────────
-
-void Level1Widget::keyPressEvent(QKeyEvent* e)
-{
-    if (e->key() == Qt::Key_Escape) { togglePause(); return; }
-    if (!e->isAutoRepeat()) m_heldKeys.insert(e->key());
-    QWidget::keyPressEvent(e);
-}
-
-void Level1Widget::keyReleaseEvent(QKeyEvent* e)
-{
-    if (!e->isAutoRepeat()) m_heldKeys.remove(e->key());
-    QWidget::keyReleaseEvent(e);
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-//  Resize / pause
-// ─────────────────────────────────────────────────────────────────────────────
-
-void Level1Widget::resizeEvent(QResizeEvent* e)
-{
-    QWidget::resizeEvent(e);
-    fitView();
-    if (m_pauseOverlay) m_pauseOverlay->setGeometry(rect());
-    if (m_goldHud)      m_goldHud->move(width() - m_goldHud->width() - 16, 16);
-}
-
-void Level1Widget::togglePause()
-{
-    m_paused = !m_paused;
-    if (!m_pauseOverlay) return;
-    m_pauseOverlay->setGeometry(rect());
-    if (m_paused) {
-        m_pauseOverlay->show();
-        m_pauseOverlay->raise();
-    } else {
-        m_pauseOverlay->hide();
-        setFocus();
-    }
-}
-
-void Level1Widget::reactivate()
-{
-    m_bossTriggered = false;   // re-arm in case of reload
-    m_heldKeys.clear();
-    placePlayer();
-    m_ticker.start();
-    setFocus();
+    const LevelDef* l = level(levelId);
+    if (!l) return 0;
+    p.completedLevels.insert(levelId);
+    p.addGold(l->bossGoldReward);
+    return l->bossGoldReward;
 }
 </file>
 
@@ -6788,6 +6888,576 @@ void DungeonWidget::reactivate()
 }
 </file>
 
+<file path="src/level1widget.cpp">
+#include "level1widget.h"
+#include "ui_level1widget.h"
+#include "audiomanager.h"
+#include "spritecache.h"
+#include "pauseoverlaywidget.h"
+
+#include <QGraphicsScene>
+#include <QGraphicsView>
+#include <QGraphicsRectItem>
+#include <QGraphicsEllipseItem>
+#include <QGraphicsTextItem>
+#include <QGraphicsPixmapItem>
+#include <QRadialGradient>
+#include <QPainter>
+#include <QKeyEvent>
+#include <QResizeEvent>
+#include <QFont>
+#include <QRandomGenerator>
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  Constructor / Destructor
+// ─────────────────────────────────────────────────────────────────────────────
+
+Level1Widget::Level1Widget(AudioManager* audio, QWidget* parent)
+    : QWidget(parent)
+    , ui(new Ui::Level1Widget)
+    , m_audio(audio)
+{
+    ui->setupUi(this);
+
+    m_sheet.pixmap = SpriteCache::instance().get(":/sprites/player.png");
+
+    m_view  = ui->graphicsView;
+    m_scene = new QGraphicsScene(0, 0, WORLD_W, WORLD_H, this);
+    m_view->setScene(m_scene);
+    m_view->setAlignment(Qt::AlignLeft | Qt::AlignTop);
+    m_view->setViewportUpdateMode(QGraphicsView::FullViewportUpdate);
+    m_view->setOptimizationFlag(QGraphicsView::DontAdjustForAntialiasing);
+    m_view->setFocusPolicy(Qt::NoFocus);
+
+    m_ticker.setInterval(16);
+    connect(&m_ticker, &QTimer::timeout, this, &Level1Widget::onTick);
+
+    buildScene();
+
+    setFocusPolicy(Qt::StrongFocus);
+    m_view->setSceneRect(0, 0, WORLD_W, WORLD_H);
+
+    m_pauseOverlay = new PauseOverlayWidget(false, this);
+    connect(m_pauseOverlay, &PauseOverlayWidget::resumeRequested,
+            this, &Level1Widget::togglePause);
+    connect(m_pauseOverlay, &PauseOverlayWidget::menuRequested, this, [this] {
+        m_paused = false;
+        m_pauseOverlay->hide();
+        deactivate();
+        emit backToMenu();
+    });
+
+    m_goldHud = new GoldHudWidget(this);
+    m_goldHud->raise();
+}
+
+Level1Widget::~Level1Widget() { delete ui; }
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  Public API
+// ─────────────────────────────────────────────────────────────────────────────
+
+void Level1Widget::activate(const LevelDef& level, const PlayerProfile& profile)
+{
+    m_level         = level;
+    m_bossTriggered = false;
+
+    if (m_audio) m_audio->playMusic("/music/overworld.ogg");
+    m_heldKeys.clear();
+
+    m_scene->clear();
+    m_player     = nullptr;
+    m_bossSprite = nullptr;
+    m_enemyHint  = nullptr;   // ← crash fix
+    m_enemies.clear();
+    buildScene();
+
+    placePlayer();
+    spawnEnemies();
+    m_goldHud->setGold(profile.gold);
+    m_ticker.start();
+    setFocus();
+}
+
+void Level1Widget::deactivate()
+{
+    m_ticker.stop();
+    m_heldKeys.clear();
+}
+
+void Level1Widget::setGold(int gold)
+{
+    if (m_goldHud) m_goldHud->setGold(gold);
+}
+
+void Level1Widget::reactivate()
+{
+    m_bossTriggered = false;
+    m_heldKeys.clear();
+    placePlayer();
+    m_ticker.start();
+    setFocus();
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  Scene construction
+// ─────────────────────────────────────────────────────────────────────────────
+
+void Level1Widget::buildScene()
+{
+    const int TILE = 64;
+
+    // ── Grass base ────────────────────────────────────────────────────────────
+    QPixmap grassTile = SpriteCache::instance().get(":/sprites/grass.png")
+                            .scaled(TILE, TILE, Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
+    for (int y = 0; y < WORLD_H; y += TILE)
+        for (int x = 0; x < WORLD_W; x += TILE) {
+            auto* t = m_scene->addPixmap(grassTile);
+            t->setPos(x, y); t->setZValue(0);
+        }
+
+    // ── Dirt path ─────────────────────────────────────────────────────────────
+    QPixmap d1 = SpriteCache::instance().get(":/sprites/dirt1.png")
+                     .scaled(TILE, TILE, Qt::IgnoreAspectRatio, Qt::FastTransformation);
+    QPixmap d2 = SpriteCache::instance().get(":/sprites/dirt2.png")
+                     .scaled(TILE, TILE, Qt::IgnoreAspectRatio, Qt::FastTransformation);
+    auto* rng = QRandomGenerator::global();
+    const int pathX = 340, pathW = 128;
+    for (int y = 0; y < WORLD_H; y += TILE)
+        for (int x = pathX; x < pathX + pathW; x += TILE) {
+            auto* t = m_scene->addPixmap(rng->bounded(100) < 24 ? d2 : d1);
+            t->setPos(x, y); t->setZValue(1);
+        }
+
+    // ── Trees ─────────────────────────────────────────────────────────────────
+    const int TREE_W = 160, TREE_H = 160;
+    QPixmap treeRound = SpriteCache::instance().get(":/sprites/tree_round.png")
+                            .scaled(TREE_W, TREE_H, Qt::KeepAspectRatio, Qt::FastTransformation);
+    QPixmap treePine  = SpriteCache::instance().get(":/sprites/tree_pine.png")
+                            .scaled(TREE_W, TREE_H, Qt::KeepAspectRatio, Qt::FastTransformation);
+
+    struct TreeInfo { QPointF pos; bool round; };
+    const QList<TreeInfo> trees = {
+        {{40,40},false},{{80,200},true},{{50,370},false},{{90,490},true},
+        {{680,55},true},{{720,220},false},{{700,360},true},{{660,480},false},
+        {{155,130},true},{{575,150},false},
+    };
+    for (const TreeInfo& t : trees) {
+        const QPixmap& px = t.round ? treeRound : treePine;
+        if (px.isNull()) continue;
+        const qreal tw = px.width(), th = px.height();
+        const qreal sw = tw*0.65, sh = th*0.15;
+        auto* shadow = m_scene->addEllipse(
+            t.pos.x()+(tw-sw)/2.0, t.pos.y()+th-sh*0.8, sw, sh, Qt::NoPen, Qt::NoBrush);
+        QRadialGradient grad(t.pos.x()+tw/2.0, t.pos.y()+th-sh*0.3, sw/2.0);
+        grad.setColorAt(0.0, QColor(0,0,0,100));
+        grad.setColorAt(0.6, QColor(0,0,0,40));
+        grad.setColorAt(1.0, QColor(0,0,0,0));
+        shadow->setBrush(grad); shadow->setZValue(2);
+        auto* ti = m_scene->addPixmap(px);
+        ti->setPos(t.pos); ti->setZValue(3);
+    }
+
+    // ── Dirt wall top border ──────────────────────────────────────────────────
+    QPixmap wallPx = SpriteCache::instance().get(":/sprites/dirt_wall.png");
+    if (!wallPx.isNull()) {
+        QPixmap wall = wallPx.scaled(TILE, TILE, Qt::IgnoreAspectRatio, Qt::FastTransformation);
+        for (int x = 0; x < WORLD_W; x += TILE) {
+            auto* w = m_scene->addPixmap(wall);
+            w->setPos(x, 0); w->setZValue(4);
+        }
+    }
+
+    // ── Exit portal ───────────────────────────────────────────────────────────
+    const qreal ew = 100, eh = 48;
+    const qreal ex = (WORLD_W - ew) / 2.0, ey = 4;
+
+    // Exit color varies by theme
+    QColor exitColor;
+    switch (m_level.theme) {
+    case LevelTheme::Forest:  exitColor = QColor("#7B1FA2"); break;  // purple
+    case LevelTheme::Peak:    exitColor = QColor("#0288D1"); break;  // ice blue
+    case LevelTheme::Volcano: exitColor = QColor("#E64A19"); break;  // lava orange
+    case LevelTheme::Arena:   exitColor = QColor("#F9A825"); break;  // gold
+    default:                  exitColor = QColor("#00e676"); break;  // green (cave)
+    }
+
+    m_scene->addRect(ex-10, ey-5, ew+20, eh+10, Qt::NoPen,
+                     QBrush(exitColor.darker(200)))->setZValue(1);
+    m_exitZone = m_scene->addRect(ex, ey, ew, eh, Qt::NoPen, QBrush(exitColor));
+    m_exitZone->setZValue(2);
+
+    auto* exitLabel = m_scene->addText("EXIT ↑", QFont("Arial", 8, QFont::Bold));
+    exitLabel->setDefaultTextColor(Qt::white);
+    exitLabel->setPos(ex+20, ey+14); exitLabel->setZValue(3);
+
+    // ── Level title ───────────────────────────────────────────────────────────
+    QString title = m_level.name.isEmpty() ? "LEVEL 1" : m_level.name.toUpper();
+    auto* titleText = m_scene->addText(title, QFont("Arial", 8, QFont::Bold));
+    titleText->setDefaultTextColor(QColor("#a5d6a7"));
+    titleText->setPos(8, 4); titleText->setZValue(10);
+
+    // ── Controls hint ─────────────────────────────────────────────────────────
+    auto* hint = m_scene->addText("Touch an enemy to fight!    ESC = menu",
+                                   QFont("Arial", 7));
+    hint->setDefaultTextColor(QColor("#ffffff80"));
+    hint->setPos(8, WORLD_H - 20); hint->setZValue(10);
+
+    // ── Enemy hint ────────────────────────────────────────────────────────────
+    m_enemyHint = m_scene->addText("", QFont("Arial", 8, QFont::Bold));
+    m_enemyHint->setDefaultTextColor(QColor("#FFE066"));
+    m_enemyHint->setPos(8, WORLD_H - 40); m_enemyHint->setZValue(10);
+
+    // ── Player sprite ─────────────────────────────────────────────────────────
+    m_player = new DungeonPlayerSprite(m_sheet);
+    m_scene->addItem(m_player);
+    m_player->setZValue(9);
+
+    // ── Theme-specific elements ───────────────────────────────────────────────
+    buildThemeElements();
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  Theme elements — drawn on top of the base scene
+// ─────────────────────────────────────────────────────────────────────────────
+
+void Level1Widget::buildThemeElements()
+{
+    auto* rng = QRandomGenerator::global();
+
+    switch (m_level.theme) {
+
+    // ── Cave: dark rock debris + stalactites ──────────────────────────────────
+    case LevelTheme::Cave: {
+        // Scattered dark rock rects
+        const QList<QPointF> rocks = {
+            {120,180},{200,320},{560,250},{640,400},{300,450},{480,130}
+        };
+        for (const QPointF& p : rocks) {
+            qreal w = 18 + rng->bounded(20);
+            qreal h = 10 + rng->bounded(12);
+            m_scene->addRect(p.x(), p.y(), w, h,
+                Qt::NoPen, QBrush(QColor("#37474f")))->setZValue(5);
+        }
+        // Stalactites hanging from top wall — simple triangles using thin rects
+        for (int x = 40; x < WORLD_W - 40; x += 80 + rng->bounded(40)) {
+            int h = 20 + rng->bounded(30);
+            // Draw as a tapered stack of rects
+            for (int i = 0; i < 3; i++) {
+                int w = 14 - i*4;
+                m_scene->addRect(x + i*2, 64 + i*8, w, h/3,
+                    Qt::NoPen, QBrush(QColor(55,71,79,200)))->setZValue(5);
+            }
+        }
+        break;
+    }
+
+    // ── Forest: dark overlay + skulls + dead trunks ───────────────────────────
+    case LevelTheme::Forest: {
+        // Full-screen dark purple overlay
+        auto* overlay = m_scene->addRect(0, 0, WORLD_W, WORLD_H,
+            Qt::NoPen, QBrush(QColor(30, 0, 50, 140)));
+        overlay->setZValue(6);
+
+        // Floating skull symbols scattered around
+        const QList<QPointF> skulls = {
+            {95,95},{310,160},{580,90},{150,380},{670,310},{420,470},{240,520}
+        };
+        for (const QPointF& p : skulls) {
+            auto* skull = m_scene->addText("☠", QFont("Arial", 10));
+            skull->setDefaultTextColor(QColor(180, 100, 200, 160));
+            skull->setPos(p); skull->setZValue(7);
+        }
+
+        // Dead tree trunks — thin dark rects with no foliage
+        const QList<QPointF> trunks = {
+            {110,200},{580,300},{200,430},{660,150}
+        };
+        for (const QPointF& p : trunks) {
+            int h = 80 + rng->bounded(60);
+            // Trunk
+            m_scene->addRect(p.x(), p.y(), 8, h,
+                Qt::NoPen, QBrush(QColor("#263238")))->setZValue(5);
+            // Two bare branches
+            m_scene->addRect(p.x()-20, p.y()+20, 20, 5,
+                Qt::NoPen, QBrush(QColor("#263238")))->setZValue(5);
+            m_scene->addRect(p.x()+8, p.y()+40, 20, 5,
+                Qt::NoPen, QBrush(QColor("#263238")))->setZValue(5);
+        }
+        break;
+    }
+
+    // ── Peak: blue overlay + snowflakes + ice shards ──────────────────────────
+    case LevelTheme::Peak: {
+        // Blue/white icy overlay
+        auto* overlay = m_scene->addRect(0, 0, WORLD_W, WORLD_H,
+            Qt::NoPen, QBrush(QColor(0, 80, 160, 100)));
+        overlay->setZValue(6);
+
+        // Snowflake dots scattered
+        for (int i = 0; i < 30; i++) {
+            int x = rng->bounded(WORLD_W);
+            int y = rng->bounded(WORLD_H);
+            int r = 2 + rng->bounded(4);
+            m_scene->addEllipse(x, y, r, r,
+                Qt::NoPen, QBrush(QColor(200, 230, 255, 180)))->setZValue(7);
+        }
+
+        // Angular ice shard rects at ground edges
+        const QList<QPointF> shards = {
+            {60,500},{160,520},{600,490},{700,510},{280,540},{450,530}
+        };
+        for (const QPointF& p : shards) {
+            int h = 30 + rng->bounded(40);
+            m_scene->addRect(p.x(), p.y()-h, 12, h,
+                Qt::NoPen, QBrush(QColor(150, 210, 255, 200)))->setZValue(5);
+            m_scene->addRect(p.x()+6, p.y()-h*0.7, 8, h*0.7,
+                Qt::NoPen, QBrush(QColor(180, 230, 255, 180)))->setZValue(5);
+        }
+        break;
+    }
+
+    // ── Volcano: red overlay + lava glow pools + dark rock rects ─────────────
+    case LevelTheme::Volcano: {
+        // Red/orange fiery overlay
+        auto* overlay = m_scene->addRect(0, 0, WORLD_W, WORLD_H,
+            Qt::NoPen, QBrush(QColor(180, 30, 0, 110)));
+        overlay->setZValue(6);
+
+        // Lava pools — glowing orange ellipses at ground level
+        const QList<QPointF> pools = {
+            {80,480},{220,510},{550,490},{680,520},{350,540}
+        };
+        for (const QPointF& p : pools) {
+            int w = 40 + rng->bounded(30), h = 16 + rng->bounded(10);
+            // Outer glow
+            m_scene->addEllipse(p.x()-4, p.y()-4, w+8, h+8,
+                Qt::NoPen, QBrush(QColor(255, 100, 0, 60)))->setZValue(5);
+            // Lava surface
+            m_scene->addEllipse(p.x(), p.y(), w, h,
+                Qt::NoPen, QBrush(QColor(255, 140, 0, 180)))->setZValue(5);
+        }
+
+        // Dark volcanic rock rects
+        const QList<QPointF> rocks = {
+            {130,300},{290,200},{570,350},{680,250},{400,480}
+        };
+        for (const QPointF& p : rocks) {
+            int w = 24+rng->bounded(20), h = 14+rng->bounded(14);
+            m_scene->addRect(p.x(), p.y(), w, h,
+                Qt::NoPen, QBrush(QColor("#1a0000")))->setZValue(5);
+        }
+        break;
+    }
+
+    // ── Arena: dark overlay + stone boundary ring + corner torches ────────────
+    case LevelTheme::Arena: {
+        // Dark overlay
+        auto* overlay = m_scene->addRect(0, 0, WORLD_W, WORLD_H,
+            Qt::NoPen, QBrush(QColor(0, 0, 0, 130)));
+        overlay->setZValue(6);
+
+        // Arena boundary — four thick border lines drawn as rects
+        const int margin = 50, thick = 8;
+        QColor borderCol("#B8860B");
+        m_scene->addRect(margin, margin, WORLD_W-margin*2, thick,
+            Qt::NoPen, QBrush(borderCol))->setZValue(7);  // top
+        m_scene->addRect(margin, WORLD_H-margin-thick, WORLD_W-margin*2, thick,
+            Qt::NoPen, QBrush(borderCol))->setZValue(7);  // bottom
+        m_scene->addRect(margin, margin, thick, WORLD_H-margin*2,
+            Qt::NoPen, QBrush(borderCol))->setZValue(7);  // left
+        m_scene->addRect(WORLD_W-margin-thick, margin, thick, WORLD_H-margin*2,
+            Qt::NoPen, QBrush(borderCol))->setZValue(7);  // right
+
+        // Corner torches — glow + flame dot
+        const QList<QPointF> corners = {
+            {margin-8, margin-8}, {WORLD_W-margin-8, margin-8},
+            {margin-8, WORLD_H-margin-8}, {WORLD_W-margin-8, WORLD_H-margin-8}
+        };
+        for (const QPointF& p : corners) {
+            m_scene->addEllipse(p.x()-6, p.y()-6, 20, 20,
+                Qt::NoPen, QBrush(QColor(255,160,0,80)))->setZValue(7);
+            m_scene->addEllipse(p.x(), p.y(), 8, 8,
+                Qt::NoPen, QBrush(QColor("#FFD700")))->setZValue(8);
+        }
+        break;
+    }
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  Player and enemies
+// ─────────────────────────────────────────────────────────────────────────────
+
+void Level1Widget::placePlayer()
+{
+    if (m_player)
+        m_player->setPos(
+            (WORLD_W - DungeonPlayerSprite::W) / 2.0,
+            WORLD_H - DungeonPlayerSprite::H - 60);
+}
+
+void Level1Widget::spawnEnemies()
+{
+    for (EnemySprite* e : m_enemies) { m_scene->removeItem(e); delete e; }
+    m_enemies.clear();
+
+    // Enemy name and type driven by the level's theme
+    struct EInfo { CharacterType type; QString name; QPointF pos; };
+
+    QList<EInfo> defs;
+    switch (m_level.theme) {
+    case LevelTheme::Cave:
+        defs = {{ CharacterType::Warrior, "Cave Goblin", {300, 300} }};
+        break;
+    case LevelTheme::Forest:
+        defs = {{ CharacterType::Archer,  "Dead Archer",  {300, 300} }};
+        break;
+    case LevelTheme::Peak:
+        defs = {{ CharacterType::Warrior, "Ice Knight",   {300, 300} }};
+        break;
+    case LevelTheme::Volcano:
+        defs = {{ CharacterType::Mage,    "Fire Wizard",  {300, 300} }};
+        break;
+    case LevelTheme::Arena:
+        defs = {{ CharacterType::Warrior, "Dark Knight",  {300, 300} }};
+        break;
+    }
+
+    for (const EInfo& d : defs) {
+        auto* e = new EnemySprite(d.type, d.name);
+        e->setPos(d.pos); e->setZValue(8);
+        m_scene->addItem(e);
+        m_enemies.append(e);
+    }
+
+    // Boss
+    m_bossSprite = new EnemySprite(m_level.bossType, m_level.bossName);
+    m_bossSprite->setPos((WORLD_W - EnemySprite::W) / 2.0, 120);
+    m_bossSprite->setZValue(8);
+    m_scene->addItem(m_bossSprite);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  Game loop
+// ─────────────────────────────────────────────────────────────────────────────
+
+void Level1Widget::onTick()
+{
+    if (m_paused) return;
+    movePlayer();
+    patrolEnemies();
+    checkCollisions();
+    fitView();
+
+    if (m_enemyHint) {
+        if (!m_enemies.isEmpty())
+            m_enemyHint->setPlainText(
+                QString("⚠ Defeat all enemies first! (%1 remaining)").arg(m_enemies.size()));
+        else if (!m_bossTriggered)
+            m_enemyHint->setPlainText("✦ The boss awaits — move north!");
+        else
+            m_enemyHint->setPlainText("");
+    }
+}
+
+void Level1Widget::movePlayer()
+{
+    if (!m_player) return;
+    m_controller.setSpeed(SPEED);
+    QPointF next = m_player->pos() + m_controller.computeVelocity(m_heldKeys);
+    next = m_controller.clampToWorld(next,
+        DungeonPlayerSprite::W, DungeonPlayerSprite::H, WORLD_W, WORLD_H);
+    m_player->setPos(next);
+    m_player->updateAnimation(
+        m_controller.isMoving(m_heldKeys),
+        m_controller.computeDirection(m_heldKeys));
+}
+
+void Level1Widget::patrolEnemies()
+{
+    QRectF bounds(0, 0, WORLD_W, WORLD_H);
+    for (EnemySprite* e : m_enemies) { e->patrol(bounds); e->updateAnimation(); }
+}
+
+void Level1Widget::checkCollisions()
+{
+    if (!m_player) return;
+
+    // Boss — checked BEFORE exit, requires enemies cleared
+    if (!m_bossTriggered && m_bossSprite
+        && m_enemies.isEmpty()
+        && m_player->collidesWithItem(m_bossSprite)) {
+        m_bossTriggered = true;
+        m_ticker.stop();
+        emit bossTriggered(m_level);
+        return;
+    }
+
+    // Exit portal
+    if (m_exitZone && m_player->collidesWithItem(m_exitZone)) {
+        deactivate();
+        emit exitedLevel();
+        return;
+    }
+
+    // Regular enemies
+    for (int i = 0; i < m_enemies.size(); ++i) {
+        EnemySprite* e = m_enemies[i];
+        if (m_player->collidesWithItem(e)) {
+            CharacterType type = e->enemyType();
+            QString       name = e->enemyName();
+            m_scene->removeItem(e); delete e; m_enemies.removeAt(i);
+            deactivate();
+            emit battleTriggered(type, name);
+            return;
+        }
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  View / input / resize / pause
+// ─────────────────────────────────────────────────────────────────────────────
+
+void Level1Widget::fitView()
+{
+    if (!m_view || !m_player) return;
+    m_view->resetTransform();
+    m_view->scale(2.0, 2.0);
+    m_view->centerOn(m_player);
+}
+
+void Level1Widget::keyPressEvent(QKeyEvent* e)
+{
+    if (e->key() == Qt::Key_Escape) { togglePause(); return; }
+    if (!e->isAutoRepeat()) m_heldKeys.insert(e->key());
+    QWidget::keyPressEvent(e);
+}
+
+void Level1Widget::keyReleaseEvent(QKeyEvent* e)
+{
+    if (!e->isAutoRepeat()) m_heldKeys.remove(e->key());
+    QWidget::keyReleaseEvent(e);
+}
+
+void Level1Widget::resizeEvent(QResizeEvent* e)
+{
+    QWidget::resizeEvent(e);
+    fitView();
+    if (m_pauseOverlay) m_pauseOverlay->setGeometry(rect());
+    if (m_goldHud)      m_goldHud->move(width() - m_goldHud->width() - 16, 16);
+}
+
+void Level1Widget::togglePause()
+{
+    m_paused = !m_paused;
+    if (!m_pauseOverlay) return;
+    m_pauseOverlay->setGeometry(rect());
+    if (m_paused) { m_pauseOverlay->show(); m_pauseOverlay->raise(); }
+    else          { m_pauseOverlay->hide(); setFocus(); }
+}
+</file>
+
 <file path="include/dungeonwidget.h">
 #pragma once
 
@@ -6950,121 +7620,6 @@ private:
 };
 </file>
 
-<file path="include/mainwindow.h">
-#pragma once
-#include <QMainWindow>
-#include <QStackedWidget>
-#include "gameengine.h"
-#include "audiomanager.h"
-#include "playerprofile.h"
-#include "saveslotwidget.h"
-#include "character.h"
-#include "levelmanager.h"
-#include "bossdialogwidget.h"
-#include "storyslidedialog.h"       // ← NEW
-
-class StartScreenWidget;
-class CharacterSelectWidget;
-class BattleWidget;
-class GameOverWidget;
-class ScoreboardWidget;
-class OverworldWidget;
-class DungeonWidget;
-class HouseWidget;
-class ShopWidget;
-class Level1Widget;
-
-class MainWindow : public QMainWindow {
-    Q_OBJECT
-
-public:
-    explicit MainWindow(QWidget* parent = nullptr);
-    ~MainWindow() override;
-
-private slots:
-    // ── Engine ────────────────────────────────────────────────────────────────
-    void onStateChanged(GameState newState);
-
-    // ── Start screen ──────────────────────────────────────────────────────────
-    void onStartRequested();
-    void onLoadRequested();
-
-    // ── Slot screen ───────────────────────────────────────────────────────────
-    void onNewGameInSlot(int slotIndex);
-    void onLoadSlot(int slotIndex);
-    void onSlotBackRequested();
-
-    // ── Exploration ───────────────────────────────────────────────────────────
-    void onDungeonEntered();
-    void onExitedDungeon();
-    void onLevel1Entered();
-    void onExitedLevel1();
-    void onBattleTriggered(CharacterType enemyType, const QString& enemyName);
-    void onBackToMenu();
-    void onHouseEntered();
-    void onHouseExited();
-    void onShopEntered();
-    void onShopExited();
-    void onBuyItemRequested(ItemType type, int cost);
-
-    // ── Profile events ────────────────────────────────────────────────────────
-    void onGoldEarned(int amount);
-    void onSaveRequested();
-    void onReturnToOverworld();
-    void onBattleItemChosen(ItemType type);
-
-    // ── Boss dialog ───────────────────────────────────────────────────────────
-    void onBossTriggered(const LevelDef& level);
-    void onBossFightAccepted();
-    void onBossOutroDismissed();
-
-    // ── Story slide ───────────────────────────────────────────────────────────
-    void onStoryFinished();             // ← NEW
-
-private:
-    void buildUI();
-    void buildMenuBar();
-    void updateGoldHud();
-
-    // ── Core ──────────────────────────────────────────────────────────────────
-    GameEngine*     m_engine           = nullptr;
-    AudioManager*   m_audio            = nullptr;
-    QStackedWidget* m_stack            = nullptr;
-    PlayerProfile   m_profile;
-    int             m_currentSlot      = -1;
-    bool            m_playerHasChosen  = false;
-    bool            m_hasPendingBattle = false;
-    int  m_lastFinishedLevelId = 0;
-    bool m_lastBossWon = false;
-    CharacterType   m_pendingEnemyType = CharacterType::Warrior;
-    QString         m_pendingEnemyName;
-
-    // ── Screens ───────────────────────────────────────────────────────────────
-    StartScreenWidget*     m_startScreen  = nullptr;
-    SaveSlotWidget*        m_slotScreen   = nullptr;
-    CharacterSelectWidget* m_charSelect   = nullptr;
-    OverworldWidget*       m_overworld    = nullptr;
-    DungeonWidget*         m_dungeon      = nullptr;
-    Level1Widget*          m_level1       = nullptr;
-    HouseWidget*           m_house        = nullptr;
-    ShopWidget*            m_shop         = nullptr;
-    BattleWidget*          m_battleWidget = nullptr;
-    GameOverWidget*        m_gameOver     = nullptr;
-    ScoreboardWidget*      m_scoreboard   = nullptr;
-
-    // ── Level system ──────────────────────────────────────────────────────────
-    LevelManager      m_levelManager;
-    BossDialogWidget* m_bossDialog     = nullptr;
-    StorySlideDialog* m_storySlide     = nullptr;   // ← NEW
-    int               m_activeLevelId  = 0;
-    int               m_pendingLevelId = 0;          // ← NEW
-
-    enum class BattleOrigin { None, Dungeon, Level };
-    BattleOrigin m_battleOrigin = BattleOrigin::None;
-    bool         m_inLevel      = false;
-};
-</file>
-
 <file path="CMakeLists.txt">
 cmake_minimum_required(VERSION 3.19)
 project(CS2-Battle-Arena LANGUAGES CXX)
@@ -7126,7 +7681,7 @@ qt_add_executable(CS2-Battle-Arena
     include/housewidget.h      src/housewidget.cpp
     include/shopwidget.h       src/shopwidget.cpp
     src/shopwidget.ui
-    
+    include/levelbattlewidget.h  src/levelbattlewidget.cpp    
 
 )
 
@@ -7179,8 +7734,127 @@ install(TARGETS CS2-Battle-Arena
 )
 </file>
 
+<file path="include/mainwindow.h">
+#pragma once
+#include <QMainWindow>
+#include <QStackedWidget>
+#include "gameengine.h"
+#include "audiomanager.h"
+#include "playerprofile.h"
+#include "saveslotwidget.h"
+#include "character.h"
+#include "levelmanager.h"
+#include "bossdialogwidget.h"
+#include "storyslidedialog.h"      
+#include "levelbattlewidget.h"
+
+class StartScreenWidget;
+class CharacterSelectWidget;
+class BattleWidget;
+class GameOverWidget;
+class ScoreboardWidget;
+class OverworldWidget;
+class DungeonWidget;
+class HouseWidget;
+class ShopWidget;
+class Level1Widget;
+
+class MainWindow : public QMainWindow {
+    Q_OBJECT
+
+public:
+    explicit MainWindow(QWidget* parent = nullptr);
+    ~MainWindow() override;
+
+private slots:
+    // ── Engine ────────────────────────────────────────────────────────────────
+    void onStateChanged(GameState newState);
+
+    // ── Start screen ──────────────────────────────────────────────────────────
+    void onStartRequested();
+    void onLoadRequested();
+
+    // ── Slot screen ───────────────────────────────────────────────────────────
+    void onNewGameInSlot(int slotIndex);
+    void onLoadSlot(int slotIndex);
+    void onSlotBackRequested();
+
+    // ── Exploration ───────────────────────────────────────────────────────────
+    void onDungeonEntered();
+    void onExitedDungeon();
+    void onLevel1Entered();
+    void onLevel2Entered(); 
+    void onExitedLevel1();
+    void onBattleTriggered(CharacterType enemyType, const QString& enemyName);
+    void onBackToMenu();
+    void onHouseEntered();
+    void onHouseExited();
+    void onShopEntered();
+    void onShopExited();
+    void onBuyItemRequested(ItemType type, int cost);
+    void onLevelItemChosen(ItemType type);
+    // ── Profile events ────────────────────────────────────────────────────────
+    void onGoldEarned(int amount);
+    void onSaveRequested();
+    void onReturnToOverworld();
+    void onBattleItemChosen(ItemType type);
+
+    // ── Boss dialog ───────────────────────────────────────────────────────────
+    void onBossTriggered(const LevelDef& level);
+    void onBossFightAccepted();
+    void onBossOutroDismissed();
+
+    // ── Story slide ───────────────────────────────────────────────────────────
+    void onStoryFinished();             // ← NEW
+
+private:
+    void buildUI();
+    void buildMenuBar();
+    void updateGoldHud();
+
+    // ── Core ──────────────────────────────────────────────────────────────────
+    GameEngine*     m_engine           = nullptr;
+    AudioManager*   m_audio            = nullptr;
+    QStackedWidget* m_stack            = nullptr;
+    PlayerProfile   m_profile;
+    int             m_currentSlot      = -1;
+    bool            m_playerHasChosen  = false;
+    bool            m_hasPendingBattle = false;
+    int  m_lastFinishedLevelId = 0;
+    bool m_lastBossWon = false;
+    CharacterType   m_pendingEnemyType = CharacterType::Warrior;
+    QString         m_pendingEnemyName;
+
+    // ── Screens ───────────────────────────────────────────────────────────────
+    StartScreenWidget*     m_startScreen  = nullptr;
+    SaveSlotWidget*        m_slotScreen   = nullptr;
+    CharacterSelectWidget* m_charSelect   = nullptr;
+    OverworldWidget*       m_overworld    = nullptr;
+    DungeonWidget*         m_dungeon      = nullptr;
+    Level1Widget*          m_level1       = nullptr;
+    HouseWidget*           m_house        = nullptr;
+    ShopWidget*            m_shop         = nullptr;
+    BattleWidget*          m_battleWidget = nullptr;
+    GameOverWidget*        m_gameOver     = nullptr;
+    ScoreboardWidget*      m_scoreboard   = nullptr;
+    LevelBattleWidget*     m_levelBattle  = nullptr;
+
+    // ── Level system ──────────────────────────────────────────────────────────
+    LevelManager      m_levelManager;
+    BossDialogWidget* m_bossDialog     = nullptr;
+    StorySlideDialog* m_storySlide     = nullptr;   // ← NEW
+    int               m_activeLevelId  = 0;
+    int               m_pendingLevelId = 0;          // ← NEW
+
+    enum class BattleOrigin { None, Dungeon, Level };
+    BattleOrigin m_battleOrigin = BattleOrigin::None;
+    bool         m_inLevel      = false;
+};
+</file>
+
 <file path="include/overworldwidget.h">
 #pragma once
+
 
 // Qt stuff we need
 #include <QWidget>
@@ -7298,7 +7972,7 @@ signals:
     void dungeonEntered();
     void houseEntered();
     void shopEntered();
-    void level1Entered();       // ← NEW: triggers Level 1 screen
+    void levelsEntered();
     void backToMenu();
     void saveRequested();
 
@@ -7339,7 +8013,7 @@ private:
     QGraphicsRectItem *m_houseCollider     = nullptr;
     QGraphicsRectItem *m_shopZone          = nullptr;
     QGraphicsRectItem *m_houseEntranceZone = nullptr;
-    QGraphicsRectItem *m_level1Zone        = nullptr;   // ← NEW: Level 1 entrance zone
+    QGraphicsRectItem *m_level1Zone        = nullptr; 
     GoldHudWidget     *m_goldHud           = nullptr;
 
     // --- game loop stuff ---
@@ -7415,8 +8089,10 @@ void MainWindow::buildUI()
     m_house        = new HouseWidget(m_audio, this);
     m_shop         = new ShopWidget(this);
     m_battleWidget = new BattleWidget(m_engine, m_audio, &m_profile, this);
-    m_gameOver     = new GameOverWidget(m_engine, this);
+    m_levelBattle  = new LevelBattleWidget(m_engine, m_audio, &m_profile, this);
     m_scoreboard   = new ScoreboardWidget(m_engine, this);
+    m_gameOver     = new GameOverWidget(m_engine, this);
+
 
     m_stack->addWidget(m_startScreen);
     m_stack->addWidget(m_slotScreen);
@@ -7424,6 +8100,7 @@ void MainWindow::buildUI()
     m_stack->addWidget(m_overworld);
     m_stack->addWidget(m_dungeon);
     m_stack->addWidget(m_level1);
+    m_stack->addWidget(m_levelBattle);
     m_stack->addWidget(m_house);
     m_stack->addWidget(m_shop);
     m_stack->addWidget(m_battleWidget);
@@ -7450,7 +8127,7 @@ void MainWindow::buildUI()
     // ── Overworld ────────────────────────────────────────────────────────────
     connect(m_overworld, &OverworldWidget::dungeonEntered,
             this, &MainWindow::onDungeonEntered);
-    connect(m_overworld, &OverworldWidget::level1Entered,
+   connect(m_overworld, &OverworldWidget::levelsEntered,
             this, &MainWindow::onLevel1Entered);
     connect(m_overworld, &OverworldWidget::backToMenu,
             this, &MainWindow::onBackToMenu);
@@ -7478,6 +8155,9 @@ void MainWindow::buildUI()
             this, &MainWindow::onExitedLevel1);
     connect(m_level1, &Level1Widget::backToMenu,
             this, &MainWindow::onBackToMenu);
+
+    connect(m_levelBattle, &LevelBattleWidget::itemChosen,
+            this, &MainWindow::onLevelItemChosen);
 
     // ── Boss dialog overlay ───────────────────────────────────────────────────
     m_bossDialog = new BossDialogWidget(this);
@@ -7605,20 +8285,21 @@ void MainWindow::onStateChanged(GameState newState)
         m_stack->setCurrentWidget(m_charSelect);
         break;
 
-    case GameState::PlayerTurn:
+  case GameState::PlayerTurn:
         if (m_stack->currentWidget() == m_charSelect) {
             m_playerHasChosen = true;
-
             m_profile.characterName = m_engine->getPlayerName();
             m_profile.characterType = static_cast<int>(m_engine->getPlayerType());
-
             if (m_hasPendingBattle) {
                 m_hasPendingBattle = false;
                 m_engine->setStatBonuses(
                     m_profile.upgrades.bonusMaxHp,
                     m_profile.upgrades.bonusAttack,
                     m_profile.upgrades.bonusSpPerAtk);
-                m_stack->setCurrentWidget(m_battleWidget);
+                if (m_inLevel)
+                    m_stack->setCurrentWidget(m_levelBattle);
+                else
+                    m_stack->setCurrentWidget(m_battleWidget);
                 m_audio->playMusic("/music/battle.ogg");
             } else {
                 m_engine->setStatBonuses(0, 0, 0);
@@ -7628,7 +8309,10 @@ void MainWindow::onStateChanged(GameState newState)
                 m_stack->setCurrentWidget(m_overworld);
             }
         } else {
-            m_stack->setCurrentWidget(m_battleWidget);
+            if (m_inLevel)
+                m_stack->setCurrentWidget(m_levelBattle);
+            else
+                m_stack->setCurrentWidget(m_battleWidget);
             m_audio->playMusic("/music/battle.ogg");
         }
         break;
@@ -7729,7 +8413,31 @@ void MainWindow::onLevel1Entered()
     }
 }
 
-// ── NEW: fires when player presses the enter button on the last story page ──
+void MainWindow::onLevel2Entered()
+{
+    const LevelDef* lvl = m_levelManager.level(2);
+    if (!lvl) return;
+
+    if (!m_levelManager.isUnlocked(2, m_profile)) {
+        m_overworld->activate();
+        return;
+    }
+
+    m_inLevel        = true;
+    m_activeLevelId  = 0;
+    m_pendingLevelId = 2;
+
+    if (!lvl->storyPages.isEmpty()) {
+        m_storySlide->resize(size());
+        m_storySlide->show(lvl->name, lvl->storyPages, lvl->enterPrompt);
+        m_storySlide->raise();
+    } else {
+        m_level1->activate(*lvl, m_profile);
+        m_stack->setCurrentWidget(m_level1);
+    }
+}
+
+
 void MainWindow::onStoryFinished()
 {
     m_storySlide->hide();
@@ -7780,7 +8488,12 @@ void MainWindow::onBattleTriggered(CharacterType enemyType, const QString& enemy
 
     m_battleOrigin = m_inLevel ? BattleOrigin::Level : BattleOrigin::Dungeon;
 
-    if (!m_playerHasChosen) {
+   // Set level battle context if in a level
+    if (m_inLevel) {
+        const LevelDef* lvl = m_levelManager.level(m_pendingLevelId);
+        if (lvl) m_levelBattle->setContext(lvl->name, false, lvl->theme);
+    }
+ if (!m_playerHasChosen) {
         m_hasPendingBattle = true;
         m_stack->setCurrentWidget(m_charSelect);
     } else {
@@ -7912,6 +8625,8 @@ void MainWindow::onBossFightAccepted()
 {
     m_bossDialog->hide();
 
+    const LevelDef* ctx = m_levelManager.level(m_activeLevelId);
+    if (ctx) m_levelBattle->setContext(ctx->name, true, ctx->theme);
     if (m_activeLevelId <= 0)
     m_activeLevelId = m_pendingLevelId;
 
@@ -7940,33 +8655,51 @@ void MainWindow::onBossOutroDismissed()
 {
     m_bossDialog->hide();
     m_level1->deactivate();
+    updateGoldHud();
 
+    // If player won, flow directly into the next level
     if (m_lastBossWon) {
-        int nextLevelId = m_lastFinishedLevelId + 1;
-        const LevelDef* next = m_levelManager.level(nextLevelId);
+        int nextId = m_lastFinishedLevelId + 1;
+        const LevelDef* next = m_levelManager.level(nextId);
 
-        if (next && m_levelManager.isUnlocked(nextLevelId, m_profile)) {
-            m_inLevel = true;
-            m_pendingLevelId = nextLevelId;
+        if (next) {
+            m_inLevel        = true;
+            m_activeLevelId  = 0;
+            m_pendingLevelId = nextId;
 
             if (!next->storyPages.isEmpty()) {
                 m_storySlide->resize(size());
                 m_storySlide->show(next->name, next->storyPages, next->enterPrompt);
                 m_storySlide->raise();
-                m_storySlide->setFocus();
-                return;
+            } else {
+                m_level1->activate(*next, m_profile);
+                m_stack->setCurrentWidget(m_level1);
             }
-
-            m_level1->activate(*next, m_profile);
-            m_stack->setCurrentWidget(m_level1);
             return;
         }
     }
 
+    // Player lost, or all levels complete → back to overworld
     m_inLevel = false;
-    updateGoldHud();
     m_overworld->activate();
     m_stack->setCurrentWidget(m_overworld);
+}
+void MainWindow::onLevelItemChosen(ItemType type)
+{
+    if (!m_profile.hasItem(type)) return;
+    m_profile.removeItem(type, 1);
+    switch (type) {
+    case ItemType::HealthPotion: {
+        int maxHp = 0;
+        const auto& chars = m_engine->getAllCharacters();
+        if (!chars.isEmpty()) maxHp = chars[0]->getMaxHealth();
+        m_engine->onPlayerHealed(static_cast<int>(maxHp * 0.35f));
+        break;
+    }
+    case ItemType::SpPotion:     m_engine->onPlayerSpRestored(50);        break;
+    case ItemType::AttackBoost:  m_engine->onPlayerAttackBoosted();       break;
+    case ItemType::DefenseBoost: m_engine->onPlayerDefenseActivated();    break;
+    }
 }
 </file>
 
@@ -8381,26 +9114,20 @@ void OverworldWidget::buildScene()
     skull->setPos(dx + 2, dy + dh + 4);
     skull->setZValue(3);
 
-    // ── Level 1 entrance (top-right corner) ──────────────────────────────────
-    const qreal l1w = 80, l1h = 56;
-    const qreal l1x = WORLD_W - l1w - 6;
-    const qreal l1y = 6;
+// ── LEVELS portal — positioned below the wall so it's reachable ──────────
+    const qreal lw = 100, lh = 56;
+    const qreal lx = WORLD_W - lw - 40;
+    const qreal ly = 80;
 
-    // green border around the entrance
-    m_scene->addRect(l1x - 10, l1y - 6, l1w + 20, l1h + 10,
+    m_scene->addRect(lx-10, ly-6, lw+20, lh+10,
                      Qt::NoPen, QBrush(QColor("#1a3a1a")))->setZValue(1);
-
-    // the zone that triggers level 1 entry
-    m_level1Zone = m_scene->addRect(l1x, l1y, l1w, l1h,
+    m_level1Zone = m_scene->addRect(lx, ly, lw, lh,
                                     Qt::NoPen, QBrush(QColor("#00e676")));
     m_level1Zone->setZValue(2);
-
-    auto *l1label = m_scene->addText("LEVEL 1", QFont("Arial", 8, QFont::Bold));
-    l1label->setDefaultTextColor(QColor("#a5d6a7"));
-    l1label->setPos(l1x + 6, l1y + l1h + 4);
-    l1label->setZValue(3);
-
-    // --- controls hint at the bottom ---
+    auto* llabel = m_scene->addText("► LEVELS", QFont("Arial", 8, QFont::Bold));
+    llabel->setDefaultTextColor(QColor("#a5d6a7"));
+    llabel->setPos(lx+10, ly+16); llabel->setZValue(3);
+// --- controls hint at the bottom ---
     auto *hint = m_scene->addText(
         "WASD / Arrow keys to move    ESC = menu",
         QFont("Arial", 7)
@@ -8415,6 +9142,7 @@ void OverworldWidget::buildScene()
     m_scene->addItem(m_player);
     placePlayer();
 }
+
 
 // put the player in the center of the map
 void OverworldWidget::placePlayer()
@@ -8498,9 +9226,9 @@ void OverworldWidget::checkTriggers()
     }
 
     // ── Level 1 entrance ─────────────────────────────────────────────────────
-    if (m_level1Zone && m_player->collidesWithItem(m_level1Zone)) {
+  if (m_level1Zone && m_player->collidesWithItem(m_level1Zone)) {
         deactivate();
-        emit level1Entered();
+        emit levelsEntered();
         return;
     }
 }

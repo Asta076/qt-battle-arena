@@ -59,6 +59,7 @@ qt_add_executable(CS2-Battle-Arena
     include/shopwidget.h       src/shopwidget.cpp
     src/shopwidget.ui
     include/levelbattlewidget.h  src/levelbattlewidget.cpp    
+    include/levelselectwidget.h  src/levelselectwidget.cpp
 
 )
 
