@@ -35,7 +35,9 @@ private slots:
     // ── Start screen ──────────────────────────────────────────────────────────
     void onStartRequested();
     void onPvpRequested();
-    void onPvpDuelStartRequested(CharacterType p1Type, CharacterType p2Type);
+    void onPvpDuelStartRequested(CharacterType p1Type,
+                                 CharacterType p2Type,
+                                 int roundsToWin);
     void onPvpBackToMenu();
     void onLoadRequested();
 

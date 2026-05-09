@@ -16,7 +16,9 @@ public:
     explicit PvpCharacterSelectWidget(QWidget* parent = nullptr);
 
 signals:
-    void duelStartRequested(CharacterType p1Type, CharacterType p2Type);
+    void duelStartRequested(CharacterType p1Type,
+                            CharacterType p2Type,
+                            int roundsToWin);
     void backRequested();
 
 protected:
@@ -29,6 +31,7 @@ private:
 
     QComboBox* m_p1Combo = nullptr;
     QComboBox* m_p2Combo = nullptr;
+    QComboBox* m_matchTypeCombo = nullptr;
 
     QPushButton* m_startBtn = nullptr;
     QPushButton* m_backBtn = nullptr;

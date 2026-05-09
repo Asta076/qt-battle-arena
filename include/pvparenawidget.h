@@ -74,6 +74,7 @@ public:
     void deactivate();
 
     void setFighters(CharacterType p1Type, CharacterType p2Type);
+    void setMatchTarget(int roundsToWin);
 
 signals:
     void backToMenu();
@@ -88,6 +89,9 @@ private slots:
 
 private:
     void resetPlayers();
+    void resetMatch();
+    QString matchModeText() const;
+    void finishRound(const QString& winnerText);
 
     bool isPlayer1Blocking() const;
     bool isPlayer2Blocking() const;
@@ -179,6 +183,11 @@ private:
 
     bool m_roundOver = false;
     QString m_winnerText;
+
+    int m_roundsToWin = 1;
+    int m_p1RoundWins = 0;
+    int m_p2RoundWins = 0;
+    bool m_matchOver = false;
 
     QTimer m_ticker;
     QSet<int> m_heldKeys;

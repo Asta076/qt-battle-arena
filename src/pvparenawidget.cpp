@@ -21,7 +21,7 @@ PvpArenaWidget::PvpArenaWidget(QWidget* parent)
     m_fireballProjectileSprite.load(":/sprites/fireball.png");
 
     setFighters(CharacterType::Warrior, CharacterType::Archer);
-    resetPlayers();
+    resetMatch();
 
     m_ticker.setInterval(16);
     connect(&m_ticker, &QTimer::timeout,
@@ -43,6 +43,60 @@ void PvpArenaWidget::deactivate()
     m_ticker.stop();
     m_heldKeys.clear();
     m_projectiles.clear();
+}
+
+void PvpArenaWidget::setMatchTarget(int roundsToWin)
+{
+    m_roundsToWin = qBound(1, roundsToWin, 3);
+    resetMatch();
+}
+
+void PvpArenaWidget::resetMatch()
+{
+    m_p1RoundWins = 0;
+    m_p2RoundWins = 0;
+    m_matchOver = false;
+    resetPlayers();
+}
+
+QString PvpArenaWidget::matchModeText() const
+{
+    if (m_roundsToWin == 1)
+        return "Single Round";
+
+    if (m_roundsToWin == 2)
+        return "Best of 3";
+
+    return "Best of 5";
+}
+
+void PvpArenaWidget::finishRound(const QString& winnerText)
+{
+    if (m_roundOver)
+        return;
+
+    m_roundOver = true;
+    m_projectiles.clear();
+
+    if (winnerText.contains("PLAYER 1")) {
+        ++m_p1RoundWins;
+
+        if (m_p1RoundWins >= m_roundsToWin) {
+            m_matchOver = true;
+            m_winnerText = "PLAYER 1 WINS MATCH";
+        } else {
+            m_winnerText = "PLAYER 1 WINS ROUND";
+        }
+    } else {
+        ++m_p2RoundWins;
+
+        if (m_p2RoundWins >= m_roundsToWin) {
+            m_matchOver = true;
+            m_winnerText = "PLAYER 2 WINS MATCH";
+        } else {
+            m_winnerText = "PLAYER 2 WINS ROUND";
+        }
+    }
 }
 
 QString PvpArenaWidget::movementSheetFor(CharacterType type) const
@@ -558,8 +612,7 @@ void PvpArenaWidget::applyDamage(PvpFighterAnim& target,
 
     if (target.hp <= 0) {
         target.hp = 0;
-        m_roundOver = true;
-        m_winnerText = winnerText;
+        finishRound(winnerText);
     }
 }
 
@@ -589,10 +642,8 @@ void PvpArenaWidget::updateCombatHits()
             applyKnockback(m_p2, projectile.pos);
             applyDamage(m_p2, damage, "PLAYER 1 WINS");
 
-            if (m_roundOver) {
-                m_projectiles.clear();
+            if (m_roundOver)
                 return;
-            }
 
             continue;
         }
@@ -603,10 +654,8 @@ void PvpArenaWidget::updateCombatHits()
             applyKnockback(m_p1, projectile.pos);
             applyDamage(m_p1, damage, "PLAYER 2 WINS");
 
-            if (m_roundOver) {
-                m_projectiles.clear();
+            if (m_roundOver)
                 return;
-            }
 
             continue;
         }
@@ -627,10 +676,8 @@ void PvpArenaWidget::updateCombatHits()
         applyDamage(m_p2, meleeDamageFor(m_p1.type), "PLAYER 1 WINS");
         m_p1.hasHitDuringAttack = true;
 
-        if (m_roundOver) {
-            m_projectiles.clear();
+        if (m_roundOver)
             return;
-        }
     }
 
     if (m_p2.type == CharacterType::Warrior &&
@@ -648,10 +695,8 @@ void PvpArenaWidget::updateCombatHits()
         applyDamage(m_p1, meleeDamageFor(m_p2.type), "PLAYER 2 WINS");
         m_p2.hasHitDuringAttack = true;
 
-        if (m_roundOver) {
-            m_projectiles.clear();
+        if (m_roundOver)
             return;
-        }
     }
 }
 
@@ -757,6 +802,17 @@ void PvpArenaWidget::paintEvent(QPaintEvent* event)
 
     painter.restore();
 
+    painter.setPen(QColor("#F9FAFB"));
+    painter.setFont(QFont("Arial", 15, QFont::Bold));
+    painter.drawText(
+        QRect(0, 10, width(), 32),
+        Qt::AlignCenter,
+        QString("%1    P1 %2 - %3 P2")
+            .arg(matchModeText())
+            .arg(m_p1RoundWins)
+            .arg(m_p2RoundWins)
+    );
+
     QRect controlsRect(0, height() - 46, width(), 34);
 
     painter.fillRect(
@@ -769,7 +825,7 @@ void PvpArenaWidget::paintEvent(QPaintEvent* event)
     painter.drawText(
         controlsRect,
         Qt::AlignCenter,
-        "P1: WASD + F Attack + G Block    |    P2: Arrows + / or K Attack + L Block    |    ESC: Back"
+        "P1: WASD + F Attack + G Block    |    P2: Arrows + / or K Attack + L Block    |    R: Next / Restart"
     );
 
     if (m_roundOver) {
@@ -777,13 +833,17 @@ void PvpArenaWidget::paintEvent(QPaintEvent* event)
 
         painter.fillRect(overlayRect, QColor(0, 0, 0, 150));
 
+        QString instruction = m_matchOver
+            ? "Press R to restart match or ESC to leave"
+            : "Press R for next round or ESC to leave";
+
         painter.setPen(QColor("#FACC15"));
         painter.setFont(QFont("Arial", 34, QFont::Bold));
 
         painter.drawText(
             overlayRect,
             Qt::AlignCenter,
-            m_winnerText + "\n\nPress R to restart or ESC to leave"
+            m_winnerText + "\n\n" + instruction
         );
     }
 }
@@ -970,7 +1030,11 @@ void PvpArenaWidget::keyPressEvent(QKeyEvent* event)
     }
 
     if (event->key() == Qt::Key_R && m_roundOver) {
-        resetPlayers();
+        if (m_matchOver)
+            resetMatch();
+        else
+            resetPlayers();
+
         update();
         event->accept();
         return;

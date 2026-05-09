@@ -160,11 +160,16 @@ void MainWindow::onPvpRequested()
     m_stack->setCurrentWidget(m_pvpCharSelect);
 }
 
-void MainWindow::onPvpDuelStartRequested(CharacterType p1Type, CharacterType p2Type)
+void MainWindow::onPvpDuelStartRequested(CharacterType p1Type,
+                                         CharacterType p2Type,
+                                         int roundsToWin)
 {
     m_pvpArena->setFighters(p1Type, p2Type);
+    m_pvpArena->setMatchTarget(roundsToWin);
+
     m_stack->setCurrentWidget(m_pvpArena);
     m_pvpArena->activate();
+
     m_audio->playMusic("/music/battle.ogg");
 }
 
@@ -216,13 +221,13 @@ void MainWindow::onLoadSlot(int slotIndex)
     m_engine->setPlayerIdentity(
         loadedType,
         m_profile.characterName
-        );
+    );
 
     m_engine->setStatBonuses(
         m_profile.upgrades.bonusMaxHp,
         m_profile.upgrades.bonusAttack,
         m_profile.upgrades.bonusSpPerAtk
-        );
+    );
 
     m_overworld->setPlayerCharacterType(loadedType);
     m_dungeon->setPlayerCharacterType(loadedType);
@@ -291,7 +296,7 @@ void MainWindow::onDungeonEntered()
 {
     m_dungeon->setPlayerCharacterType(
         static_cast<CharacterType>(m_profile.characterType)
-        );
+    );
 
     m_dungeon->setPlayerCharacter(m_engine->playerCharacter());
     m_dungeon->activate();

@@ -43,7 +43,20 @@ PvpCharacterSelectWidget::PvpCharacterSelectWidget(QWidget* parent)
             font-weight: bold;
         }
 
-        QFrame#playerPanel {
+        QLabel#matchTitle {
+            color: #F8F1D8;
+            font-size: 18px;
+            font-weight: bold;
+        }
+
+        QLabel#matchHint {
+            color: #D1D5DB;
+            font-size: 11px;
+            font-weight: bold;
+        }
+
+        QFrame#playerPanel,
+        QFrame#matchPanel {
             background-color: rgba(10, 10, 20, 185);
             border: 3px solid #C89B3C;
             border-radius: 18px;
@@ -125,7 +138,7 @@ PvpCharacterSelectWidget::PvpCharacterSelectWidget(QWidget* parent)
     p1Label->setObjectName("playerTitle");
     p1Label->setAlignment(Qt::AlignCenter);
 
-    QLabel* p1Controls = new QLabel("Controls: WASD", p1Panel);
+    QLabel* p1Controls = new QLabel("Controls: WASD  |  F Attack  |  G Block", p1Panel);
     p1Controls->setObjectName("controlsLabel");
     p1Controls->setAlignment(Qt::AlignCenter);
 
@@ -145,7 +158,7 @@ PvpCharacterSelectWidget::PvpCharacterSelectWidget(QWidget* parent)
     p2Label->setObjectName("playerTitle");
     p2Label->setAlignment(Qt::AlignCenter);
 
-    QLabel* p2Controls = new QLabel("Controls: Arrow Keys", p2Panel);
+    QLabel* p2Controls = new QLabel("Controls: Arrow Keys  |  / or K Attack  |  L Block", p2Panel);
     p2Controls->setObjectName("controlsLabel");
     p2Controls->setAlignment(Qt::AlignCenter);
 
@@ -158,6 +171,33 @@ PvpCharacterSelectWidget::PvpCharacterSelectWidget(QWidget* parent)
     playerRow->setSpacing(50);
     playerRow->addWidget(p1Panel);
     playerRow->addWidget(p2Panel);
+
+    QFrame* matchPanel = new QFrame(this);
+    matchPanel->setObjectName("matchPanel");
+    matchPanel->setMinimumSize(360, 120);
+    matchPanel->setMaximumWidth(430);
+
+    QVBoxLayout* matchLayout = new QVBoxLayout(matchPanel);
+    matchLayout->setAlignment(Qt::AlignCenter);
+    matchLayout->setSpacing(10);
+
+    QLabel* matchTitle = new QLabel("MATCH TYPE", matchPanel);
+    matchTitle->setObjectName("matchTitle");
+    matchTitle->setAlignment(Qt::AlignCenter);
+
+    m_matchTypeCombo = new QComboBox(matchPanel);
+    m_matchTypeCombo->addItem("Single Round", 1);
+    m_matchTypeCombo->addItem("Best of 3", 2);
+    m_matchTypeCombo->addItem("Best of 5", 3);
+    m_matchTypeCombo->setCurrentIndex(1);
+
+    QLabel* matchHint = new QLabel("Best of 3 = first player to win 2 rounds", matchPanel);
+    matchHint->setObjectName("matchHint");
+    matchHint->setAlignment(Qt::AlignCenter);
+
+    matchLayout->addWidget(matchTitle);
+    matchLayout->addWidget(m_matchTypeCombo);
+    matchLayout->addWidget(matchHint);
 
     m_startBtn = new QPushButton("START DUEL", this);
     m_backBtn  = new QPushButton("BACK", this);
@@ -176,6 +216,8 @@ PvpCharacterSelectWidget::PvpCharacterSelectWidget(QWidget* parent)
     root->addWidget(subtitle);
     root->addSpacing(20);
     root->addLayout(playerRow);
+    root->addSpacing(10);
+    root->addWidget(matchPanel, 0, Qt::AlignCenter);
     root->addSpacing(18);
     root->addLayout(buttonRow);
     root->addStretch(1);
@@ -183,8 +225,9 @@ PvpCharacterSelectWidget::PvpCharacterSelectWidget(QWidget* parent)
     connect(m_startBtn, &QPushButton::clicked, this, [this]() {
         emit duelStartRequested(
             selectedTypeFromCombo(m_p1Combo),
-            selectedTypeFromCombo(m_p2Combo)
-            );
+            selectedTypeFromCombo(m_p2Combo),
+            m_matchTypeCombo->currentData().toInt()
+        );
     });
 
     connect(m_backBtn, &QPushButton::clicked,
