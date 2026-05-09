@@ -73,10 +73,52 @@ QString PvpArenaWidget::attackSheetFor(CharacterType type) const
     return ":/sprites/archer_attack_8dir_7frames.png";
 }
 
+int PvpArenaWidget::maxHpFor(CharacterType type) const
+{
+    switch (type) {
+    case CharacterType::Warrior:
+        return WARRIOR_HP;
+    case CharacterType::Archer:
+        return ARCHER_HP;
+    case CharacterType::Mage:
+        return MAGE_HP;
+    }
+
+    return MAGE_HP;
+}
+
+int PvpArenaWidget::projectileDamageFor(CharacterType type) const
+{
+    switch (type) {
+    case CharacterType::Archer:
+        return ARROW_DAMAGE;
+    case CharacterType::Mage:
+        return FIREBALL_DAMAGE;
+    case CharacterType::Warrior:
+        return WARRIOR_MELEE_DAMAGE;
+    }
+
+    return ARROW_DAMAGE;
+}
+
+int PvpArenaWidget::meleeDamageFor(CharacterType type) const
+{
+    if (type == CharacterType::Warrior)
+        return WARRIOR_MELEE_DAMAGE;
+
+    return WARRIOR_MELEE_DAMAGE;
+}
+
 void PvpArenaWidget::setFighters(CharacterType p1Type, CharacterType p2Type)
 {
     m_p1.type = p1Type;
     m_p2.type = p2Type;
+
+    m_p1.maxHp = maxHpFor(p1Type);
+    m_p2.maxHp = maxHpFor(p2Type);
+
+    m_p1.hp = m_p1.maxHp;
+    m_p2.hp = m_p2.maxHp;
 
     m_p1.movementSheet.load(movementSheetFor(p1Type));
     m_p1.attackSheet.load(attackSheetFor(p1Type));
@@ -119,11 +161,17 @@ void PvpArenaWidget::resetPlayers()
     m_p1.blockTickAccum = 0;
     m_p2.blockTickAccum = 0;
 
-    m_p1.hp = MAX_HP;
-    m_p2.hp = MAX_HP;
+    m_p1.maxHp = maxHpFor(m_p1.type);
+    m_p2.maxHp = maxHpFor(m_p2.type);
+
+    m_p1.hp = m_p1.maxHp;
+    m_p2.hp = m_p2.maxHp;
 
     m_p1.hasHitDuringAttack = false;
     m_p2.hasHitDuringAttack = false;
+
+    m_p1.hitFlashTicks = 0;
+    m_p2.hitFlashTicks = 0;
 
     m_roundOver = false;
     m_winnerText.clear();
@@ -155,6 +203,15 @@ void PvpArenaWidget::updateBlockState()
         ++m_p2.blockTickAccum;
     else
         m_p2.blockTickAccum = 0;
+}
+
+void PvpArenaWidget::updateHitFlash()
+{
+    if (m_p1.hitFlashTicks > 0)
+        --m_p1.hitFlashTicks;
+
+    if (m_p2.hitFlashTicks > 0)
+        --m_p2.hitFlashTicks;
 }
 
 QPointF PvpArenaWidget::velocityForPlayer1() const
@@ -275,6 +332,10 @@ void PvpArenaWidget::startAttack(PvpFighterAnim& fighter, int owner)
     if (m_roundOver)
         return;
 
+    if ((owner == 1 && isPlayer1Blocking()) ||
+        (owner == 2 && isPlayer2Blocking()))
+        return;
+
     if (fighter.isBlocking)
         return;
 
@@ -382,12 +443,9 @@ void PvpArenaWidget::drawProjectiles(QPainter& painter)
         if (projectile.type == CharacterType::Archer) {
             if (!m_arrowProjectileSprite.isNull()) {
                 QRectF target(-24.0, -9.0, 48.0, 18.0);
-
-                painter.drawPixmap(
-                    target,
-                    m_arrowProjectileSprite,
-                    m_arrowProjectileSprite.rect()
-                );
+                painter.drawPixmap(target,
+                                   m_arrowProjectileSprite,
+                                   m_arrowProjectileSprite.rect());
             } else {
                 QPen arrowPen(QColor("#FDE68A"), 4);
                 arrowPen.setCapStyle(Qt::RoundCap);
@@ -401,12 +459,9 @@ void PvpArenaWidget::drawProjectiles(QPainter& painter)
         } else if (projectile.type == CharacterType::Mage) {
             if (!m_fireballProjectileSprite.isNull()) {
                 QRectF target(-20.0, -20.0, 40.0, 40.0);
-
-                painter.drawPixmap(
-                    target,
-                    m_fireballProjectileSprite,
-                    m_fireballProjectileSprite.rect()
-                );
+                painter.drawPixmap(target,
+                                   m_fireballProjectileSprite,
+                                   m_fireballProjectileSprite.rect());
             } else {
                 painter.setPen(QPen(QColor("#FDBA74"), 2));
                 painter.setBrush(QColor("#F97316"));
@@ -465,6 +520,30 @@ int PvpArenaWidget::finalDamageForTarget(const PvpFighterAnim& target, int damag
     return reduced;
 }
 
+void PvpArenaWidget::applyKnockback(PvpFighterAnim& target, const QPointF& sourcePos)
+{
+    if (target.isBlocking)
+        return;
+
+    QPointF targetCenter(
+        target.pos.x() + PLAYER_W / 2.0,
+        target.pos.y() + PLAYER_H / 2.0
+    );
+
+    QPointF delta = targetCenter - sourcePos;
+
+    qreal length = qSqrt(delta.x() * delta.x() + delta.y() * delta.y());
+
+    if (length <= 0.001) {
+        delta = QPointF(1.0, 0.0);
+        length = 1.0;
+    }
+
+    QPointF dir(delta.x() / length, delta.y() / length);
+
+    target.pos = clampToArena(target.pos + dir * KNOCKBACK_DISTANCE);
+}
+
 void PvpArenaWidget::applyDamage(PvpFighterAnim& target,
                                  int damage,
                                  const QString& winnerText)
@@ -475,6 +554,7 @@ void PvpArenaWidget::applyDamage(PvpFighterAnim& target,
     damage = finalDamageForTarget(target, damage);
 
     target.hp -= damage;
+    target.hitFlashTicks = HIT_FLASH_TICKS;
 
     if (target.hp <= 0) {
         target.hp = 0;
@@ -501,13 +581,12 @@ void PvpArenaWidget::updateCombatHits()
             16.0
         );
 
-        int damage = PROJECTILE_DAMAGE;
-
-        if (projectile.type == CharacterType::Mage)
-            damage = MAGE_PROJECTILE_DAMAGE;
+        const int damage = projectileDamageFor(projectile.type);
 
         if (projectile.owner == 1 && projectileRect.intersects(p2Rect)) {
             m_projectiles.removeAt(i);
+
+            applyKnockback(m_p2, projectile.pos);
             applyDamage(m_p2, damage, "PLAYER 1 WINS");
 
             if (m_roundOver) {
@@ -520,6 +599,8 @@ void PvpArenaWidget::updateCombatHits()
 
         if (projectile.owner == 2 && projectileRect.intersects(p1Rect)) {
             m_projectiles.removeAt(i);
+
+            applyKnockback(m_p1, projectile.pos);
             applyDamage(m_p1, damage, "PLAYER 2 WINS");
 
             if (m_roundOver) {
@@ -537,7 +618,13 @@ void PvpArenaWidget::updateCombatHits()
         m_p1.attackFrameIndex >= 2 &&
         meleeHitBox(m_p1).intersects(p2Rect)) {
 
-        applyDamage(m_p2, MELEE_DAMAGE, "PLAYER 1 WINS");
+        QPointF p1Center(
+            m_p1.pos.x() + PLAYER_W / 2.0,
+            m_p1.pos.y() + PLAYER_H / 2.0
+        );
+
+        applyKnockback(m_p2, p1Center);
+        applyDamage(m_p2, meleeDamageFor(m_p1.type), "PLAYER 1 WINS");
         m_p1.hasHitDuringAttack = true;
 
         if (m_roundOver) {
@@ -552,7 +639,13 @@ void PvpArenaWidget::updateCombatHits()
         m_p2.attackFrameIndex >= 2 &&
         meleeHitBox(m_p2).intersects(p1Rect)) {
 
-        applyDamage(m_p1, MELEE_DAMAGE, "PLAYER 2 WINS");
+        QPointF p2Center(
+            m_p2.pos.x() + PLAYER_W / 2.0,
+            m_p2.pos.y() + PLAYER_H / 2.0
+        );
+
+        applyKnockback(m_p1, p2Center);
+        applyDamage(m_p1, meleeDamageFor(m_p2.type), "PLAYER 2 WINS");
         m_p2.hasHitDuringAttack = true;
 
         if (m_roundOver) {
@@ -570,6 +663,7 @@ void PvpArenaWidget::onTick()
     }
 
     updateBlockState();
+    updateHitFlash();
 
     const QPointF p1Velocity = velocityForPlayer1();
     const QPointF p2Velocity = velocityForPlayer2();
@@ -802,6 +896,12 @@ void PvpArenaWidget::drawPlayer(QPainter& painter,
         painter.drawRoundedRect(body, 8, 8);
     }
 
+    if (fighter.hitFlashTicks > 0) {
+        painter.setPen(Qt::NoPen);
+        painter.setBrush(QColor(255, 0, 0, 95));
+        painter.drawRoundedRect(body, 8, 8);
+    }
+
     drawBlockEffect(painter, fighter);
 
     painter.setBrush(Qt::NoBrush);
@@ -833,7 +933,11 @@ void PvpArenaWidget::drawPlayer(QPainter& painter,
         8.0
     );
 
-    qreal hpPercent = static_cast<qreal>(fighter.hp) / MAX_HP;
+    qreal hpPercent = 0.0;
+
+    if (fighter.maxHp > 0)
+        hpPercent = static_cast<qreal>(fighter.hp) / fighter.maxHp;
+
     hpPercent = qBound(0.0, hpPercent, 1.0);
 
     QRectF hpFill = hpBack;

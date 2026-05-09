@@ -49,7 +49,11 @@ struct PvpFighterAnim {
     int blockTickAccum = 0;
 
     int hp = 100;
+    int maxHp = 100;
+
     bool hasHitDuringAttack = false;
+
+    int hitFlashTicks = 0;
 };
 
 struct PvpProjectile {
@@ -97,6 +101,7 @@ private:
 
     void updateFighterAnimation(PvpFighterAnim& fighter, bool isMoving);
     void updateBlockState();
+    void updateHitFlash();
 
     void startAttack(PvpFighterAnim& fighter, int owner);
 
@@ -109,8 +114,13 @@ private:
     QRectF meleeHitBox(const PvpFighterAnim& fighter) const;
     void updateCombatHits();
 
+    int maxHpFor(CharacterType type) const;
+    int projectileDamageFor(CharacterType type) const;
+    int meleeDamageFor(CharacterType type) const;
+
     int finalDamageForTarget(const PvpFighterAnim& target, int damage) const;
     void applyDamage(PvpFighterAnim& target, int damage, const QString& winnerText);
+    void applyKnockback(PvpFighterAnim& target, const QPointF& sourcePos);
 
     void drawPlayer(QPainter& painter,
                     const PvpFighterAnim& fighter,
@@ -142,15 +152,21 @@ private:
     static constexpr qreal SPEED = 4.0;
     static constexpr qreal BLOCK_SPEED_MULTIPLIER = 0.45;
 
-    static constexpr int MAX_HP = 100;
-    static constexpr int PROJECTILE_DAMAGE = 12;
-    static constexpr int MAGE_PROJECTILE_DAMAGE = 15;
-    static constexpr int MELEE_DAMAGE = 18;
+    static constexpr int WARRIOR_HP = 120;
+    static constexpr int ARCHER_HP = 90;
+    static constexpr int MAGE_HP = 100;
+
+    static constexpr int ARROW_DAMAGE = 12;
+    static constexpr int FIREBALL_DAMAGE = 16;
+    static constexpr int WARRIOR_MELEE_DAMAGE = 20;
 
     static constexpr int BLOCK_DAMAGE_PERCENT = 30;
 
     static constexpr qreal PROJECTILE_SPEED = 9.0;
     static constexpr int PROJECTILE_MAX_TICKS = 90;
+
+    static constexpr int HIT_FLASH_TICKS = 8;
+    static constexpr qreal KNOCKBACK_DISTANCE = 28.0;
 
     QPixmap m_arenaBackground;
     QPixmap m_arrowProjectileSprite;
