@@ -33,8 +33,10 @@ public:
     void activate(const LevelDef& level, const PlayerProfile& profile);
     void deactivate();
     void reactivate();   // restart after returning from boss battle
+    void resumeAfterDialog();
 
     void setPlayerCharacterType(CharacterType type);
+
     // ── Enemy config — change these to retune per level ──────────────────────
     static constexpr int   ENEMY_COUNT        = 3;
     static constexpr int   ENEMY_HP           = 60;

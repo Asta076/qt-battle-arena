@@ -224,7 +224,7 @@ void Level1Widget::buildScene()
 
     // ── Controls hint ─────────────────────────────────────────────────────────
     auto* hint = m_scene->addText(
-        "WASD / Arrows = move   Z = attack   X = special   ESC = pause",
+        "WASD / Arrows = move   J = attack   K = special   ESC = pause",
         QFont("Arial", 6));
     hint->setDefaultTextColor(QColor("#ffffff66"));
     hint->setPos(8, WORLD_H - 18);
@@ -681,19 +681,29 @@ void Level1Widget::togglePause()
 
 void Level1Widget::keyPressEvent(QKeyEvent* e)
 {
-    if (e->isAutoRepeat()) return;
-
-    if (e->key() == Qt::Key_Escape) {
+    if (e->key() == Qt::Key_Escape && !e->isAutoRepeat()) {
         togglePause();
         return;
     }
 
-    if (!m_paused) {
-        // Z = basic attack, X = special
-        if (e->key() == Qt::Key_Z) { handleClassAttack();   return; }
-        if (e->key() == Qt::Key_X) { handleSpecialAbility(); return; }
-        m_heldKeys.insert(e->key());
+    if (m_paused) return;
+
+    // Attack keys — same as dungeon (J = attack, K = special)
+    // No autorepeat so holding J doesn't spam attacks
+    if (e->key() == Qt::Key_J && !e->isAutoRepeat()) {
+        handleClassAttack();
+        return;
     }
+    if (e->key() == Qt::Key_K && !e->isAutoRepeat()) {
+        handleSpecialAbility();
+        return;
+    }
+
+    // Movement keys — allow autorepeat so held keys keep firing
+    if (!e->isAutoRepeat())
+        m_heldKeys.insert(e->key());
+
+    QWidget::keyPressEvent(e);
 }
 
 void Level1Widget::keyReleaseEvent(QKeyEvent* e)
@@ -710,4 +720,10 @@ void Level1Widget::resizeEvent(QResizeEvent* e)
     if (m_pauseOverlay)
         m_pauseOverlay->setGeometry(rect());
     fitView();
+}
+
+void Level1Widget::resumeAfterDialog()
+{
+    m_ticker.start();
+    setFocus();
 }

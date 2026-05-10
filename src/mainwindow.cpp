@@ -491,10 +491,7 @@ void MainWindow::onBossTriggered(const LevelDef& level)
 void MainWindow::onBossFightAccepted()
 {
     m_bossDialog->hide();
-    // Level combat continues — the boss is already in the scene.
-    // Level1Widget handles the boss fight entirely in real-time.
-    // Re-give focus back to the level widget so keys work.
-    m_level1->setFocus();
+    m_level1->resumeAfterDialog();
 }
 
 void MainWindow::onBossOutroDismissed()
