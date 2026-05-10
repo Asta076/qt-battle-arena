@@ -8,7 +8,9 @@
 #include <QtMath>
 #include <QLabel>
 #include <QHBoxLayout>
-
+#include "mage.h"
+#include "archer.h"
+#include "warrior.h"
 // ── Static sprite sheet paths ─────────────────────────────────────────────────
 // Change these two lines when you have unique sprites per level
 const QString Level1Widget::ENEMY_MOVEMENT_SHEET =
@@ -63,6 +65,7 @@ Level1Widget::~Level1Widget()
 {
     clearEnemies();
     delete m_bossLogic;
+    delete m_levelPlayer;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -76,12 +79,6 @@ void Level1Widget::setPlayerCharacterType(CharacterType type)
     loadAttackSheet(type);
 }
 
-void Level1Widget::setPlayerCharacter(Character* player)
-{
-    m_combat.setPlayer(player);
-    updatePlayerHud();
-}
-
 void Level1Widget::activate(const LevelDef& level, const PlayerProfile& profile)
 {
     m_level          = level;
@@ -93,24 +90,46 @@ void Level1Widget::activate(const LevelDef& level, const PlayerProfile& profile)
 
     // Rebuild scene fresh each time
     m_scene->clear();
-    m_player    = nullptr;
+    m_player     = nullptr;
     m_bossSprite = nullptr;
     clearEnemies();
+
     delete m_bossLogic;
     m_bossLogic = nullptr;
     m_exitArea  = QRectF();
 
+    // Reset combat manager
     m_combat.clearEnemies();
     m_combat.clearAttacks();
     m_combat.setScene(m_scene);
 
+    // Create a fresh character for this level run.
+    // Owned by Level1Widget, passed to WorldCombatManager as a raw pointer.
+    delete m_levelPlayer;
+    switch (m_playerType) {
+    case CharacterType::Mage:   m_levelPlayer = new Mage  ("Player"); break;
+    case CharacterType::Archer: m_levelPlayer = new Archer("Player"); break;
+    default:                    m_levelPlayer = new Warrior("Player"); break;
+    }
+    // Apply permanent stat upgrades from the profile on top of base stats
+    m_levelPlayer->applyBonusHealth   (profile.upgrades.bonusMaxHp);
+    m_levelPlayer->applyBonusAttack   (profile.upgrades.bonusAttack);
+    m_levelPlayer->applyBonusSpPerAtk (profile.upgrades.bonusSpPerAtk);
+    m_combat.setPlayer(m_levelPlayer);
+
+    // Build scene and spawn everything
     buildScene();
     placePlayer();
     spawnEnemies();
 
+    // Update HUD
     m_goldHud->setGold(profile.gold);
     m_goldHud->raise();
-    m_pauseOverlay->setGeometry(rect());
+    updatePlayerHud();
+    positionPlayerHud();
+
+    if (m_pauseOverlay)
+        m_pauseOverlay->setGeometry(rect());
 
     m_ticker.start();
     setFocus();

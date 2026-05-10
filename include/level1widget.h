@@ -35,8 +35,6 @@ public:
     void reactivate();   // restart after returning from boss battle
 
     void setPlayerCharacterType(CharacterType type);
-    void setPlayerCharacter(Character* player);
-
     // ── Enemy config — change these to retune per level ──────────────────────
     static constexpr int   ENEMY_COUNT        = 3;
     static constexpr int   ENEMY_HP           = 60;
@@ -83,6 +81,8 @@ private:
     void buildPlayerHud();
     void updatePlayerHud();
     void positionPlayerHud();
+    void spawnExitPortal();
+
 
     static constexpr int WORLD_W = 800;
     static constexpr int WORLD_H = 600;
@@ -101,6 +101,7 @@ private:
     Enemy*        m_bossLogic   = nullptr;
     bool          m_bossActive  = false;   // true when all regular enemies dead
     bool          m_bossTriggered = false; // true after dialog fires
+    Character*    m_levelPlayer = nullptr;
 
     QTimer           m_ticker;
     QSet<int>        m_heldKeys;

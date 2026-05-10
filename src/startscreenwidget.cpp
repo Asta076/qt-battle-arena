@@ -60,6 +60,9 @@ StartScreenWidget::StartScreenWidget(GameEngine* engine, QWidget* parent)
 
     connect(m_pvpBtn, &QPushButton::clicked,
             this, &StartScreenWidget::pvpRequested);
+
+    connect(m_loadBtn, &QPushButton::clicked,
+            this, &StartScreenWidget::loadRequested);
 }
 
 void StartScreenWidget::paintEvent(QPaintEvent* event)
