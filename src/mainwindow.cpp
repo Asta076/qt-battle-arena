@@ -468,12 +468,14 @@ void MainWindow::onStoryFinished()
     const LevelDef* lvl = m_levelManager.level(m_activeLevelId);
     if (!lvl) return;
 
+    m_storyDialog->hide();
+
     m_level1->setPlayerCharacterType(
         static_cast<CharacterType>(m_profile.characterType));
-    m_level1->setPlayerCharacter(m_engine->playerCharacter());
     m_level1->activate(*lvl, m_profile);
     m_stack->setCurrentWidget(m_level1);
 }
+
 
 void MainWindow::onBossTriggered(const LevelDef& level)
 {

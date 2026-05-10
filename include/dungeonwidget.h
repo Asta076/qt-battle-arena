@@ -115,14 +115,14 @@ public:
     void chasePlayer(const QRectF& playerBounds, const QRectF& worldBounds);
     void updateAnimation();
     void startAttackAnimation(Direction dir);
+    void setMovementSheet(const QPixmap& px) { m_movementSheet = px; }
+    void setAttackSheet  (const QPixmap& px) { m_attackSheet   = px; }
 
     Direction facingDirection() const { return m_facing; }
 
 private:
     void applyFrame();
     void applyAttackFrame();
-    void setMovementSheet(const QPixmap& px) { m_movementSheet = px; }
-    void setAttackSheet  (const QPixmap& px) { m_attackSheet   = px; }
     void setFacingFromMovement(const QPointF& oldPos, const QPointF& newPos);
 
     CharacterType m_type;
