@@ -41,6 +41,7 @@ StartScreenWidget::StartScreenWidget(GameEngine* engine, QWidget* parent)
     m_startBtn = new QPushButton("► START GAME", this);
     m_pvpBtn   = new QPushButton("  PVP BATTLE", this);
     m_loadBtn  = new QPushButton("  LOAD SAVE",  this);
+    m_onlinePvpBtn = new QPushButton("  ONLINE PVP", this);
 
     // Assemble
     root->addStretch(2);
@@ -52,6 +53,8 @@ StartScreenWidget::StartScreenWidget(GameEngine* engine, QWidget* parent)
     root->addWidget(m_startBtn);
     root->addWidget(m_pvpBtn);
     root->addWidget(m_loadBtn);
+    root->addWidget(m_onlinePvpBtn);
+
     root->addStretch(3);
 
     // ── Connections ───────────────────────────────
@@ -63,6 +66,8 @@ StartScreenWidget::StartScreenWidget(GameEngine* engine, QWidget* parent)
 
     connect(m_loadBtn, &QPushButton::clicked,
             this, &StartScreenWidget::loadRequested);
+    connect(m_onlinePvpBtn, &QPushButton::clicked,
+            this, &StartScreenWidget::onlinePvpRequested);
 }
 
 void StartScreenWidget::paintEvent(QPaintEvent* event)

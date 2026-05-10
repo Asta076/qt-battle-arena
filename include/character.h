@@ -37,6 +37,10 @@ public:
     // ── Static ────────────────────────────────────
     static int getCharacterCount();
 
+
+    void setHealthDirect(int hp) { m_health = qBound(0, hp, m_maxHealth); }
+
+
 protected:
     int getAttackPower() const;
     int getHealth()      const;

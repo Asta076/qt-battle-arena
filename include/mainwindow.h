@@ -10,6 +10,8 @@
 #include "character.h"
 #include "levelmanager.h"
 #include "leveldef.h"
+#include "networkmanager.h"
+
 
 class StartScreenWidget;
 class CharacterSelectWidget;
@@ -26,6 +28,8 @@ class Level1Widget;
 class LevelSelectWidget;
 class StorySlideDialog;
 class BossDialogWidget;
+class RoomWidget;
+class OnlinePvpWidget;
 
 class MainWindow : public QMainWindow {
     Q_OBJECT
@@ -77,6 +81,11 @@ private slots:
     void onBossOutroDismissed();
     void onExitedLevel();
 
+    // ── Online PVP ──────────────────────────────────────────────────────────
+    void onOnlinePvpRequested();
+    void onRoomReady();
+    void onReturnToRoom();
+
 private:
     void buildUI();
     void buildMenuBar();
@@ -113,6 +122,9 @@ private:
     LevelManager              m_levelManager;
     int                       m_activeLevelId = 0;
     bool                      m_inLevel       = false;
+
+    RoomWidget*               m_roomWidget    = nullptr;
+    OnlinePvpWidget*          m_onlinePvp     = nullptr;
 
     enum class BattleOrigin { None, Dungeon, Level };
     BattleOrigin              m_battleOrigin  = BattleOrigin::None;

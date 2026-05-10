@@ -80,7 +80,21 @@ CMakeLists.txt.user*
 .pch/
 .rcc/
 .uic/
-/build*/
+
+# CMake build directories (anywhere in the project)
+build/
+build*/
+**/build/
+**/build*/
+
+# CMake generated files
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+install_manifest.txt
+compile_commands.json
+CTestTestfile.cmake
+_deps/
 
 save_slot_0.json
 save_slot_1.json

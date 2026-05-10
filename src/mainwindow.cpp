@@ -20,6 +20,8 @@
 #include "levelselectwidget.h"
 #include "storyslidedialog.h"
 #include "bossdialogwidget.h"
+#include "roomwidget.h"
+#include "onlinepvpwidget.h"
 
 MainWindow::MainWindow(QWidget* parent)
     : QMainWindow(parent)
@@ -60,6 +62,8 @@ void MainWindow::buildUI()
     m_levelSelect = new LevelSelectWidget(&m_levelManager, this);
     m_storyDialog = new StorySlideDialog(this);
     m_bossDialog  = new BossDialogWidget(this);
+    m_roomWidget  = new RoomWidget(this);
+    m_onlinePvp   = new OnlinePvpWidget(m_audio, this);
     m_storyDialog->hide();
     m_bossDialog->hide();
 
@@ -74,6 +78,8 @@ void MainWindow::buildUI()
     m_stack->addWidget(m_pvpArena);
     m_stack->addWidget(m_level1);
     m_stack->addWidget(m_levelSelect);
+    m_stack->addWidget(m_roomWidget);
+    m_stack->addWidget(m_onlinePvp);
 
     setCentralWidget(m_stack);
     m_stack->setCurrentWidget(m_startScreen);
@@ -165,6 +171,16 @@ void MainWindow::buildUI()
 
     connect(m_shop, &ShopWidget::buyItemRequested,
             this, &MainWindow::onBuyItemRequested);
+
+    // ── Online PVP ─────────────────────────────────────────────────────────────────
+    connect(m_startScreen, &StartScreenWidget::onlinePvpRequested,
+            this, &MainWindow::onOnlinePvpRequested);
+    connect(m_roomWidget, &RoomWidget::gameReady,
+            this, &MainWindow::onRoomReady);
+    connect(m_roomWidget, &RoomWidget::backRequested, this, [this]{
+        m_stack->setCurrentWidget(m_startScreen);
+    });
+    connect(m_onlinePvp, &OnlinePvpWidget::returnToRoom, this, &MainWindow::onReturnToRoom);
 }
 
 void MainWindow::buildMenuBar()
@@ -533,4 +549,26 @@ void MainWindow::onExitedLevel()
         m_overworld->activate();
         m_stack->setCurrentWidget(m_overworld);
     }
+}
+
+void MainWindow::onOnlinePvpRequested()
+{
+    m_roomWidget->activate();
+    m_stack->setCurrentWidget(m_roomWidget);
+}
+
+void MainWindow::onRoomReady()
+{
+    m_onlinePvp->activate(
+        m_roomWidget->localCharacterType(),
+        m_roomWidget->remoteCharacterType(),
+        m_roomWidget->isHost(),
+        m_roomWidget->network());
+    m_stack->setCurrentWidget(m_onlinePvp);
+}
+
+void MainWindow::onReturnToRoom()
+{
+    m_roomWidget->activate();
+    m_stack->setCurrentWidget(m_roomWidget);
 }

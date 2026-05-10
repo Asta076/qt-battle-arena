@@ -23,9 +23,12 @@ private:
     QPushButton* m_pvpBtn;
     QPushButton* m_loadBtn;
     QComboBox*   m_difficultyBox;
+    QPushButton* m_onlinePvpBtn = nullptr;
 
 signals:
     void startRequested();
     void pvpRequested();
     void loadRequested();
+    void onlinePvpRequested();
+
 };

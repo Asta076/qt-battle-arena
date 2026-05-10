@@ -1,8 +1,10 @@
-#test
 cmake_minimum_required(VERSION 3.19)
 project(CS2-Battle-Arena LANGUAGES CXX)
 
 find_package(Qt6 REQUIRED COMPONENTS Core Widgets Multimedia)
+find_package(Threads REQUIRED)
+find_package(Boost 1.80 REQUIRED)
+
 qt_standard_project_setup()
 
 qt_add_executable(CS2-Battle-Arena
@@ -42,12 +44,12 @@ qt_add_executable(CS2-Battle-Arena
     include/pvpcharacterselectwidget.h   src/pvpcharacterselectwidget.cpp
 
     # ── Level system ───────────────────────────────────────────────────────────
-        include/leveldef.h
-        include/levelmanager.h               src/levelmanager.cpp
-        include/levelselectwidget.h          src/levelselectwidget.cpp
-        include/storyslidedialog.h           src/storyslidedialog.cpp
-        include/bossdialogwidget.h           src/bossdialogwidget.cpp
-        include/level1widget.h               src/level1widget.cpp
+    include/leveldef.h
+    include/levelmanager.h               src/levelmanager.cpp
+    include/levelselectwidget.h          src/levelselectwidget.cpp
+    include/storyslidedialog.h           src/storyslidedialog.cpp
+    include/bossdialogwidget.h           src/bossdialogwidget.cpp
+    include/level1widget.h               src/level1widget.cpp
 
     # ── Shared widgets ─────────────────────────
     include/goldhudwidget.h        src/goldhudwidget.cpp
@@ -62,9 +64,16 @@ qt_add_executable(CS2-Battle-Arena
     include/pvparenawidget.h       src/pvparenawidget.cpp
     src/shopwidget.ui
 
+    include/networkmessage.h
+    include/networkmanager.h    src/networkmanager.cpp
+    include/roomwidget.h        src/roomwidget.cpp
+    include/onlinepvpwidget.h   src/onlinepvpwidget.cpp
+
 )
 
 target_include_directories(CS2-Battle-Arena PRIVATE include)
+target_include_directories(CS2-Battle-Arena PRIVATE ${Boost_INCLUDE_DIRS})
+
 
 qt_add_resources(CS2-Battle-Arena "assets"
     PREFIX "/"
@@ -141,7 +150,18 @@ target_link_libraries(CS2-Battle-Arena
         Qt6::Core
         Qt6::Widgets
         Qt6::Multimedia
+        ${Boost_LIBRARIES}
+        Threads::Threads
 )
+
+if(WIN32)
+    add_compile_definitions(
+        WIN32_LEAN_AND_MEAN
+        NOMINMAX
+        _WIN32_WINNT=0x0601
+    )
+    target_link_libraries(CS2-Battle-Arena PRIVATE ws2_32 mswsock)
+endif()
 
 include(GNUInstallDirs)
 
