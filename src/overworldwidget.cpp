@@ -329,38 +329,65 @@ void OverworldWidget::buildScene()
     m_houseEntranceZone->setZValue(1);
     // ── Shop ────────────────────────────────────────────────────────────────
     const qreal SHOP_X = 450;
-    const qreal SHOP_Y = 250;
-    const qreal SHOP_W = 360;
+    const qreal SHOP_Y = 220;
+    const qreal SHOP_W = 270;
     const qreal SHOP_H = 360;
 
-    // 1. Load the shop image from your resources
+    // Shadow under the shop
+    const qreal shopShadowW = SHOP_W * 0.85;
+    const qreal shopShadowH = SHOP_H * 0.28;
+    const qreal shopShadowX = SHOP_X + (SHOP_W - shopShadowW) / 2.0;
+    const qreal shopShadowY = SHOP_Y + SHOP_H - shopShadowH * 0.45;
+
+    QGraphicsRectItem* shopShadow = m_scene->addRect(
+        shopShadowX+30,
+        shopShadowY-210,
+        shopShadowW-40,
+        shopShadowH-20,
+        Qt::NoPen,
+        QBrush(QColor(0, 0, 0, 65))
+    );
+
+    shopShadow->setZValue(2);
+
     QPixmap shopPixmap(":/sprites/shop.png");
 
-    // FIX: Scale the image to perfectly match SHOP_W and SHOP_H
-    // Qt::KeepAspectRatio ensures the image doesn't look stretched or squished.
-    // If it still doesn't fit your box perfectly, change Qt::KeepAspectRatio to Qt::IgnoreAspectRatio
+
     shopPixmap = shopPixmap.scaled(SHOP_W, SHOP_H, Qt::KeepAspectRatio, Qt::SmoothTransformation);
 
     // Add the scaled image to the scene
     QGraphicsPixmapItem* shopItem = m_scene->addPixmap(shopPixmap);
     shopItem->setPos(SHOP_X, SHOP_Y);
-    shopItem->setZValue(4); // Sets it above the ground, adjust if needed
+    shopItem->setZValue(10);
 
-    // 2. Add the physical collision box (Collider)
+
     QGraphicsRectItem* shopCollider = m_scene->addRect(
         SHOP_X, SHOP_Y, SHOP_W, SHOP_H,
         Qt::NoPen, Qt::NoBrush // Keep it invisible
         );
-    // Optional: If your game uses data tags to identify solid objects
-    // shopCollider->setData(0, "Solid");
 
-    // 3. Invisible trigger zone in front of the stall
     m_shopZone = m_scene->addRect(
-        SHOP_X + 20, SHOP_Y + SHOP_H + 2, SHOP_W - 40, 18,
-        Qt::NoPen,
-        Qt::NoBrush
-        );
-    m_shopZone->setZValue(1);
+    SHOP_X + 77,
+    SHOP_Y + 105,
+    SHOP_W -160,
+    SHOP_H-280,
+    Qt::NoPen,
+    QBrush(Qt::transparent)
+);
+
+    m_shopZone->setZValue(20);
+
+
+    m_shopCollider = m_scene->addRect(
+    SHOP_X + 57,
+    SHOP_Y + 105,
+    SHOP_W -120,
+    SHOP_H - 330,
+    Qt::NoPen,
+    QBrush(Qt::transparent)
+);
+
+    m_shopCollider->setZValue(20);
     // ── Trees ────────────────────────────────────────────────────────────────
     QPixmap treeRoundPx(":/sprites/tree_round.png");
     QPixmap treePinePx (":/sprites/tree_pine.png");
@@ -518,30 +545,52 @@ void OverworldWidget::placePlayer()
 
 // called every tick by the timer
 void OverworldWidget::onTick() {
+    m_controller.setSpeed(PlayerSprite::SPEED);
+
     QPointF vel = m_controller.computeVelocity(m_heldKeys);
-    QPointF proposed(m_player->x() + vel.x(), m_player->y() + vel.y());
-    
-    QRectF solid = m_houseCollider ? m_houseCollider->sceneBoundingRect() : QRectF();
-    
-    // Apply collision manually
-    qreal nx = qBound(0.0, proposed.x(), WORLD_W - PlayerSprite::W);
-    qreal ny = qBound(0.0, proposed.y(), WORLD_H - PlayerSprite::H);
-    
-    if (solid.isValid()) {
-        QRectF playerRect(nx, ny, PlayerSprite::W, PlayerSprite::H);
-        if (playerRect.intersects(solid)) {
-            if (vel.x() > 0) nx = solid.left() - PlayerSprite::W;
-            else if (vel.x() < 0) nx = solid.right();
-            
-            playerRect = QRectF(nx, ny, PlayerSprite::W, PlayerSprite::H);
-            if (playerRect.intersects(solid)) {
-                if (vel.y() > 0) ny = solid.top() - PlayerSprite::H;
-                else if (vel.y() < 0) ny = solid.bottom();
-            }
+    QPointF oldPos = m_player->pos();
+
+    QList<QRectF> solids;
+
+    if (m_houseCollider)
+        solids.append(m_houseCollider->sceneBoundingRect());
+
+    if (m_shopCollider)
+        solids.append(m_shopCollider->sceneBoundingRect());
+
+    auto blocked = [&](const QPointF& pos) {
+        QRectF playerRect(pos.x(), pos.y(), PlayerSprite::W, PlayerSprite::H);
+
+        for (const QRectF& solid : solids) {
+            if (solid.isValid() && playerRect.intersects(solid))
+                return true;
         }
-    }
-    
-    m_player->setPos(nx, ny);
+
+        return false;
+    };
+
+    // Try X movement only
+    QPointF nextPos = oldPos;
+    nextPos.setX(qBound(
+        0.0,
+        oldPos.x() + vel.x(),
+        WORLD_W - PlayerSprite::W
+    ));
+
+    if (blocked(nextPos))
+        nextPos.setX(oldPos.x());
+
+    // Try Y movement only
+    nextPos.setY(qBound(
+        0.0,
+        oldPos.y() + vel.y(),
+        WORLD_H - PlayerSprite::H
+    ));
+
+    if (blocked(nextPos))
+        nextPos.setY(oldPos.y());
+
+    m_player->setPos(nextPos);
     
     bool moving = m_controller.isMoving(m_heldKeys);
     Direction dir = m_controller.computeDirection(m_heldKeys);
@@ -560,7 +609,6 @@ void OverworldWidget::checkTriggers()
         emit dungeonEntered();
         return;
     }
-
 
     // ── House entrance → enter house screen ──────────────────────────────────
     // Only trigger when the player is pressing up/W — stops accidental entry

@@ -407,7 +407,7 @@ void EnemySprite::chasePlayer(const QRectF& playerBounds,
 
     qreal clampedY = std::clamp(
         nextPos.y(),
-        worldBounds.top() + 60,
+        worldBounds.top(),
         worldBounds.bottom() - H
     );
 
@@ -495,7 +495,9 @@ DungeonWidget::DungeonWidget(AudioManager* audio, QWidget* parent)
     connect(&m_combat, &WorldCombatManager::playerDied, this, [this] {
         deactivate();
         updatePlayerHud();
-        emit exitedDungeon();
+
+        const int wavesSurvived = std::max(0, m_waveNumber - 1);
+        emit dungeonGameOver(m_runCoinsEarned, wavesSurvived);
     });
 
     m_view = new QGraphicsView(m_scene, this);
@@ -546,6 +548,7 @@ void DungeonWidget::activate()
     m_combat.resetSpecialMeter();
 
     m_waveNumber = 1;
+    m_runCoinsEarned = 0;
 
     placePlayer();
     spawnEnemies();
@@ -626,6 +629,15 @@ void DungeonWidget::buildScene()
 
     m_exitArea = QRectF(ex, ey, ew, eh);
 
+    // Invisible floor boundary.
+    // The player/enemies cannot walk outside this rectangle.
+    m_walkableArea = QRectF(
+        95,   // left
+        155,   // top
+        650,  // width
+        330   // height
+    );
+
     m_player = new DungeonPlayerSprite(m_sheet, m_attackSheet);
     m_scene->addItem(m_player);
     m_player->setZValue(9);
@@ -642,9 +654,13 @@ void DungeonWidget::placePlayer()
     if (!m_player)
         return;
 
+    QRectF bounds = m_walkableArea.isValid()
+        ? m_walkableArea
+        : QRectF(0, 0, WORLD_W, WORLD_H);
+
     m_player->setPos(
-        (WORLD_W - DungeonPlayerSprite::W) / 2.0,
-        WORLD_H - DungeonPlayerSprite::H - 90
+        bounds.center().x() - DungeonPlayerSprite::W / 2.0,
+        bounds.bottom() - DungeonPlayerSprite::H - 20.0
     );
 }
 
@@ -679,14 +695,14 @@ void DungeonWidget::spawnEnemies()
     const int damageBonus = (m_waveNumber - 1) * 2;
 
     const QList<QPointF> spawnPoints = {
-        QPointF(90, 100),
-        QPointF(690, 100),
-        QPointF(90, 450),
-        QPointF(690, 450),
-        QPointF(400, 90),
-        QPointF(400, 470),
-        QPointF(150, 260),
-        QPointF(650, 260)
+        QPointF(120, 120),
+        QPointF(630, 120),
+        QPointF(120, 430),
+        QPointF(630, 430),
+        QPointF(400, 120),
+        QPointF(400, 430),
+        QPointF(180, 260),
+        QPointF(590, 260)
     };
 
     for (int i = 0; i < enemyCount; ++i) {
@@ -826,7 +842,7 @@ void DungeonWidget::onTick()
     updatePlayerHud();
 }
 
-void DungeonWidget::movePlayer()
+    void DungeonWidget::movePlayer()
 {
     if (!m_player)
         return;
@@ -836,13 +852,21 @@ void DungeonWidget::movePlayer()
     QPointF velocity = m_controller.computeVelocity(m_heldKeys);
     QPointF nextPos = m_player->pos() + velocity;
 
-    nextPos = m_controller.clampToWorld(
-        nextPos,
-        DungeonPlayerSprite::W,
-        DungeonPlayerSprite::H,
-        WORLD_W,
-        WORLD_H
-    );
+    QRectF bounds = m_walkableArea.isValid()
+        ? m_walkableArea
+        : QRectF(0, 0, WORLD_W, WORLD_H);
+
+    nextPos.setX(std::clamp(
+        nextPos.x(),
+        bounds.left(),
+        bounds.right() - DungeonPlayerSprite::W
+    ));
+
+    nextPos.setY(std::clamp(
+        nextPos.y(),
+        bounds.top(),
+        bounds.bottom() - DungeonPlayerSprite::H
+    ));
 
     m_player->setPos(nextPos);
 
@@ -860,7 +884,10 @@ void DungeonWidget::patrolEnemies()
     if (!m_player)
         return;
 
-    QRectF worldBounds(0, 0, WORLD_W, WORLD_H);
+    QRectF worldBounds = m_walkableArea.isValid()
+        ? m_walkableArea
+        : QRectF(0, 0, WORLD_W, WORLD_H);
+
     QRectF playerBounds = m_player->sceneBoundingRect();
 
     for (EnemySprite* enemy : m_enemies) {
@@ -918,7 +945,7 @@ void DungeonWidget::patrolEnemies()
 
             aNext.setY(std::clamp(
                 aNext.y(),
-                worldBounds.top() + 60,
+                worldBounds.top(),
                 worldBounds.bottom() - EnemySprite::H
             ));
 
@@ -930,7 +957,7 @@ void DungeonWidget::patrolEnemies()
 
             bNext.setY(std::clamp(
                 bNext.y(),
-                worldBounds.top() + 60,
+                worldBounds.top(),
                 worldBounds.bottom() - EnemySprite::H
             ));
 
@@ -1111,6 +1138,18 @@ void DungeonWidget::checkAttackCollisions()
         if (enemy && !enemy->isAlive()) {
             m_combat.addSpecialFromKill();
 
+            Character* player = m_combat.player();
+            if (player && player->isAlive()) {
+                int healAmount = std::max(
+                    1,
+                    static_cast<int>(player->getMaxHealth() * 0.10f)
+                );
+                player->heal(healAmount);
+            }
+
+            m_runCoinsEarned += 3;
+            emit goldEarned(3);
+
             if (m_audio)
                 m_audio->playSfx("/sfx/faint.wav");
 
@@ -1122,6 +1161,8 @@ void DungeonWidget::checkAttackCollisions()
 
             delete sprite;
             delete enemy;
+
+            updatePlayerHud();
         }
     }
 

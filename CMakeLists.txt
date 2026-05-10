@@ -40,6 +40,7 @@ qt_add_executable(CS2-Battle-Arena
     include/saveslotwidget.h             src/saveslotwidget.cpp
     include/pvpcharacterselectwidget.h   src/pvpcharacterselectwidget.cpp
     include/pvpcharacterselectwidget.h   src/pvpcharacterselectwidget.cpp
+    include/gameoverwidget.h             src/gameoverwidget.cpp
 
     # ── Level system ───────────────────────────────────────────────────────────
         include/leveldef.h

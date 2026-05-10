@@ -175,6 +175,8 @@ public:
 signals:
     void exitedDungeon();
     void backToMenu();
+    void goldEarned(int amount);
+    void dungeonGameOver(int coinsEarned, int wavesSurvived);
 
 protected:
     void keyPressEvent(QKeyEvent* e) override;
@@ -193,6 +195,7 @@ private:
 
     DungeonPlayerSprite* m_player = nullptr;
     QRectF m_exitArea;
+    QRectF m_walkableArea;
 
     QList<EnemySprite*> m_enemies;
 
@@ -212,6 +215,7 @@ private:
     CharacterType m_playerType = CharacterType::Archer;
 
     int m_waveNumber = 1;
+    int m_runCoinsEarned = 0;
 
     void buildScene();
     void placePlayer();

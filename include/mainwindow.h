@@ -55,6 +55,7 @@ private slots:
     // ── Exploration ───────────────────────────────────────────────────────────
     void onDungeonEntered();
     void onExitedDungeon();
+    void onDungeonGameOver(int coinsEarned, int wavesSurvived);
     void onBackToMenu();
     void onHouseEntered();
     void onHouseExited();
@@ -64,6 +65,8 @@ private slots:
 
     // ── Profile events ────────────────────────────────────────────────────────
     void onSaveRequested();
+    void onGoldEarned(int amount);
+    void onReturnToOverworld();
 
     // ── Old battle item system ────────────────────────────────────────────────
     void onBattleItemChosen(ItemType type);

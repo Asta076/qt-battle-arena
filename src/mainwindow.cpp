@@ -9,6 +9,7 @@
 #include "audiomanager.h"
 #include "characterselectiondialog.h"
 #include "dungeonwidget.h"
+#include "gameoverwidget.h"
 #include "housewidget.h"
 #include "overworldwidget.h"
 #include "pvpcharacterselectwidget.h"
@@ -53,6 +54,7 @@ void MainWindow::buildUI()
     m_dungeon       = new DungeonWidget(m_audio, this);
     m_house         = new HouseWidget(m_audio, this);
     m_shop          = new ShopWidget(this);
+    m_gameOver      = new GameOverWidget(m_engine, this);
     m_pvpCharSelect = new PvpCharacterSelectWidget(this);
     m_pvpArena      = new PvpArenaWidget(this);
 
@@ -70,6 +72,7 @@ void MainWindow::buildUI()
     m_stack->addWidget(m_dungeon);
     m_stack->addWidget(m_house);
     m_stack->addWidget(m_shop);
+    m_stack->addWidget(m_gameOver);
     m_stack->addWidget(m_pvpCharSelect);
     m_stack->addWidget(m_pvpArena);
     m_stack->addWidget(m_level1);
@@ -134,6 +137,12 @@ void MainWindow::buildUI()
     connect(m_dungeon, &DungeonWidget::backToMenu,
             this, &MainWindow::onBackToMenu);
 
+    connect(m_dungeon, &DungeonWidget::goldEarned,
+            this, &MainWindow::onGoldEarned);
+
+    connect(m_dungeon, &DungeonWidget::dungeonGameOver,
+            this, &MainWindow::onDungeonGameOver);
+
     // ── Level system ─────────────────────────────────────────────────────────
     connect(m_levelSelect, &LevelSelectWidget::levelSelected,
             this, &MainWindow::onLevelSelected);
@@ -165,6 +174,13 @@ void MainWindow::buildUI()
 
     connect(m_shop, &ShopWidget::buyItemRequested,
             this, &MainWindow::onBuyItemRequested);
+
+    // ── Dungeon game over ───────────────────────────────────────────────────
+    connect(m_gameOver, &GameOverWidget::returnToOverworld,
+            this, &MainWindow::onReturnToOverworld);
+
+    connect(m_gameOver, &GameOverWidget::backToMenuRequested,
+            this, &MainWindow::onBackToMenu);
 }
 
 void MainWindow::buildMenuBar()
@@ -359,6 +375,13 @@ void MainWindow::onExitedDungeon()
     m_stack->setCurrentWidget(m_overworld);
 }
 
+void MainWindow::onDungeonGameOver(int coinsEarned, int wavesSurvived)
+{
+    m_gameOver->showDungeonResults(coinsEarned, wavesSurvived);
+    m_stack->setCurrentWidget(m_gameOver);
+}
+
+
 void MainWindow::onBackToMenu()
 {
     if (m_currentSlot >= 0) {
@@ -420,6 +443,31 @@ void MainWindow::onBuyItemRequested(ItemType type, int cost)
 // ─────────────────────────────────────────────────────────────────────────────
 //  Profile events
 // ─────────────────────────────────────────────────────────────────────────────
+
+void MainWindow::onGoldEarned(int amount)
+{
+    m_profile.addGold(amount);
+    updateGoldHud();
+}
+
+void MainWindow::onReturnToOverworld()
+{
+    m_profile.dungeonRuns++;
+
+    Character* player = m_engine->playerCharacter();
+    if (player) {
+        player->resetHealth();
+    }
+
+    if (m_currentSlot >= 0) {
+        m_profile.saveToFile(SaveSlotWidget::slotPath(m_currentSlot));
+    }
+
+    updateGoldHud();
+
+    m_overworld->activate();
+    m_stack->setCurrentWidget(m_overworld);
+}
 
 void MainWindow::onSaveRequested()
 {
