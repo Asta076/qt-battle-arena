@@ -38,6 +38,15 @@ qt_add_executable(CS2-Battle-Arena
     src/characterselectiondialog.ui
     include/saveslotwidget.h             src/saveslotwidget.cpp
     include/pvpcharacterselectwidget.h   src/pvpcharacterselectwidget.cpp
+    include/pvpcharacterselectwidget.h   src/pvpcharacterselectwidget.cpp
+
+    # ── Level system ───────────────────────────────────────────────────────────
+        include/leveldef.h
+        include/levelmanager.h               src/levelmanager.cpp
+        include/levelselectwidget.h          src/levelselectwidget.cpp
+        include/storyslidedialog.h           src/storyslidedialog.cpp
+        include/bossdialogwidget.h           src/bossdialogwidget.cpp
+        include/level1widget.h               src/level1widget.cpp
 
     # ── Shared widgets ─────────────────────────
     include/goldhudwidget.h        src/goldhudwidget.cpp

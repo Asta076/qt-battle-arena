@@ -121,6 +121,8 @@ public:
 private:
     void applyFrame();
     void applyAttackFrame();
+    void setMovementSheet(const QPixmap& px) { m_movementSheet = px; }
+    void setAttackSheet  (const QPixmap& px) { m_attackSheet   = px; }
     void setFacingFromMovement(const QPointF& oldPos, const QPointF& newPos);
 
     CharacterType m_type;

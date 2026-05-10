@@ -8,6 +8,8 @@
 #include "playerprofile.h"
 #include "saveslotwidget.h"
 #include "character.h"
+#include "levelmanager.h"
+#include "leveldef.h"
 
 class StartScreenWidget;
 class CharacterSelectWidget;
@@ -20,6 +22,10 @@ class HouseWidget;
 class ShopWidget;
 class PvpArenaWidget;
 class PvpCharacterSelectWidget;
+class Level1Widget;
+class LevelSelectWidget;
+class StorySlideDialog;
+class BossDialogWidget;
 
 class MainWindow : public QMainWindow {
     Q_OBJECT
@@ -62,6 +68,15 @@ private slots:
     // ── Old battle item system ────────────────────────────────────────────────
     void onBattleItemChosen(ItemType type);
 
+    // ── Level system ──────────────────────────────────────────────────────────
+    void onLevelsEntered();
+    void onLevelSelected(int levelId);
+    void onStoryFinished();
+    void onBossTriggered(const LevelDef& level);
+    void onBossFightAccepted();
+    void onBossOutroDismissed();
+    void onExitedLevel();
+
 private:
     void buildUI();
     void buildMenuBar();
@@ -89,4 +104,16 @@ private:
     ScoreboardWidget*         m_scoreboard    = nullptr;
     PvpArenaWidget*           m_pvpArena      = nullptr;
     PvpCharacterSelectWidget* m_pvpCharSelect = nullptr;
+
+    Level1Widget*             m_level1        = nullptr;
+    LevelSelectWidget*        m_levelSelect   = nullptr;
+    StorySlideDialog*         m_storyDialog   = nullptr;
+    BossDialogWidget*         m_bossDialog    = nullptr;
+
+    LevelManager              m_levelManager;
+    int                       m_activeLevelId = 0;
+    bool                      m_inLevel       = false;
+
+    enum class BattleOrigin { None, Dungeon, Level };
+    BattleOrigin              m_battleOrigin  = BattleOrigin::None;
 };

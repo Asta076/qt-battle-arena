@@ -476,6 +476,23 @@ void OverworldWidget::buildScene()
     hint->setPos(8, WORLD_H - 20);
     hint->setZValue(10);
 
+    // ── LEVELS portal ────────────────────────────────────────────────────────
+    const qreal lw = 100, lh = 56;
+    const qreal lx = WORLD_W - lw - 40;
+    const qreal ly = 80;
+
+    m_scene->addRect(lx - 10, ly - 6, lw + 20, lh + 10,
+                     Qt::NoPen, QBrush(QColor("#1a3a1a")))->setZValue(1);
+
+    m_level1Zone = m_scene->addRect(lx, ly, lw, lh,
+                                    Qt::NoPen, QBrush(QColor("#00e676")));
+    m_level1Zone->setZValue(2);
+
+    auto* llabel = m_scene->addText("► LEVELS", QFont("Arial", 8, QFont::Bold));
+    llabel->setDefaultTextColor(QColor("#a5d6a7"));
+    llabel->setPos(lx + 10, ly + 16);
+    llabel->setZValue(3);
+
     // --- player sprite ---
     m_player = new PlayerSprite(m_sheet);
     m_player->setZValue(9);
@@ -557,12 +574,19 @@ void OverworldWidget::checkTriggers()
             return;
         }
     }
-   //--shop------------------------------------------------------------------ 
+    //--shop------------------------------------------------------------------
     if (m_shopZone && m_player->collidesWithItem(m_shopZone)) {
     deactivate();
     emit shopEntered();
     return;
-}
+    }
+
+    // ── Levels portal ─────────────────────────────────────────────────────────
+    if (m_level1Zone && m_player->collidesWithItem(m_level1Zone)) {
+        deactivate();
+        emit levelsEntered();
+        return;
+    }
 }
 
 

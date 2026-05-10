@@ -16,6 +16,10 @@
 #include "saveslotwidget.h"
 #include "shopwidget.h"
 #include "startscreenwidget.h"
+#include "level1widget.h"
+#include "levelselectwidget.h"
+#include "storyslidedialog.h"
+#include "bossdialogwidget.h"
 
 MainWindow::MainWindow(QWidget* parent)
     : QMainWindow(parent)
@@ -52,6 +56,13 @@ void MainWindow::buildUI()
     m_pvpCharSelect = new PvpCharacterSelectWidget(this);
     m_pvpArena      = new PvpArenaWidget(this);
 
+    m_level1      = new Level1Widget(m_audio, this);
+    m_levelSelect = new LevelSelectWidget(&m_levelManager, this);
+    m_storyDialog = new StorySlideDialog(this);
+    m_bossDialog  = new BossDialogWidget(this);
+    m_storyDialog->hide();
+    m_bossDialog->hide();
+
     m_stack->addWidget(m_startScreen);
     m_stack->addWidget(m_slotScreen);
     m_stack->addWidget(m_charSelect);
@@ -61,6 +72,8 @@ void MainWindow::buildUI()
     m_stack->addWidget(m_shop);
     m_stack->addWidget(m_pvpCharSelect);
     m_stack->addWidget(m_pvpArena);
+    m_stack->addWidget(m_level1);
+    m_stack->addWidget(m_levelSelect);
 
     setCentralWidget(m_stack);
     m_stack->setCurrentWidget(m_startScreen);
@@ -111,12 +124,36 @@ void MainWindow::buildUI()
     connect(m_overworld, &OverworldWidget::shopEntered,
             this, &MainWindow::onShopEntered);
 
+    connect(m_overworld, &OverworldWidget::levelsEntered,
+            this, &MainWindow::onLevelsEntered);
+
     // ── Dungeon ──────────────────────────────────────────────────────────────
     connect(m_dungeon, &DungeonWidget::exitedDungeon,
             this, &MainWindow::onExitedDungeon);
 
     connect(m_dungeon, &DungeonWidget::backToMenu,
             this, &MainWindow::onBackToMenu);
+
+    // ── Level system ─────────────────────────────────────────────────────────
+    connect(m_levelSelect, &LevelSelectWidget::levelSelected,
+            this, &MainWindow::onLevelSelected);
+    connect(m_levelSelect, &LevelSelectWidget::backRequested,
+            this, [this]{ m_overworld->activate(); m_stack->setCurrentWidget(m_overworld); });
+
+    connect(m_storyDialog, &StorySlideDialog::finished,
+            this, &MainWindow::onStoryFinished);
+
+    connect(m_level1, &Level1Widget::bossTriggered,
+            this, &MainWindow::onBossTriggered);
+    connect(m_level1, &Level1Widget::exitedLevel,
+            this, &MainWindow::onExitedLevel);
+    connect(m_level1, &Level1Widget::backToMenu,
+            this, &MainWindow::onBackToMenu);
+
+    connect(m_bossDialog, &BossDialogWidget::fightAccepted,
+            this, &MainWindow::onBossFightAccepted);
+    connect(m_bossDialog, &BossDialogWidget::dialogDismissed,
+            this, &MainWindow::onBossOutroDismissed);
 
     // ── House ────────────────────────────────────────────────────────────────
     connect(m_house, &HouseWidget::backToOverworld,
@@ -402,4 +439,99 @@ void MainWindow::updateGoldHud()
 void MainWindow::onBattleItemChosen(ItemType type)
 {
     Q_UNUSED(type);
+}
+
+void MainWindow::onLevelsEntered()
+{
+    m_levelSelect->refresh(m_profile);
+    m_stack->setCurrentWidget(m_levelSelect);
+}
+
+void MainWindow::onLevelSelected(int levelId)
+{
+    const LevelDef* lvl = m_levelManager.level(levelId);
+    if (!lvl) return;
+
+    m_activeLevelId = levelId;
+    m_inLevel       = true;
+
+    // Show story slides first, then level starts in onStoryFinished
+    m_storyDialog->setParent(this);
+    m_storyDialog->resize(size());
+    m_storyDialog->show(lvl->name, lvl->storyPages, lvl->enterPrompt);
+    m_storyDialog->raise();
+    m_storyDialog->setFocus();
+}
+
+void MainWindow::onStoryFinished()
+{
+    const LevelDef* lvl = m_levelManager.level(m_activeLevelId);
+    if (!lvl) return;
+
+    m_level1->setPlayerCharacterType(
+        static_cast<CharacterType>(m_profile.characterType));
+    m_level1->setPlayerCharacter(m_engine->playerCharacter());
+    m_level1->activate(*lvl, m_profile);
+    m_stack->setCurrentWidget(m_level1);
+}
+
+void MainWindow::onBossTriggered(const LevelDef& level)
+{
+    // Level ticker is already stopped inside Level1Widget
+    m_bossDialog->setParent(m_level1);
+    m_bossDialog->resize(m_level1->size());
+    m_bossDialog->showIntro(level, m_profile.characterName);
+    m_bossDialog->show();
+    m_bossDialog->raise();
+    m_bossDialog->setFocus();
+}
+
+void MainWindow::onBossFightAccepted()
+{
+    m_bossDialog->hide();
+    // Level combat continues — the boss is already in the scene.
+    // Level1Widget handles the boss fight entirely in real-time.
+    // Re-give focus back to the level widget so keys work.
+    m_level1->setFocus();
+}
+
+void MainWindow::onBossOutroDismissed()
+{
+    m_bossDialog->hide();
+    m_level1->deactivate();
+    m_inLevel       = false;
+    m_activeLevelId = 0;
+    updateGoldHud();
+    m_overworld->activate();
+    m_stack->setCurrentWidget(m_overworld);
+}
+
+void MainWindow::onExitedLevel()
+{
+    // Player walked out of the exit portal after defeating the boss
+    const LevelDef* lvl = m_levelManager.level(m_activeLevelId);
+    bool alreadyCompleted = m_levelManager.isCompleted(m_activeLevelId, m_profile);
+
+    if (lvl && !alreadyCompleted) {
+        m_levelManager.completeLevel(m_activeLevelId, m_profile);
+        if (m_currentSlot >= 0)
+            m_profile.saveToFile(SaveSlotWidget::slotPath(m_currentSlot));
+        updateGoldHud();
+    }
+
+    // Show the boss outro dialog before going back to overworld
+    if (lvl) {
+        m_bossDialog->setParent(m_level1);
+        m_bossDialog->resize(m_level1->size());
+        m_bossDialog->showOutro(*lvl, true);   // true = player won
+        m_bossDialog->show();
+        m_bossDialog->raise();
+        m_bossDialog->setFocus();
+    } else {
+        m_inLevel       = false;
+        m_activeLevelId = 0;
+        updateGoldHud();
+        m_overworld->activate();
+        m_stack->setCurrentWidget(m_overworld);
+    }
 }
