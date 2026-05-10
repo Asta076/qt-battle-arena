@@ -1,3 +1,4 @@
+#test
 cmake_minimum_required(VERSION 3.19)
 project(CS2-Battle-Arena LANGUAGES CXX)
 
