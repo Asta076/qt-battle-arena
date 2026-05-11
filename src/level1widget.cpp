@@ -460,9 +460,18 @@ void Level1Widget::movePlayer()
 {
     if (!m_player) return;
     m_controller.setSpeed(SPEED);
+
     QPointF next = m_player->pos() + m_controller.computeVelocity(m_heldKeys);
-    next = m_controller.clampToWorld(next,
-        DungeonPlayerSprite::W, DungeonPlayerSprite::H, WORLD_W, WORLD_H);
+
+    // Wall boundaries — margins keep player off the edges
+    const qreal LEFT   = 48;
+    const qreal RIGHT  = WORLD_W - DungeonPlayerSprite::W - 48;
+    const qreal TOP    = 0;    // keep 0 so player can reach exit zone
+    const qreal BOTTOM = WORLD_H - DungeonPlayerSprite::H - 48;
+
+    next.setX(qBound(LEFT,  next.x(), RIGHT));
+    next.setY(qBound(TOP,   next.y(), BOTTOM));
+
     m_player->setPos(next);
     m_player->updateAnimation(
         m_controller.isMoving(m_heldKeys),
