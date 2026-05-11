@@ -18,7 +18,7 @@ void AudioManager::playMusic(const QString& path, bool loop)
     m_player->play();
 }
 
-void AudioManager::stopMusic() { m_player->stop(); m_currentPath.clear(); }
+void AudioManager::stopMusic() { m_player->stop(); }
 
 void AudioManager::setMusicVolume(float v) { m_audioOut->setVolume(v); }
 

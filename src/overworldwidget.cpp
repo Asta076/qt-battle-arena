@@ -295,7 +295,6 @@ void OverworldWidget::buildScene()
         entranceX, entranceY, entranceW, 16,
         Qt::NoPen, Qt::NoBrush);
     m_houseEntranceZone->setZValue(1);
-
     // ── Shop ────────────────────────────────────────────────────────────────
     const qreal SHOP_X = 600;
     const qreal SHOP_Y = 165;
@@ -330,7 +329,6 @@ void OverworldWidget::buildScene()
         Qt::NoBrush
         );
     m_shopZone->setZValue(1);
-
     // ── Trees ────────────────────────────────────────────────────────────────
     QPixmap treeRoundPx(":/sprites/tree_round.png");
     QPixmap treePinePx (":/sprites/tree_pine.png");
@@ -408,20 +406,7 @@ void OverworldWidget::buildScene()
     skull->setPos(dx + 2, dy + dh + 4);
     skull->setZValue(3);
 
-// ── LEVELS portal — positioned below the wall so it's reachable ──────────
-    const qreal lw = 100, lh = 56;
-    const qreal lx = WORLD_W - lw - 40;
-    const qreal ly = 80;
-
-    m_scene->addRect(lx-10, ly-6, lw+20, lh+10,
-                     Qt::NoPen, QBrush(QColor("#1a3a1a")))->setZValue(1);
-    m_level1Zone = m_scene->addRect(lx, ly, lw, lh,
-                                    Qt::NoPen, QBrush(QColor("#00e676")));
-    m_level1Zone->setZValue(2);
-    auto* llabel = m_scene->addText("► LEVELS", QFont("Arial", 8, QFont::Bold));
-    llabel->setDefaultTextColor(QColor("#a5d6a7"));
-    llabel->setPos(lx+10, ly+16); llabel->setZValue(3);
-// --- controls hint at the bottom ---
+    // --- controls hint at the bottom ---
     auto *hint = m_scene->addText(
         "WASD / Arrow keys to move    ESC = menu",
         QFont("Arial", 7)
@@ -436,7 +421,6 @@ void OverworldWidget::buildScene()
     m_scene->addItem(m_player);
     placePlayer();
 }
-
 
 // put the player in the center of the map
 void OverworldWidget::placePlayer()
@@ -499,6 +483,7 @@ void OverworldWidget::checkTriggers()
         return;
     }
 
+
     // ── House entrance → enter house screen ──────────────────────────────────
     // Only trigger when the player is pressing up/W — stops accidental entry
     // when the collider pushes them into the zone from the side.
@@ -511,20 +496,12 @@ void OverworldWidget::checkTriggers()
             return;
         }
     }
-
-    //--shop------------------------------------------------------------------
+   //--shop------------------------------------------------------------------ 
     if (m_shopZone && m_player->collidesWithItem(m_shopZone)) {
-        deactivate();
-        emit shopEntered();
-        return;
-    }
-
-    // ── Level 1 entrance ─────────────────────────────────────────────────────
-  if (m_level1Zone && m_player->collidesWithItem(m_level1Zone)) {
-        deactivate();
-        emit levelsEntered();
-        return;
-    }
+    deactivate();
+    emit shopEntered();
+    return;
+}
 }
 
 

@@ -23,10 +23,7 @@ qt_add_executable(CS2-Battle-Arena
     include/gameengine.h        src/gameengine.cpp
     include/spritecache.h       src/spritecache.cpp
     include/playercontroller.h  src/playercontroller.cpp
-    include/leveldef.h
-    include/levelmanager.h       src/levelmanager.cpp
-    include/bossdialogwidget.h   src/bossdialogwidget.cpp
-    include/storyslidedialog.h  src/storyslidedialog.cpp
+
     # ── Main window shell ──────────────────────
     include/mainwindow.h        src/mainwindow.cpp
     src/mainwindow.ui
@@ -53,14 +50,9 @@ qt_add_executable(CS2-Battle-Arena
     # ── World widgets ───────────────────
     include/overworldwidget.h  src/overworldwidget.cpp
     include/dungeonwidget.h    src/dungeonwidget.cpp
-    include/level1widget.h     src/level1widget.cpp
-    src/level1widget.ui
     include/housewidget.h      src/housewidget.cpp
     include/shopwidget.h       src/shopwidget.cpp
     src/shopwidget.ui
-    include/levelbattlewidget.h  src/levelbattlewidget.cpp    
-    include/levelselectwidget.h  src/levelselectwidget.cpp
-
 )
 
 # Tell the compiler where your headers live
@@ -95,10 +87,6 @@ qt_add_resources(CS2-Battle-Arena "assets"
         resources/sprites/tree_pine.png
         resources/sprites/dirt_wall.png
         resources/sprites/shop.png
-        resources/backgrounds/cave_level.jpg
-        resources/backgrounds/forest_level.jpg
-        resources/backgrounds/mountain_level.jpg
-        resources/backgrounds/volcano_level.jpg
 )
 
 target_link_libraries(CS2-Battle-Arena
@@ -114,3 +102,4 @@ install(TARGETS CS2-Battle-Arena
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
 )
+
