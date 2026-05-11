@@ -9,7 +9,6 @@
 #include "dungeonwidget.h"
 #include "shopwidget.h"
 #include "housewidget.h"
-#include "level1widget.h"
 #include "audiomanager.h"
 #include <QMenuBar>
 #include <QAction>
@@ -52,29 +51,22 @@ void MainWindow::buildUI()
     m_charSelect   = new CharacterSelectWidget(m_engine, this);
     m_overworld    = new OverworldWidget(m_audio, this);
     m_dungeon      = new DungeonWidget(m_audio, this);
-    m_level1       = new Level1Widget(m_audio, this);
     m_house        = new HouseWidget(m_audio, this);
     m_shop         = new ShopWidget(this);
     m_battleWidget = new BattleWidget(m_engine, m_audio, &m_profile, this);
-    m_levelSelect = new LevelSelectWidget(&m_levelManager, this);
-    m_levelBattle  = new LevelBattleWidget(m_engine, m_audio, &m_profile, this);
-    m_scoreboard   = new ScoreboardWidget(m_engine, this);
     m_gameOver     = new GameOverWidget(m_engine, this);
-
+    m_scoreboard   = new ScoreboardWidget(m_engine, this);
 
     m_stack->addWidget(m_startScreen);
     m_stack->addWidget(m_slotScreen);
     m_stack->addWidget(m_charSelect);
     m_stack->addWidget(m_overworld);
     m_stack->addWidget(m_dungeon);
-    m_stack->addWidget(m_level1);
-    m_stack->addWidget(m_levelBattle);
     m_stack->addWidget(m_house);
     m_stack->addWidget(m_shop);
     m_stack->addWidget(m_battleWidget);
     m_stack->addWidget(m_gameOver);
     m_stack->addWidget(m_scoreboard);
-    m_stack->addWidget(m_levelSelect);
 
     setCentralWidget(m_stack);
     m_stack->setCurrentWidget(m_startScreen);
@@ -96,14 +88,14 @@ void MainWindow::buildUI()
     // ── Overworld ────────────────────────────────────────────────────────────
     connect(m_overworld, &OverworldWidget::dungeonEntered,
             this, &MainWindow::onDungeonEntered);
-    connect(m_overworld, &OverworldWidget::levelsEntered,
-            this, &MainWindow::onLevelsPortalEntered);
     connect(m_overworld, &OverworldWidget::backToMenu,
             this, &MainWindow::onBackToMenu);
     connect(m_overworld, &OverworldWidget::saveRequested,
             this, &MainWindow::onSaveRequested);
 
-    // ── House ─────────────────────────────────────────────────────────────────
+
+    // ── House ──────────────────────────────────────────────────────────────
+
     connect(m_overworld, &OverworldWidget::houseEntered,
             this, &MainWindow::onHouseEntered);
     connect(m_house, &HouseWidget::backToOverworld,
@@ -117,40 +109,7 @@ void MainWindow::buildUI()
     connect(m_dungeon, &DungeonWidget::backToMenu,
             this, &MainWindow::onBackToMenu);
 
-    // ── Level 1 ──────────────────────────────────────────────────────────────
-    connect(m_level1, &Level1Widget::battleTriggered,
-            this, &MainWindow::onBattleTriggered);
-    connect(m_level1, &Level1Widget::exitedLevel,
-            this, &MainWindow::onExitedLevel1);
-    connect(m_level1, &Level1Widget::backToMenu,
-            this, &MainWindow::onBackToMenu);
-
-    connect(m_levelBattle, &LevelBattleWidget::itemChosen,
-            this, &MainWindow::onLevelItemChosen);
-    connect(m_levelSelect, &LevelSelectWidget::levelSelected,
-            this, &MainWindow::onLevelSelected);
-    connect(m_levelSelect, &LevelSelectWidget::backRequested,
-            this, &MainWindow::onLevelSelectBack);
-    // ── Boss dialog overlay ───────────────────────────────────────────────────
-    m_bossDialog = new BossDialogWidget(this);
-    m_bossDialog->hide();
-
-    connect(m_level1, &Level1Widget::bossTriggered,
-            this, &MainWindow::onBossTriggered);
-    connect(m_bossDialog, &BossDialogWidget::fightAccepted,
-            this, &MainWindow::onBossFightAccepted);
-    connect(m_bossDialog, &BossDialogWidget::dialogDismissed,
-            this, &MainWindow::onBossOutroDismissed);
-
-    // ── Story slide overlay ───────────────────────────────────────────────────
-    // Parented to MainWindow so it covers the whole window
-    m_storySlide = new StorySlideDialog(this);
-    m_storySlide->hide();
-
-    connect(m_storySlide, &StorySlideDialog::finished,
-            this, &MainWindow::onStoryFinished);             // ← NEW
-
-    // ── Shop ──────────────────────────────────────────────────────────────────
+    // --Shop---------------------------------------------------------------
     connect(m_overworld, &OverworldWidget::shopEntered,
             this, &MainWindow::onShopEntered);
     connect(m_shop, &ShopWidget::backToOverworld,
@@ -209,7 +168,8 @@ void MainWindow::onNewGameInSlot(int slotIndex)
     m_playerHasChosen  = false;
     m_hasPendingBattle = false;
 
-    m_engine->onRestartGame();
+    m_engine->onRestartGame();   // reset engine to clean state silently
+    // Go to char select — engine emits no state change yet
     m_stack->setCurrentWidget(m_charSelect);
 }
 
@@ -221,6 +181,7 @@ void MainWindow::onLoadSlot(int slotIndex)
     m_playerHasChosen  = true;
     m_hasPendingBattle = false;
 
+    // Tell the engine who the player is so future battles use the right class
     m_engine->setPlayerIdentity(
         static_cast<CharacterType>(m_profile.characterType),
         m_profile.characterName);
@@ -254,37 +215,39 @@ void MainWindow::onStateChanged(GameState newState)
         break;
 
     case GameState::CharacterSelect:
+        // Handled directly by onNewGameInSlot — guard only
         m_stack->setCurrentWidget(m_charSelect);
         break;
 
-  case GameState::PlayerTurn:
+    case GameState::PlayerTurn:
         if (m_stack->currentWidget() == m_charSelect) {
+            // Player just confirmed their character
             m_playerHasChosen = true;
+
+            // Save identity to profile immediately
             m_profile.characterName = m_engine->getPlayerName();
             m_profile.characterType = static_cast<int>(m_engine->getPlayerType());
+
             if (m_hasPendingBattle) {
+                // Was sent to charSelect because of dungeon collision
                 m_hasPendingBattle = false;
                 m_engine->setStatBonuses(
                     m_profile.upgrades.bonusMaxHp,
                     m_profile.upgrades.bonusAttack,
                     m_profile.upgrades.bonusSpPerAtk);
-                if (m_inLevel)
-                    m_stack->setCurrentWidget(m_levelBattle);
-                else
-                    m_stack->setCurrentWidget(m_battleWidget);
+                m_stack->setCurrentWidget(m_battleWidget);
                 m_audio->playMusic("/music/battle.ogg");
             } else {
                 m_engine->setStatBonuses(0, 0, 0);
+                // Normal new-game flow — save initial profile and go to overworld
                 if (m_currentSlot >= 0)
                     m_profile.saveToFile(SaveSlotWidget::slotPath(m_currentSlot));
                 m_overworld->activate();
                 m_stack->setCurrentWidget(m_overworld);
             }
         } else {
-            if (m_inLevel)
-                m_stack->setCurrentWidget(m_levelBattle);
-            else
-                m_stack->setCurrentWidget(m_battleWidget);
+            // Mid-battle: back to player's turn
+            m_stack->setCurrentWidget(m_battleWidget);
             m_audio->playMusic("/music/battle.ogg");
         }
         break;
@@ -297,38 +260,8 @@ void MainWindow::onStateChanged(GameState newState)
         break;
 
     case GameState::GameOver:
+        m_stack->setCurrentWidget(m_gameOver);
         m_audio->stopMusic();
-
-        if (m_activeLevelId > 0) {
-            // Boss fight just ended
-            int levelId = m_activeLevelId;
-            m_activeLevelId = 0;
-
-            bool playerWon = m_engine->getPlayerScore() > m_engine->getEnemyScore();
-            const LevelDef* lvl = m_levelManager.level(levelId);
-
-            m_lastFinishedLevelId = levelId;
-            m_lastBossWon = playerWon;
-
-            if (playerWon && lvl) {
-                m_levelManager.completeLevel(levelId, m_profile);
-                if (m_currentSlot >= 0)
-                    m_profile.saveToFile(SaveSlotWidget::slotPath(m_currentSlot));
-                updateGoldHud();
-            }
-
-            if (lvl) {
-                m_stack->setCurrentWidget(m_level1);
-                m_bossDialog->setParent(m_level1);
-                m_bossDialog->resize(m_level1->size());
-                m_bossDialog->showOutro(*lvl, playerWon);
-                m_bossDialog->show();
-                m_bossDialog->raise();
-                m_bossDialog->setFocus();
-            }
-        } else {
-            m_stack->setCurrentWidget(m_gameOver);
-        }
         break;
 
     case GameState::Scoreboard:
@@ -345,85 +278,16 @@ void MainWindow::onDungeonEntered()
 {
     m_dungeon->activate();
     m_stack->setCurrentWidget(m_dungeon);
+    // Dungeon's activate() calls playMusic("/music/battle.ogg") internally
 }
 
 void MainWindow::onExitedDungeon()
 {
-    m_battleOrigin = BattleOrigin::None;
+    // Clean exit via portal — count the run and auto-save
     m_profile.dungeonRuns++;
     if (m_currentSlot >= 0)
         m_profile.saveToFile(SaveSlotWidget::slotPath(m_currentSlot));
 
-    updateGoldHud();
-    m_overworld->activate();
-    m_stack->setCurrentWidget(m_overworld);
-}
-
-void MainWindow::onLevel1Entered()
-{
-    const LevelDef* lvl = m_levelManager.level(1);
-    if (!lvl) return;
-
-    if (!m_levelManager.isUnlocked(1, m_profile)) {
-        m_overworld->activate();
-        return;
-    }
-
-    m_inLevel       = true;
-    m_activeLevelId = 0;
-    m_pendingLevelId = 1;   // ← remember which level to activate after story
-
-    // ── Show story slide first if pages exist ─────────────────────────────────
-    if (!lvl->storyPages.isEmpty()) {
-        m_storySlide->resize(size());
-        m_storySlide->show(lvl->name, lvl->storyPages, lvl->enterPrompt);
-        m_storySlide->raise();
-    } else {
-        // No story — activate immediately
-        m_level1->activate(*lvl, m_profile);
-        m_stack->setCurrentWidget(m_level1);
-    }
-}
-
-void MainWindow::onLevel2Entered()
-{
-    const LevelDef* lvl = m_levelManager.level(2);
-    if (!lvl) return;
-
-    if (!m_levelManager.isUnlocked(2, m_profile)) {
-        m_overworld->activate();
-        return;
-    }
-
-    m_inLevel        = true;
-    m_activeLevelId  = 0;
-    m_pendingLevelId = 2;
-
-    if (!lvl->storyPages.isEmpty()) {
-        m_storySlide->resize(size());
-        m_storySlide->show(lvl->name, lvl->storyPages, lvl->enterPrompt);
-        m_storySlide->raise();
-    } else {
-        m_level1->activate(*lvl, m_profile);
-        m_stack->setCurrentWidget(m_level1);
-    }
-}
-
-
-void MainWindow::onStoryFinished()
-{
-    m_storySlide->hide();
-
-    const LevelDef* lvl = m_levelManager.level(m_pendingLevelId);
-    if (!lvl) return;
-
-    m_level1->activate(*lvl, m_profile);
-    m_stack->setCurrentWidget(m_level1);
-}
-
-void MainWindow::onExitedLevel1()
-{
-    m_inLevel = false;
     updateGoldHud();
     m_overworld->activate();
     m_stack->setCurrentWidget(m_overworld);
@@ -440,7 +304,6 @@ void MainWindow::onHouseExited()
     m_overworld->activate();
     m_stack->setCurrentWidget(m_overworld);
 }
-
 void MainWindow::onShopEntered()
 {
     m_shop->setProfile(&m_profile);
@@ -452,20 +315,13 @@ void MainWindow::onShopExited()
     m_overworld->activate();
     m_stack->setCurrentWidget(m_overworld);
 }
-
 void MainWindow::onBattleTriggered(CharacterType enemyType, const QString& enemyName)
 {
     m_pendingEnemyType = enemyType;
     m_pendingEnemyName = enemyName;
 
-    m_battleOrigin = m_inLevel ? BattleOrigin::Level : BattleOrigin::Dungeon;
-
-   // Set level battle context if in a level
-    if (m_inLevel) {
-        const LevelDef* lvl = m_levelManager.level(m_pendingLevelId);
-        if (lvl) m_levelBattle->setContext(lvl->name, false, lvl->theme);
-    }
- if (!m_playerHasChosen) {
+    if (!m_playerHasChosen) {
+        // First encounter — need character select first
         m_hasPendingBattle = true;
         m_stack->setCurrentWidget(m_charSelect);
     } else {
@@ -473,9 +329,11 @@ void MainWindow::onBattleTriggered(CharacterType enemyType, const QString& enemy
             m_profile.upgrades.bonusMaxHp,
             m_profile.upgrades.bonusAttack,
             m_profile.upgrades.bonusSpPerAtk);
+        // Character already chosen — jump straight to battle
         m_engine->onPlayerSelectedCharacter(
             m_engine->getPlayerType(),
             m_engine->getPlayerName());
+        // Engine emits PlayerTurn → onStateChanged shows battleWidget
     }
 }
 
@@ -496,49 +354,47 @@ void MainWindow::onBackToMenu()
 
 void MainWindow::onGoldEarned(int amount)
 {
+    // Accumulate in memory — written to disk only on dungeon exit or manual save.
+    // Gold from an incomplete dungeon run is intentionally lost on quit.
     m_profile.addGold(amount);
     updateGoldHud();
 }
 
 void MainWindow::onSaveRequested()
 {
+    // Called by overworld pause SAVE button
     if (m_currentSlot < 0) return;
     m_profile.saveToFile(SaveSlotWidget::slotPath(m_currentSlot));
 }
 
 void MainWindow::onReturnToOverworld()
 {
+    // Game over → "EXPLORE MORE": save gold earned this run then go to overworld
+    m_profile.dungeonRuns++;
     if (m_currentSlot >= 0)
         m_profile.saveToFile(SaveSlotWidget::slotPath(m_currentSlot));
     updateGoldHud();
-
-    if (m_battleOrigin == BattleOrigin::Dungeon) {
-        m_battleOrigin = BattleOrigin::None;
-        m_dungeon->reactivate();
-        m_stack->setCurrentWidget(m_dungeon);
-    } else if (m_battleOrigin == BattleOrigin::Level && m_inLevel) {
-        m_battleOrigin = BattleOrigin::None;
-        m_level1->reactivate();
-        m_stack->setCurrentWidget(m_level1);
-    } else {
-        m_battleOrigin = BattleOrigin::None;
-        m_inLevel      = false;
-        m_overworld->activate();
-        m_stack->setCurrentWidget(m_overworld);
-    }
+    m_overworld->activate();
+    m_stack->setCurrentWidget(m_overworld);
 }
 
 void MainWindow::onBuyItemRequested(ItemType type, int cost)
 {
+    // Guard: can the player still afford it? (shop already checks, but be safe)
     if (m_profile.gold < cost) return;
 
+    // Deduct gold and add item
     m_profile.spendGold(cost);
     m_profile.addItem(type, 1);
 
+    // Persist immediately — buying is a save-worthy event
     if (m_currentSlot >= 0)
         m_profile.saveToFile(SaveSlotWidget::slotPath(m_currentSlot));
 
+    // Tell the shop to refresh its display (gold changed, owned count changed)
     m_shop->setProfile(&m_profile);
+
+    // Keep gold HUD in sync for when the player returns to the overworld
     updateGoldHud();
 }
 
@@ -546,17 +402,20 @@ void MainWindow::updateGoldHud()
 {
     m_overworld->setGold(m_profile.gold);
     m_dungeon->setGold(m_profile.gold);
-    m_level1->setGold(m_profile.gold);
 }
 
 void MainWindow::onBattleItemChosen(ItemType type)
 {
+    // Guard: make sure player actually has this item
     if (!m_profile.hasItem(type)) return;
 
+    // Deduct from inventory first
     m_profile.removeItem(type, 1);
 
+    // Then call the appropriate engine effect
     switch (type) {
     case ItemType::HealthPotion: {
+        // 35% of player's max HP — engine calculates internally
         int maxHp = 0;
         const auto& chars = m_engine->getAllCharacters();
         if (!chars.isEmpty()) maxHp = chars[0]->getMaxHealth();
@@ -574,132 +433,4 @@ void MainWindow::onBattleItemChosen(ItemType type)
         m_engine->onPlayerDefenseActivated();
         break;
     }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-//  Boss dialog
-// ─────────────────────────────────────────────────────────────────────────────
-
-void MainWindow::onBossTriggered(const LevelDef& level)
-{
-    m_activeLevelId = level.id;
-    m_pendingLevelId = level.id;
-
-    m_bossDialog->resize(m_level1->size());
-    m_bossDialog->setParent(m_level1);
-    m_bossDialog->showIntro(level, m_profile.characterName);
-    m_bossDialog->show();
-    m_bossDialog->raise();
-    m_bossDialog->setFocus();
-}
-
-void MainWindow::onBossFightAccepted()
-{
-    m_bossDialog->hide();
-
-    const LevelDef* ctx = m_levelManager.level(m_activeLevelId);
-    if (ctx) m_levelBattle->setContext(ctx->name, true, ctx->theme);
-    if (m_activeLevelId <= 0)
-    m_activeLevelId = m_pendingLevelId;
-
-    m_battleOrigin  = BattleOrigin::Level;
-
-    const LevelDef* lvl = m_levelManager.level(m_activeLevelId);
-    if (!lvl) return;
-
-    CharacterType bossType = (m_activeLevelId == 5)
-                                 ? static_cast<CharacterType>(m_profile.characterType)
-                                 : lvl->bossType;
-
-    m_pendingEnemyType = bossType;
-    m_pendingEnemyName = lvl->bossName;
-
-    m_engine->setStatBonuses(
-        m_profile.upgrades.bonusMaxHp,
-        m_profile.upgrades.bonusAttack,
-        m_profile.upgrades.bonusSpPerAtk);
-
-    m_engine->onPlayerSelectedCharacter(
-        static_cast<CharacterType>(m_profile.characterType),
-        m_profile.characterName);
-}
-void MainWindow::onBossOutroDismissed()
-{
-    m_bossDialog->hide();
-    m_level1->deactivate();
-    updateGoldHud();
-
-    // If player won, flow directly into the next level
-    if (m_lastBossWon) {
-        int nextId = m_lastFinishedLevelId + 1;
-        const LevelDef* next = m_levelManager.level(nextId);
-
-        if (next) {
-            m_inLevel        = true;
-            m_activeLevelId  = 0;
-            m_pendingLevelId = nextId;
-
-            if (!next->storyPages.isEmpty()) {
-                m_storySlide->resize(size());
-                m_storySlide->show(next->name, next->storyPages, next->enterPrompt);
-                m_storySlide->raise();
-            } else {
-                m_level1->activate(*next, m_profile);
-                m_stack->setCurrentWidget(m_level1);
-            }
-            return;
-        }
-    }
-
-    // Player lost, or all levels complete → back to overworld
-    m_inLevel = false;
-    m_overworld->activate();
-    m_stack->setCurrentWidget(m_overworld);
-}
-void MainWindow::onLevelItemChosen(ItemType type)
-{
-    if (!m_profile.hasItem(type)) return;
-    m_profile.removeItem(type, 1);
-    switch (type) {
-    case ItemType::HealthPotion: {
-        int maxHp = 0;
-        const auto& chars = m_engine->getAllCharacters();
-        if (!chars.isEmpty()) maxHp = chars[0]->getMaxHealth();
-        m_engine->onPlayerHealed(static_cast<int>(maxHp * 0.35f));
-        break;
-    }
-    case ItemType::SpPotion:     m_engine->onPlayerSpRestored(50);        break;
-    case ItemType::AttackBoost:  m_engine->onPlayerAttackBoosted();       break;
-    case ItemType::DefenseBoost: m_engine->onPlayerDefenseActivated();    break;
-    }
-}
-void MainWindow::onLevelsPortalEntered()
-{
-    m_levelSelect->refresh(m_profile);
-    m_stack->setCurrentWidget(m_levelSelect);
-}
-
-void MainWindow::onLevelSelected(int levelId)
-{
-    const LevelDef* lvl = m_levelManager.level(levelId);
-    if (!lvl) return;
-
-    m_inLevel        = true;
-    m_activeLevelId  = 0;
-    m_pendingLevelId = levelId;
-
-    if (!lvl->storyPages.isEmpty()) {
-        m_storySlide->resize(size());
-        m_storySlide->show(lvl->name, lvl->storyPages, lvl->enterPrompt);
-        m_storySlide->raise();
-    } else {
-        m_level1->activate(*lvl, m_profile);
-        m_stack->setCurrentWidget(m_level1);
-    }
-}
-
-void MainWindow::onLevelSelectBack()
-{
-    m_overworld->activate();
-    m_stack->setCurrentWidget(m_overworld);
 }
