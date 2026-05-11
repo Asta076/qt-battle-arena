@@ -163,7 +163,10 @@ qt_add_resources(CS2-Battle-Arena "assets"
         resources/backgrounds/battle_bg.png
         resources/backgrounds/dungeon_bg.png
         resources/backgrounds/pvp_arena.png
-
+        resources/backgrounds/cave_level.jpg
+        resources/backgrounds/forest_level.jpg
+        resources/backgrounds/mountain_level.jpg
+        resources/backgrounds/volcano_level.jpg
         # ── Basic sprites ───────────────────────────────────────
         resources/sprites/player.png
 

@@ -160,60 +160,38 @@ void Level1Widget::reactivate()
 
 void Level1Widget::buildScene()
 {
-    // ── Background color per level theme ──────────────────────────────────────
-    QColor bgColor;
+// Keep this switch — defines pathColor and titleText used below
     QColor pathColor;
     QString titleText;
 
     switch (m_level.id) {
-    case 1:
-        bgColor   = QColor("#2d1b0e");
-        pathColor = QColor("#4a3728");
-        titleText = "GOBLIN CAVE";
-        break;
-    case 2:
-        bgColor   = QColor("#0d1f0d");
-        pathColor = QColor("#1a3d1a");
-        titleText = "HAUNTED FOREST";
-        break;
-    case 3:
-        bgColor   = QColor("#0d1a2e");
-        pathColor = QColor("#1a2f4a");
-        titleText = "FROZEN PEAK";
-        break;
-    case 4:
-        bgColor   = QColor("#2e0d00");
-        pathColor = QColor("#4a1a00");
-        titleText = "VOLCANIC DUNGEON";
-        break;
-    case 5:
-        bgColor   = QColor("#1a0d2e");
-        pathColor = QColor("#2e1a4a");
-        titleText = "THE FINAL ARENA";
-        break;
-    default:
-        bgColor   = QColor("#1a1a2e");
-        pathColor = QColor("#2a2a4a");
-        titleText = "LEVEL " + QString::number(m_level.id);
-        break;
+    case 1: pathColor = QColor("#4a3728"); titleText = "GOBLIN CAVE";       break;
+    case 2: pathColor = QColor("#1a3d1a"); titleText = "HAUNTED FOREST";    break;
+    case 3: pathColor = QColor("#1a2f4a"); titleText = "FROZEN PEAK";       break;
+    case 4: pathColor = QColor("#4a1a00"); titleText = "VOLCANIC DUNGEON";  break;
+    case 5: pathColor = QColor("#2e1a4a"); titleText = "THE FINAL ARENA";   break;
+    default: pathColor = QColor("#2a2a4a"); titleText = "LEVEL " + QString::number(m_level.id); break;
     }
 
-    // ── Background fill ───────────────────────────────────────────────────────
-    m_scene->addRect(0, 0, WORLD_W, WORLD_H,
-                     Qt::NoPen, QBrush(bgColor))->setZValue(0);
+    // ── Background image ──────────────────────────────────────────────────────
+    QString bgPath;
+    switch (m_level.id) {
+    case 1: bgPath = ":/backgrounds/cave_level.jpg";     break;
+    case 2: bgPath = ":/backgrounds/forest_level.jpg";   break;
+    case 3: bgPath = ":/backgrounds/mountain_level.jpg"; break;
+    case 4: bgPath = ":/backgrounds/volcano_level.jpg";  break;
+    default: bgPath = "";                                  break;
+    }
 
-    // ── Center path ───────────────────────────────────────────────────────────
-    m_scene->addRect(WORLD_W * 0.3, 0, WORLD_W * 0.4, WORLD_H,
-                     Qt::NoPen, QBrush(pathColor))->setZValue(1);
-
-    // ── Tile grid on path ─────────────────────────────────────────────────────
-    QPen tilePen(QColor(255, 255, 255, 18), 1);
-    for (int y = 0; y < WORLD_H; y += 64)
-        m_scene->addLine(WORLD_W * 0.3, y, WORLD_W * 0.7, y,
-                         tilePen)->setZValue(2);
-    for (int x = WORLD_W * 0.3; x <= WORLD_W * 0.7; x += 64)
-        m_scene->addLine(x, 0, x, WORLD_H, tilePen)->setZValue(2);
-
+    if (!bgPath.isEmpty()) {
+        QPixmap bg = SpriteCache::instance().get(bgPath)
+                         .scaled(WORLD_W, WORLD_H,
+                                 Qt::IgnoreAspectRatio,
+                                 Qt::SmoothTransformation);
+        m_scene->setBackgroundBrush(QBrush(bg));
+    } else {
+        m_scene->setBackgroundBrush(QBrush(QColor("#0A0A0A")));
+    }   
     // ── Level title banner ────────────────────────────────────────────────────
     auto* banner = m_scene->addText(
         m_level.name.isEmpty() ? titleText : m_level.name.toUpper(),
@@ -388,14 +366,12 @@ void Level1Widget::movePlayer()
         DungeonPlayerSprite::W > 0 ? 3.0 : 3.0,
         GameplayMovementManager::ControlScheme::WasdAndArrows
     );
-
-    QRectF corridor(
-        WORLD_W * 0.3,
-        60.0,
-        WORLD_W * 0.4,
-        WORLD_H - 70.0
+QRectF corridor(
+        48,
+        80.0,
+        WORLD_W - 96,
+        WORLD_H - 120.0
     );
-
     QPointF next = m_movement.resolveMovement(
         m_player->pos(),
         velocity,
