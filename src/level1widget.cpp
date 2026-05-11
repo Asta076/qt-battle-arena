@@ -190,7 +190,37 @@ void Level1Widget::buildScene()
                                  Qt::SmoothTransformation);
         m_scene->setBackgroundBrush(QBrush(bg));
     } else {
-        m_scene->setBackgroundBrush(QBrush(QColor("#0A0A0A")));
+        // ── Level 5 Arena — drawn with Qt primitives ──────────────────────────
+        m_scene->setBackgroundBrush(QBrush(QColor("#111111")));
+
+        // Stone tile grid
+        QPen tilePen(QColor(255, 255, 255, 18), 1);
+        for (int y = 0; y < WORLD_H; y += 64)
+            m_scene->addLine(0, y, WORLD_W, y, tilePen)->setZValue(1);
+        for (int x = 0; x < WORLD_W; x += 64)
+            m_scene->addLine(x, 0, x, WORLD_H, tilePen)->setZValue(1);
+
+        // Gold outer border
+        m_scene->addRect(12, 12, WORLD_W-24, WORLD_H-24,
+            QPen(QColor("#B8860B"), 4), Qt::NoBrush)->setZValue(2);
+
+        // Inner border
+        m_scene->addRect(20, 20, WORLD_W-40, WORLD_H-40,
+            QPen(QColor("#8B6914"), 1), Qt::NoBrush)->setZValue(2);
+
+        // Center arena circle
+        m_scene->addEllipse(WORLD_W/2-150, WORLD_H/2-100, 300, 200,
+            QPen(QColor("#B8860B"), 2), Qt::NoBrush)->setZValue(2);
+
+        // Corner torches
+        const QList<QPointF> corners = {{30,30},{WORLD_W-50,30},
+                                        {30,WORLD_H-50},{WORLD_W-50,WORLD_H-50}};
+        for (const QPointF& c : corners) {
+            m_scene->addEllipse(c.x()-8, c.y()-8, 24, 24,
+                Qt::NoPen, QBrush(QColor(255,160,0,80)))->setZValue(3);
+            m_scene->addEllipse(c.x(), c.y(), 8, 8,
+                Qt::NoPen, QBrush(QColor("#FFD700")))->setZValue(4);
+        }
     }   
     // ── Level title banner ────────────────────────────────────────────────────
     auto* banner = m_scene->addText(
