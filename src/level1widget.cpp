@@ -114,30 +114,25 @@ void Level1Widget::reactivate()
 
 void Level1Widget::buildScene()
 {
-    const int TILE = 64;
+// ── Background image based on theme ───────────────────────────────────────
+    QString bgPath;
+    switch (m_level.theme) {
+    case LevelTheme::Cave:    bgPath = ":/backgrounds/cave_level.jpg";    break;
+    case LevelTheme::Forest:  bgPath = ":/backgrounds/forest_level.jpg";  break;
+    case LevelTheme::Peak:    bgPath = ":/backgrounds/mountain_level.jpg"; break;
+    case LevelTheme::Volcano: bgPath = ":/backgrounds/volcano_level.jpg"; break;
+    default:                  bgPath = "";                                  break;
+    }
 
-    // ── Grass base ────────────────────────────────────────────────────────────
-    QPixmap grassTile = SpriteCache::instance().get(":/sprites/grass.png")
-                            .scaled(TILE, TILE, Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
-    for (int y = 0; y < WORLD_H; y += TILE)
-        for (int x = 0; x < WORLD_W; x += TILE) {
-            auto* t = m_scene->addPixmap(grassTile);
-            t->setPos(x, y); t->setZValue(0);
-        }
-
-    // ── Dirt path ─────────────────────────────────────────────────────────────
-    QPixmap d1 = SpriteCache::instance().get(":/sprites/dirt1.png")
-                     .scaled(TILE, TILE, Qt::IgnoreAspectRatio, Qt::FastTransformation);
-    QPixmap d2 = SpriteCache::instance().get(":/sprites/dirt2.png")
-                     .scaled(TILE, TILE, Qt::IgnoreAspectRatio, Qt::FastTransformation);
-    auto* rng = QRandomGenerator::global();
-    const int pathX = 340, pathW = 128;
-    for (int y = 0; y < WORLD_H; y += TILE)
-        for (int x = pathX; x < pathX + pathW; x += TILE) {
-            auto* t = m_scene->addPixmap(rng->bounded(100) < 24 ? d2 : d1);
-            t->setPos(x, y); t->setZValue(1);
-        }
-
+    if (!bgPath.isEmpty()) {
+        QPixmap bg = SpriteCache::instance().get(bgPath)
+                         .scaled(WORLD_W, WORLD_H,
+                                 Qt::IgnoreAspectRatio,
+                                 Qt::SmoothTransformation);
+        m_scene->setBackgroundBrush(QBrush(bg));
+    } else {
+        m_scene->setBackgroundBrush(QBrush(QColor("#0A0A0A")));
+    }
     // ── Trees ─────────────────────────────────────────────────────────────────
     const int TREE_W = 160, TREE_H = 160;
     QPixmap treeRound = SpriteCache::instance().get(":/sprites/tree_round.png")
@@ -167,15 +162,6 @@ void Level1Widget::buildScene()
         ti->setPos(t.pos); ti->setZValue(3);
     }
 
-    // ── Dirt wall top border ──────────────────────────────────────────────────
-    QPixmap wallPx = SpriteCache::instance().get(":/sprites/dirt_wall.png");
-    if (!wallPx.isNull()) {
-        QPixmap wall = wallPx.scaled(TILE, TILE, Qt::IgnoreAspectRatio, Qt::FastTransformation);
-        for (int x = 0; x < WORLD_W; x += TILE) {
-            auto* w = m_scene->addPixmap(wall);
-            w->setPos(x, 0); w->setZValue(4);
-        }
-    }
 
     // ── Exit portal ───────────────────────────────────────────────────────────
     const qreal ew = 100, eh = 48;

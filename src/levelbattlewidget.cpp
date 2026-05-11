@@ -373,8 +373,20 @@ void LevelBattleWidget::paintEvent(QPaintEvent*)
     const int w = width(), h = height();
 
     // Base dark background
-    p.fillRect(rect(), themeBgColor());
-
+    // Draw level background image
+    QString bgPath;
+    switch (m_theme) {
+    case LevelTheme::Cave:    bgPath = ":/backgrounds/cave_level.jpg";    break;
+    case LevelTheme::Forest:  bgPath = ":/backgrounds/forest_level.jpg";  break;
+    case LevelTheme::Peak:    bgPath = ":/backgrounds/mountain_level.jpg"; break;
+    case LevelTheme::Volcano: bgPath = ":/backgrounds/volcano_level.jpg"; break;
+    default:                  bgPath = ":/backgrounds/battle_bg.png";      break;
+    }
+    QPixmap bg(bgPath);
+    if (!bg.isNull())
+        p.drawPixmap(rect(), bg);
+    else
+        p.fillRect(rect(), themeBgColor());
     // Theme overlay gradient — darker at edges, lighter center
     p.fillRect(rect(), themeOverlay());
 

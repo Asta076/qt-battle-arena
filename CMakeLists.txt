@@ -95,6 +95,10 @@ qt_add_resources(CS2-Battle-Arena "assets"
         resources/sprites/tree_pine.png
         resources/sprites/dirt_wall.png
         resources/sprites/shop.png
+        resources/backgrounds/cave_level.jpg
+        resources/backgrounds/forest_level.jpg
+        resources/backgrounds/mountain_level.jpg
+        resources/backgrounds/volcano_level.jpg
 )
 
 target_link_libraries(CS2-Battle-Arena
