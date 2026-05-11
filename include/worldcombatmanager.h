@@ -12,6 +12,7 @@
 #include "character.h"
 #include "enemy.h"
 #include "direction.h"
+#include "gamecombatmanager.h"
 
 enum class AttackType {
     Sword,
@@ -94,6 +95,8 @@ signals:
     void playerDied();
 
 private:
+    GameCombatManager m_sharedCombat;
+
     Character* m_player = nullptr;
     QGraphicsScene* m_scene = nullptr;
 

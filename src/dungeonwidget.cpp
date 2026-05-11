@@ -496,8 +496,8 @@ DungeonWidget::DungeonWidget(AudioManager* audio, QWidget* parent)
         deactivate();
         updatePlayerHud();
 
-        const int wavesSurvived = std::max(0, m_waveNumber - 1);
-        emit dungeonGameOver(m_runCoinsEarned, wavesSurvived);
+        emit dungeonGameOver(m_runManager.coinsEarned(),
+                             m_runManager.wavesSurvived());
     });
 
     m_view = new QGraphicsView(m_scene, this);
@@ -547,8 +547,9 @@ void DungeonWidget::activate()
     m_combat.clearAttacks();
     m_combat.resetSpecialMeter();
 
-    m_waveNumber = 1;
+    m_waveNumber = 1; // kept for old save/debug compatibility
     m_runCoinsEarned = 0;
+    m_runManager.reset();
 
     placePlayer();
     spawnEnemies();
@@ -690,78 +691,18 @@ void DungeonWidget::spawnEnemies()
 {
     clearEnemies();
 
-    const int enemyCount = std::min(10, 3 + (m_waveNumber - 1) * 2);
-    const int hpBonus = (m_waveNumber - 1) * 10;
-    const int damageBonus = (m_waveNumber - 1) * 2;
+    const QList<DungeonEnemySpawn> spawns = m_runManager.createWaveSpawns();
 
-    const QList<QPointF> spawnPoints = {
-        QPointF(120, 120),
-        QPointF(630, 120),
-        QPointF(120, 430),
-        QPointF(630, 430),
-        QPointF(400, 120),
-        QPointF(400, 430),
-        QPointF(180, 260),
-        QPointF(590, 260)
-    };
-
-    for (int i = 0; i < enemyCount; ++i) {
-        CharacterType type;
-
-        switch (i % 3) {
-        case 0:
-            type = CharacterType::Warrior;
-            break;
-        case 1:
-            type = CharacterType::Mage;
-            break;
-        default:
-            type = CharacterType::Archer;
-            break;
-        }
-
-        QString name;
-        int baseHp = 60;
-        int baseDamage = 8;
-
-        switch (type) {
-        case CharacterType::Warrior:
-            name = "Skeleton Guard";
-            baseHp = 75;
-            baseDamage = 10;
-            break;
-
-        case CharacterType::Mage:
-            name = "Goblin Brute";
-            baseHp = 50;
-            baseDamage = 14;
-            break;
-
-        case CharacterType::Archer:
-            name = "Goblin";
-            baseHp = 55;
-            baseDamage = 8;
-            break;
-        }
-
-        QPointF pos = spawnPoints[i % spawnPoints.size()];
-
-        if (i >= spawnPoints.size()) {
-            pos += QPointF(
-                QRandomGenerator::global()->bounded(-40, 41),
-                QRandomGenerator::global()->bounded(-40, 41)
-            );
-        }
-
-        EnemySprite* sprite = new EnemySprite(type, name);
-        sprite->setPos(pos);
+    for (const DungeonEnemySpawn& spawn : spawns) {
+        EnemySprite* sprite = new EnemySprite(spawn.type, spawn.name);
+        sprite->setPos(spawn.position);
         sprite->setZValue(8);
 
         Enemy* enemy = new Enemy(
-            type,
-            name,
-            baseHp + hpBonus,
-            baseDamage + damageBonus
+            spawn.type,
+            spawn.name,
+            spawn.hp,
+            spawn.damage
         );
 
         m_scene->addItem(sprite);
@@ -774,7 +715,8 @@ void DungeonWidget::spawnEnemies()
 
 void DungeonWidget::startNextWave()
 {
-    ++m_waveNumber;
+    m_runManager.advanceWave();
+    m_waveNumber = m_runManager.waveNumber();
     spawnEnemies();
 }
 
@@ -841,37 +783,33 @@ void DungeonWidget::onTick()
 
     updatePlayerHud();
 }
-
-    void DungeonWidget::movePlayer()
+void DungeonWidget::movePlayer()
 {
     if (!m_player)
         return;
 
-    m_controller.setSpeed(SPEED);
-
-    QPointF velocity = m_controller.computeVelocity(m_heldKeys);
-    QPointF nextPos = m_player->pos() + velocity;
+    QPointF velocity = m_movement.velocityFromKeys(
+        m_heldKeys,
+        SPEED,
+        GameplayMovementManager::ControlScheme::WasdAndArrows
+    );
 
     QRectF bounds = m_walkableArea.isValid()
         ? m_walkableArea
         : QRectF(0, 0, WORLD_W, WORLD_H);
 
-    nextPos.setX(std::clamp(
-        nextPos.x(),
-        bounds.left(),
-        bounds.right() - DungeonPlayerSprite::W
-    ));
-
-    nextPos.setY(std::clamp(
-        nextPos.y(),
-        bounds.top(),
-        bounds.bottom() - DungeonPlayerSprite::H
-    ));
+    QPointF nextPos = m_movement.resolveMovement(
+        m_player->pos(),
+        velocity,
+        DungeonPlayerSprite::W,
+        DungeonPlayerSprite::H,
+        bounds
+    );
 
     m_player->setPos(nextPos);
 
-    bool moving = m_controller.isMoving(m_heldKeys);
-    Direction dir = m_controller.computeDirection(m_heldKeys);
+    bool moving = velocity.x() != 0.0 || velocity.y() != 0.0;
+    Direction dir = m_movement.directionFromVelocity(velocity, m_facing);
 
     m_player->updateAnimation(moving, dir);
 
@@ -888,90 +826,11 @@ void DungeonWidget::patrolEnemies()
         ? m_walkableArea
         : QRectF(0, 0, WORLD_W, WORLD_H);
 
-    QRectF playerBounds = m_player->sceneBoundingRect();
-
-    for (EnemySprite* enemy : m_enemies) {
-        if (!enemy)
-            continue;
-
-        enemy->chasePlayer(playerBounds, worldBounds);
-    }
-
-    for (int i = 0; i < m_enemies.size(); ++i) {
-        EnemySprite* a = m_enemies[i];
-
-        if (!a)
-            continue;
-
-        for (int j = i + 1; j < m_enemies.size(); ++j) {
-            EnemySprite* b = m_enemies[j];
-
-            if (!b)
-                continue;
-
-            QRectF aBox = a->hitBox();
-            QRectF bBox = b->hitBox();
-
-            if (!aBox.intersects(bBox))
-                continue;
-
-            QPointF aCenter = aBox.center();
-            QPointF bCenter = bBox.center();
-
-            QPointF delta = aCenter - bCenter;
-
-            qreal length = std::sqrt(delta.x() * delta.x() + delta.y() * delta.y());
-
-            if (length < 0.001) {
-                delta = QPointF(1.0, 0.0);
-                length = 1.0;
-            }
-
-            QPointF pushDir(delta.x() / length, delta.y() / length);
-
-            QRectF overlap = aBox.intersected(bBox);
-            qreal pushAmount = std::min(overlap.width(), overlap.height()) / 2.0 + 0.5;
-
-            QPointF push = pushDir * pushAmount;
-
-            QPointF aNext = a->pos() + push;
-            QPointF bNext = b->pos() - push;
-
-            aNext.setX(std::clamp(
-                aNext.x(),
-                worldBounds.left(),
-                worldBounds.right() - EnemySprite::W
-            ));
-
-            aNext.setY(std::clamp(
-                aNext.y(),
-                worldBounds.top(),
-                worldBounds.bottom() - EnemySprite::H
-            ));
-
-            bNext.setX(std::clamp(
-                bNext.x(),
-                worldBounds.left(),
-                worldBounds.right() - EnemySprite::W
-            ));
-
-            bNext.setY(std::clamp(
-                bNext.y(),
-                worldBounds.top(),
-                worldBounds.bottom() - EnemySprite::H
-            ));
-
-            a->setPos(aNext);
-            b->setPos(bNext);
-        }
-    }
-
-    for (EnemySprite* enemy : m_enemies) {
-        if (!enemy)
-            continue;
-
-        enemy->updateAnimation();
-    }
+    m_runManager.updateEnemyMovement(
+        m_enemies,
+        m_player->sceneBoundingRect(),
+        worldBounds
+    );
 }
 
 void DungeonWidget::checkCollisions()
@@ -1139,16 +998,12 @@ void DungeonWidget::checkAttackCollisions()
             m_combat.addSpecialFromKill();
 
             Character* player = m_combat.player();
-            if (player && player->isAlive()) {
-                int healAmount = std::max(
-                    1,
-                    static_cast<int>(player->getMaxHealth() * 0.10f)
-                );
-                player->heal(healAmount);
-            }
+            if (player && player->isAlive())
+                player->heal(m_runManager.healAmountForKill(*player));
 
-            m_runCoinsEarned += 3;
-            emit goldEarned(3);
+            const int gold = m_runManager.registerKillReward();
+            m_runCoinsEarned = m_runManager.coinsEarned();
+            emit goldEarned(gold);
 
             if (m_audio)
                 m_audio->playSfx("/sfx/faint.wav");

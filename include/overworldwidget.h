@@ -13,6 +13,7 @@
 
 #include "goldhudwidget.h"
 #include "playercontroller.h"
+#include "overworldlogicmanager.h"
 #include "direction.h"
 #include "character.h"
 // forward declare so we dont have to include the whole header here
@@ -148,7 +149,8 @@ private slots:
 
 private:
     
-    PlayerController m_controller;
+    PlayerController m_controller; // kept for compatibility; movement rules now live in OverworldLogicManager
+    OverworldLogicManager m_logic;
     // --- setup ---
     void buildScene();       // creates all the tiles, trees, buildings etc.
     void buildPauseOverlay(); // creates the pause menu widget

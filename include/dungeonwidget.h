@@ -21,6 +21,8 @@
 #include "goldhudwidget.h"
 #include "healthbarwidget.h"
 #include "playercontroller.h"
+#include "gameplaymovementmanager.h"
+#include "dungeonrunmanager.h"
 #include "overworldwidget.h"
 
 class QLabel;
@@ -187,7 +189,9 @@ private slots:
     void onTick();
 
 private:
-    PlayerController m_controller;
+    PlayerController m_controller; // kept for compatibility; movement rules now live in GameplayMovementManager
+    GameplayMovementManager m_movement;
+    DungeonRunManager m_runManager;
 
     QGraphicsScene* m_scene = nullptr;
     QGraphicsView* m_view = nullptr;

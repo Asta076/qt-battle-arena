@@ -544,11 +544,10 @@ void OverworldWidget::placePlayer()
 // ============================================================
 
 // called every tick by the timer
-void OverworldWidget::onTick() {
-    m_controller.setSpeed(PlayerSprite::SPEED);
-
-    QPointF vel = m_controller.computeVelocity(m_heldKeys);
-    QPointF oldPos = m_player->pos();
+void OverworldWidget::onTick()
+{
+    if (!m_player || m_paused)
+        return;
 
     QList<QRectF> solids;
 
@@ -558,89 +557,63 @@ void OverworldWidget::onTick() {
     if (m_shopCollider)
         solids.append(m_shopCollider->sceneBoundingRect());
 
-    auto blocked = [&](const QPointF& pos) {
-        QRectF playerRect(pos.x(), pos.y(), PlayerSprite::W, PlayerSprite::H);
+    OverworldLogicManager::MovementResult movement = m_logic.resolvePlayerMovement(
+        m_player->pos(),
+        m_heldKeys,
+        PlayerSprite::SPEED,
+        PlayerSprite::W,
+        PlayerSprite::H,
+        QRectF(0, 0, WORLD_W, WORLD_H),
+        solids,
+        Direction::Down
+    );
 
-        for (const QRectF& solid : solids) {
-            if (solid.isValid() && playerRect.intersects(solid))
-                return true;
-        }
+    m_player->setPos(movement.position);
+    m_player->updateAnimation(movement.moving, movement.facing);
 
-        return false;
-    };
-
-    // Try X movement only
-    QPointF nextPos = oldPos;
-    nextPos.setX(qBound(
-        0.0,
-        oldPos.x() + vel.x(),
-        WORLD_W - PlayerSprite::W
-    ));
-
-    if (blocked(nextPos))
-        nextPos.setX(oldPos.x());
-
-    // Try Y movement only
-    nextPos.setY(qBound(
-        0.0,
-        oldPos.y() + vel.y(),
-        WORLD_H - PlayerSprite::H
-    ));
-
-    if (blocked(nextPos))
-        nextPos.setY(oldPos.y());
-
-    m_player->setPos(nextPos);
-    
-    bool moving = m_controller.isMoving(m_heldKeys);
-    Direction dir = m_controller.computeDirection(m_heldKeys);
-    m_player->updateAnimation(moving, dir);
-    
     checkTriggers();
-
 }
 
 // check if the player has walked into any trigger zones
 void OverworldWidget::checkTriggers()
 {
-    // dungeon entrance — teleport player to dungeon screen
-    if (m_player->collidesWithItem(m_dungeonZone)) {
+    if (!m_player)
+        return;
+
+    OverworldLogicManager::Trigger trigger = m_logic.triggerFor(
+        m_player->sceneBoundingRect(),
+        m_dungeonZone ? m_dungeonZone->sceneBoundingRect() : QRectF(),
+        m_houseEntranceZone ? m_houseEntranceZone->sceneBoundingRect() : QRectF(),
+        m_shopZone ? m_shopZone->sceneBoundingRect() : QRectF(),
+        m_level1Zone ? m_level1Zone->sceneBoundingRect() : QRectF(),
+        m_heldKeys
+    );
+
+    switch (trigger) {
+    case OverworldLogicManager::Trigger::Dungeon:
         deactivate();
         emit dungeonEntered();
         return;
-    }
 
-    // ── House entrance → enter house screen ──────────────────────────────────
-    // Only trigger when the player is pressing up/W — stops accidental entry
-    // when the collider pushes them into the zone from the side.
-    if (m_houseEntranceZone && m_player->collidesWithItem(m_houseEntranceZone)) {
-        const bool movingUp = m_heldKeys.contains(Qt::Key_W)
-        || m_heldKeys.contains(Qt::Key_Up);
-        if (movingUp) {
-            deactivate();
-            emit houseEntered();
-            return;
-        }
-    }
-    //--shop------------------------------------------------------------------
-    if (m_shopZone && m_player->collidesWithItem(m_shopZone)) {
-    deactivate();
-    emit shopEntered();
-    return;
-    }
+    case OverworldLogicManager::Trigger::House:
+        deactivate();
+        emit houseEntered();
+        return;
 
-    // ── Levels portal ─────────────────────────────────────────────────────────
-    if (m_level1Zone && m_player->collidesWithItem(m_level1Zone)) {
+    case OverworldLogicManager::Trigger::Shop:
+        deactivate();
+        emit shopEntered();
+        return;
+
+    case OverworldLogicManager::Trigger::Levels:
         deactivate();
         emit levelsEntered();
         return;
+
+    case OverworldLogicManager::Trigger::None:
+        return;
     }
 }
-
-
-// ============================================================
-//  OverworldWidget  — input handling
-// ============================================================
 
 void OverworldWidget::keyPressEvent(QKeyEvent *e)
 {

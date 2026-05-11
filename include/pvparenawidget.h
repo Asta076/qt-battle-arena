@@ -10,6 +10,7 @@
 #include <QWidget>
 
 #include "character.h"
+#include "pvplogicmanager.h"
 
 class QPaintEvent;
 class QKeyEvent;
@@ -191,4 +192,6 @@ private:
 
     QTimer m_ticker;
     QSet<int> m_heldKeys;
+
+    PvpLogicManager m_logic;
 };

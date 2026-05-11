@@ -380,67 +380,54 @@ void Level1Widget::onTick()
 
 void Level1Widget::movePlayer()
 {
-    if (!m_player) return;
+    if (!m_player)
+        return;
 
-    QPointF vel = m_controller.computeVelocity(m_heldKeys);
+    QPointF velocity = m_movement.velocityFromKeys(
+        m_heldKeys,
+        DungeonPlayerSprite::W > 0 ? 3.0 : 3.0,
+        GameplayMovementManager::ControlScheme::WasdAndArrows
+    );
 
-    QPointF next(
-        m_player->x() + vel.x(),
-        m_player->y() + vel.y()
-        );
+    QRectF corridor(
+        WORLD_W * 0.3,
+        60.0,
+        WORLD_W * 0.4,
+        WORLD_H - 70.0
+    );
 
-    // Clamp to the center path corridor
-    next.setX(qBound(WORLD_W * 0.3,  next.x(), WORLD_W * 0.7 - DungeonPlayerSprite::W));
-    next.setY(qBound(60.0,           next.y(), WORLD_H - DungeonPlayerSprite::H - 10.0));
+    QPointF next = m_movement.resolveMovement(
+        m_player->pos(),
+        velocity,
+        DungeonPlayerSprite::W,
+        DungeonPlayerSprite::H,
+        corridor
+    );
 
     m_player->setPos(next);
 
-    bool moving  = m_controller.isMoving(m_heldKeys);
-    Direction dir = m_controller.computeDirection(m_heldKeys);
+    bool moving = velocity.x() != 0.0 || velocity.y() != 0.0;
+    Direction dir = m_movement.directionFromVelocity(velocity, m_facing);
     m_player->updateAnimation(moving, dir);
 
-    if (moving) m_facing = dir;
+    if (moving)
+        m_facing = dir;
 }
 
 void Level1Widget::patrolEnemies()
 {
-    if (!m_player) return;
+    if (!m_player)
+        return;
 
     QRectF worldBounds(0, 0, WORLD_W, WORLD_H);
     QRectF playerBounds = m_player->sceneBoundingRect();
 
-    // Regular enemies chase the player
-    for (EnemySprite* sprite : m_enemies) {
-        if (!sprite) continue;
-        sprite->chasePlayer(playerBounds, worldBounds);
-        sprite->updateAnimation();
-    }
+    m_enemyMovement.updateEnemyMovement(m_enemies, playerBounds, worldBounds);
 
-    // Boss chases player once activated
     if (m_bossActive && m_bossSprite && m_bossLogic && m_bossLogic->isAlive()) {
-        m_bossSprite->chasePlayer(playerBounds, worldBounds);
-        m_bossSprite->updateAnimation();
-    }
-
-    // Separate overlapping regular enemies
-    for (int i = 0; i < m_enemies.size(); ++i) {
-        for (int j = i + 1; j < m_enemies.size(); ++j) {
-            EnemySprite* a = m_enemies[i];
-            EnemySprite* b = m_enemies[j];
-            if (!a || !b) continue;
-
-            QRectF aBox = a->hitBox();
-            QRectF bBox = b->hitBox();
-            if (!aBox.intersects(bBox)) continue;
-
-            QPointF delta = aBox.center() - bBox.center();
-            qreal len = qSqrt(delta.x() * delta.x() + delta.y() * delta.y());
-            if (len < 0.001) { delta = {1, 0}; len = 1; }
-
-            QPointF push = (delta / len) * 1.5;
-            a->setPos(a->pos() + push);
-            b->setPos(b->pos() - push);
-        }
+        QList<EnemySprite*> bossList;
+        bossList.append(m_bossSprite);
+        m_enemyMovement.updateEnemyMovement(bossList, playerBounds, worldBounds);
     }
 }
 

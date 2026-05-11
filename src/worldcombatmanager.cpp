@@ -287,35 +287,7 @@ QList<ActiveAttack*> WorldCombatManager::createPlayerSpecial(const QRectF& playe
 
 QPointF WorldCombatManager::directionVector(Direction facing) const
 {
-    static constexpr qreal DIAGONAL = 0.70710678;
-
-    switch (facing) {
-    case Direction::Right:
-        return {1.0, 0.0};
-
-    case Direction::Left:
-        return {-1.0, 0.0};
-
-    case Direction::Up:
-        return {0.0, -1.0};
-
-    case Direction::Down:
-        return {0.0, 1.0};
-
-    case Direction::ForwardRight:
-        return {DIAGONAL, -DIAGONAL};
-
-    case Direction::ForwardLeft:
-        return {-DIAGONAL, -DIAGONAL};
-
-    case Direction::DownRight:
-        return {DIAGONAL, DIAGONAL};
-
-    case Direction::DownLeft:
-        return {-DIAGONAL, DIAGONAL};
-    }
-
-    return {0.0, 1.0};
+    return m_sharedCombat.directionVector(facing);
 }
 
 static qreal projectileRotation(Direction facing)
@@ -406,7 +378,7 @@ ActiveAttack* WorldCombatManager::createSwordSwing(const QRectF& playerBounds,
     attack->type = AttackType::Sword;
     attack->bounds = swordBounds(playerBounds, facing);
     attack->velocity = QPointF(0.0, 0.0);
-    attack->damage = applyPlayerDamageModifiers(SWORD_DAMAGE);
+    attack->damage = applyPlayerDamageModifiers(m_sharedCombat.swordConfig(false).damage);
     attack->lifetime = 0.12f;
     attack->piercing = false;
 

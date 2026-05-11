@@ -11,6 +11,38 @@
 #include <QtGlobal>
 #include <QtMath>
 
+static Direction toSharedDirection(PvpDirection dir)
+{
+    switch (dir) {
+    case PvpDirection::Down:      return Direction::Down;
+    case PvpDirection::DownRight: return Direction::DownRight;
+    case PvpDirection::Right:     return Direction::Right;
+    case PvpDirection::UpRight:   return Direction::ForwardRight;
+    case PvpDirection::Up:        return Direction::Up;
+    case PvpDirection::UpLeft:    return Direction::ForwardLeft;
+    case PvpDirection::Left:      return Direction::Left;
+    case PvpDirection::DownLeft:  return Direction::DownLeft;
+    }
+
+    return Direction::Down;
+}
+
+static PvpDirection fromSharedDirection(Direction dir)
+{
+    switch (dir) {
+    case Direction::Down:         return PvpDirection::Down;
+    case Direction::DownRight:    return PvpDirection::DownRight;
+    case Direction::Right:        return PvpDirection::Right;
+    case Direction::ForwardRight: return PvpDirection::UpRight;
+    case Direction::Up:           return PvpDirection::Up;
+    case Direction::ForwardLeft:  return PvpDirection::UpLeft;
+    case Direction::Left:         return PvpDirection::Left;
+    case Direction::DownLeft:     return PvpDirection::DownLeft;
+    }
+
+    return PvpDirection::Down;
+}
+
 PvpArenaWidget::PvpArenaWidget(QWidget* parent)
     : QWidget(parent)
 {
@@ -129,38 +161,17 @@ QString PvpArenaWidget::attackSheetFor(CharacterType type) const
 
 int PvpArenaWidget::maxHpFor(CharacterType type) const
 {
-    switch (type) {
-    case CharacterType::Warrior:
-        return WARRIOR_HP;
-    case CharacterType::Archer:
-        return ARCHER_HP;
-    case CharacterType::Mage:
-        return MAGE_HP;
-    }
-
-    return MAGE_HP;
+    return m_logic.maxHpFor(type);
 }
 
 int PvpArenaWidget::projectileDamageFor(CharacterType type) const
 {
-    switch (type) {
-    case CharacterType::Archer:
-        return ARROW_DAMAGE;
-    case CharacterType::Mage:
-        return FIREBALL_DAMAGE;
-    case CharacterType::Warrior:
-        return WARRIOR_MELEE_DAMAGE;
-    }
-
-    return ARROW_DAMAGE;
+    return m_logic.projectileDamageFor(type);
 }
 
 int PvpArenaWidget::meleeDamageFor(CharacterType type) const
 {
-    if (type == CharacterType::Warrior)
-        return WARRIOR_MELEE_DAMAGE;
-
-    return WARRIOR_MELEE_DAMAGE;
+    return m_logic.meleeDamageFor(type);
 }
 
 void PvpArenaWidget::setFighters(CharacterType p1Type, CharacterType p2Type)
@@ -270,79 +281,25 @@ void PvpArenaWidget::updateHitFlash()
 
 QPointF PvpArenaWidget::velocityForPlayer1() const
 {
-    qreal dx = 0.0;
-    qreal dy = 0.0;
-
-    const qreal currentSpeed =
-        isPlayer1Blocking() ? SPEED * BLOCK_SPEED_MULTIPLIER : SPEED;
-
-    if (m_heldKeys.contains(Qt::Key_W)) dy -= currentSpeed;
-    if (m_heldKeys.contains(Qt::Key_S)) dy += currentSpeed;
-    if (m_heldKeys.contains(Qt::Key_A)) dx -= currentSpeed;
-    if (m_heldKeys.contains(Qt::Key_D)) dx += currentSpeed;
-
-    if (dx != 0.0 && dy != 0.0) {
-        dx *= 0.7071;
-        dy *= 0.7071;
-    }
-
-    return QPointF(dx, dy);
+    return m_logic.playerVelocity(m_heldKeys, 1, SPEED, isPlayer1Blocking());
 }
 
 QPointF PvpArenaWidget::velocityForPlayer2() const
 {
-    qreal dx = 0.0;
-    qreal dy = 0.0;
-
-    const qreal currentSpeed =
-        isPlayer2Blocking() ? SPEED * BLOCK_SPEED_MULTIPLIER : SPEED;
-
-    if (m_heldKeys.contains(Qt::Key_Up)) dy -= currentSpeed;
-    if (m_heldKeys.contains(Qt::Key_Down)) dy += currentSpeed;
-    if (m_heldKeys.contains(Qt::Key_Left)) dx -= currentSpeed;
-    if (m_heldKeys.contains(Qt::Key_Right)) dx += currentSpeed;
-
-    if (dx != 0.0 && dy != 0.0) {
-        dx *= 0.7071;
-        dy *= 0.7071;
-    }
-
-    return QPointF(dx, dy);
+    return m_logic.playerVelocity(m_heldKeys, 2, SPEED, isPlayer2Blocking());
 }
 
 QPointF PvpArenaWidget::clampToArena(const QPointF& pos) const
 {
-    const qreal minX = 170.0;
-    const qreal maxX = WORLD_W - 170.0 - PLAYER_W;
-    const qreal minY = 210.0;
-    const qreal maxY = WORLD_H - 120.0 - PLAYER_H;
-
-    return QPointF(
-        qBound(minX, pos.x(), maxX),
-        qBound(minY, pos.y(), maxY)
-    );
+    QRectF arenaBounds(170.0, 210.0, WORLD_W - 340.0, WORLD_H - 330.0);
+    return m_logic.clampToArena(pos, PLAYER_W, PLAYER_H, arenaBounds);
 }
 
 PvpDirection PvpArenaWidget::directionFromVelocity(const QPointF& velocity,
                                                    PvpDirection fallback) const
 {
-    const qreal dx = velocity.x();
-    const qreal dy = velocity.y();
-
-    if (dx == 0.0 && dy == 0.0)
-        return fallback;
-
-    if (dx > 0.0 && dy < 0.0) return PvpDirection::UpRight;
-    if (dx < 0.0 && dy < 0.0) return PvpDirection::UpLeft;
-    if (dx > 0.0 && dy > 0.0) return PvpDirection::DownRight;
-    if (dx < 0.0 && dy > 0.0) return PvpDirection::DownLeft;
-
-    if (dx > 0.0) return PvpDirection::Right;
-    if (dx < 0.0) return PvpDirection::Left;
-    if (dy < 0.0) return PvpDirection::Up;
-    if (dy > 0.0) return PvpDirection::Down;
-
-    return fallback;
+    Direction sharedFallback = toSharedDirection(fallback);
+    return fromSharedDirection(m_logic.directionFromVelocity(velocity, sharedFallback));
 }
 
 void PvpArenaWidget::updateFighterAnimation(PvpFighterAnim& fighter, bool isMoving)
@@ -414,26 +371,7 @@ void PvpArenaWidget::startAttack(PvpFighterAnim& fighter, int owner)
 
 QPointF PvpArenaWidget::directionVector(PvpDirection dir) const
 {
-    switch (dir) {
-    case PvpDirection::Down:
-        return QPointF(0.0, 1.0);
-    case PvpDirection::DownRight:
-        return QPointF(0.7071, 0.7071);
-    case PvpDirection::Right:
-        return QPointF(1.0, 0.0);
-    case PvpDirection::UpRight:
-        return QPointF(0.7071, -0.7071);
-    case PvpDirection::Up:
-        return QPointF(0.0, -1.0);
-    case PvpDirection::UpLeft:
-        return QPointF(-0.7071, -0.7071);
-    case PvpDirection::Left:
-        return QPointF(-1.0, 0.0);
-    case PvpDirection::DownLeft:
-        return QPointF(-0.7071, 0.7071);
-    }
-
-    return QPointF(1.0, 0.0);
+    return m_logic.directionVector(toSharedDirection(dir));
 }
 
 void PvpArenaWidget::spawnProjectile(const PvpFighterAnim& fighter, int owner)
@@ -563,15 +501,7 @@ QRectF PvpArenaWidget::meleeHitBox(const PvpFighterAnim& fighter) const
 
 int PvpArenaWidget::finalDamageForTarget(const PvpFighterAnim& target, int damage) const
 {
-    if (!target.isBlocking)
-        return damage;
-
-    int reduced = damage * BLOCK_DAMAGE_PERCENT / 100;
-
-    if (reduced < 1)
-        reduced = 1;
-
-    return reduced;
+    return m_logic.damageAfterBlock(damage, target.isBlocking);
 }
 
 void PvpArenaWidget::applyKnockback(PvpFighterAnim& target, const QPointF& sourcePos)
