@@ -5,8 +5,8 @@
 static constexpr int WARRIOR_BASE_HEALTH   = 150;
 static constexpr int WARRIOR_BASE_ATTACK   = 20;
 static constexpr int WARRIOR_MAX_SP        = 100;
-static constexpr int WARRIOR_SP_PER_ATTACK = 25;   // builds SP quickly
-static constexpr int WARRIOR_SPECIAL_COST  = 60;   // usable every ~2-3 turns
+static constexpr int WARRIOR_SP_PER_ATTACK = 15;   // slower buildup, tank class
+static constexpr int WARRIOR_SPECIAL_COST  = 60;   // strong but less frequent
 // ──────────────────────────────────────────────────────────────────────────
 
 Warrior::Warrior(const QString& name)
@@ -24,15 +24,15 @@ CharacterType Warrior::getType() const { return CharacterType::Warrior; }
 
 int Warrior::attack() const
 {
-    int base = getAttackPower();
-    int variation = QRandomGenerator::global()->bounded(-4, 5);
+    int base      = getAttackPower();
+    int variation = QRandomGenerator::global()->bounded(-2, 5);
     return base + variation;
 }
 
 int Warrior::specialAbility() const
 {
-    // Power Strike: 2× attack + small bonus
-    int base  = getAttackPower() * 2;
-    int bonus = QRandomGenerator::global()->bounded(0, 11);
-    return base + bonus;
+    // Power Strike: one heavy hit
+    int base = getAttackPower() * 2;
+    int variation = QRandomGenerator::global()->bounded(5, 16);
+    return base + variation;
 }

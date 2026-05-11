@@ -40,6 +40,7 @@ void PlayerProfile::reset()
     gold          = 0;
     dungeonRuns   = 0;
     inventory.clear();
+    completedLevels.clear();
     unlockedBuildings.clear();
     upgrades = StatUpgrades{};
 }
@@ -112,6 +113,11 @@ bool PlayerProfile::saveToFile(const QString &path) const
     ups["bonusSpPerAtk"] = upgrades.bonusSpPerAtk;
     root["upgrades"] = ups;
 
+    // Completed Levels
+    QJsonArray lvls;
+    for (int id : completedLevels) lvls.append(id);
+    root["completedLevels"] = lvls;
+
     QFile file(path);
     if (!file.open(QIODevice::WriteOnly)) return false;
     file.write(QJsonDocument(root).toJson());
@@ -148,6 +154,11 @@ bool PlayerProfile::loadFromFile(const QString &path)
     upgrades.bonusMaxHp    = ups["bonusMaxHp"].toInt(0);
     upgrades.bonusAttack   = ups["bonusAttack"].toInt(0);
     upgrades.bonusSpPerAtk = ups["bonusSpPerAtk"].toInt(0);
+
+    // Completed Lvls
+    completedLevels.clear();
+    for (const QJsonValue& v : root["completedLevels"].toArray())
+        completedLevels.insert(v.toInt());
 
     return true;
 }

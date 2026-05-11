@@ -13,8 +13,9 @@
 
 #include "goldhudwidget.h"
 #include "playercontroller.h"
+#include "overworldlogicmanager.h"
 #include "direction.h"
-
+#include "character.h"
 // forward declare so we dont have to include the whole header here
 class AudioManager;
 class PauseOverlayWidget;
@@ -53,10 +54,24 @@ struct SpriteSheet
 // ============================================================
 
 
-// helpers to get row/col from a direction (cleaner than casting everywhere)
-inline int walkRow(Direction d) { return static_cast<int>(d) + 1; }
-inline int idleCol(Direction d) { return static_cast<int>(d); }
+inline int sheetDirIndex(Direction d)
+{
+    switch (d) {
+    case Direction::Down:         return 0;
+    case Direction::DownRight:    return 1;
+    case Direction::Right:        return 2;
+    case Direction::ForwardRight: return 3;
+    case Direction::Up:           return 4;
+    case Direction::ForwardLeft:  return 5;
+    case Direction::Left:         return 6;
+    case Direction::DownLeft:     return 7;
+    }
 
+    return 0;
+}
+
+inline int walkRow(Direction d) { return sheetDirIndex(d) + 1; }
+inline int idleCol(Direction d) { return sheetDirIndex(d); }
 
 // ============================================================
 //  PlayerSprite
@@ -74,6 +89,7 @@ public:
 
 
     void updateAnimation(bool isMoving, Direction facingDir);
+    void refreshFrame();
 
 private:
     void setWalkAnim(Direction dir);
@@ -111,11 +127,13 @@ public:
 
     // updates the gold counter in the HUD
     void setGold(int gold);
+    void setPlayerCharacterType(CharacterType type);
 
 signals:
     void dungeonEntered();
     void houseEntered();
     void shopEntered();
+    void levelsEntered();
     void backToMenu();
     void saveRequested();
 
@@ -131,11 +149,13 @@ private slots:
 
 private:
     
-    PlayerController m_controller;
+    PlayerController m_controller; // kept for compatibility; movement rules now live in OverworldLogicManager
+    OverworldLogicManager m_logic;
     // --- setup ---
     void buildScene();       // creates all the tiles, trees, buildings etc.
     void buildPauseOverlay(); // creates the pause menu widget
     void placePlayer();      // puts player in the center of the map
+    void loadPlayerSheet(CharacterType type);
 
     // --- game loop ---
     void checkTriggers();    // checks if player walked into a zone
@@ -155,6 +175,8 @@ private:
     QGraphicsRectItem *m_dungeonZone       = nullptr;
     QGraphicsRectItem *m_houseCollider     = nullptr;
     QGraphicsRectItem *m_shopZone          = nullptr;
+    QGraphicsRectItem *m_shopCollider      = nullptr;
+    QGraphicsRectItem *m_level1Zone        = nullptr;
     QGraphicsRectItem *m_houseEntranceZone = nullptr;
     GoldHudWidget     *m_goldHud           = nullptr;
 
@@ -164,6 +186,7 @@ private:
 
     // --- assets ---
     SpriteSheet m_sheet;
+    CharacterType m_playerType = CharacterType::Archer;
 
     // --- other ---
     AudioManager *m_audio        = nullptr;

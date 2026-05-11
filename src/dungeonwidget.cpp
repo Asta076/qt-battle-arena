@@ -1,43 +1,87 @@
 #include "dungeonwidget.h"
+
+#include <algorithm>
+#include <cmath>
+
 #include <QVBoxLayout>
+#include <QHBoxLayout>
 #include <QResizeEvent>
 #include <QPainter>
 #include <QBrush>
 #include <QPen>
 #include <QFont>
-#include <QRandomGenerator>
+#include <QFrame>
+#include <QLabel>
 #include <QGraphicsEllipseItem>
 #include <QRadialGradient>
+#include <QRandomGenerator>
+#include <QDebug>
+#include <QPixmap>
+#include <QtGlobal>
+
 #include "audiomanager.h"
 #include "spritecache.h"
 #include "pauseoverlaywidget.h"
-#include "overworldwidget.h"  // to reuse Direction enum
+#include "overworldwidget.h"
 
 // ═════════════════════════════════════════════════════════════════════════════
-//  DungeonPlayerSprite — same pattern as OverworldWidget's PlayerSprite
+//  Player movement / attack sprite sheet helpers
 // ═════════════════════════════════════════════════════════════════════════════
 
-DungeonPlayerSprite::DungeonPlayerSprite(const DungeonSpriteSheet &sheet, 
-                                         QGraphicsItem *parent)
+static QString movementSheetFor(CharacterType type)
+{
+    switch (type) {
+    case CharacterType::Warrior:
+        return ":/sprites/warrior_movement_8dir_6frames.png";
+    case CharacterType::Mage:
+        return ":/sprites/mage_movement_8dir_6frames.png";
+    case CharacterType::Archer:
+        return ":/sprites/archer_movement_8dir_6frames.png";
+    }
+
+    return ":/sprites/archer_movement_8dir_6frames.png";
+}
+
+static QString attackSheetFor(CharacterType type)
+{
+    switch (type) {
+    case CharacterType::Warrior:
+        return ":/sprites/warrior_attack_8dir_7frames.png";
+    case CharacterType::Mage:
+        return ":/sprites/mage_attack_8dir_7frames.png";
+    case CharacterType::Archer:
+        return ":/sprites/archer_attack_8dir_7frames.png";
+    }
+
+    return ":/sprites/archer_attack_8dir_7frames.png";
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+//  DungeonPlayerSprite
+// ═════════════════════════════════════════════════════════════════════════════
+
+DungeonPlayerSprite::DungeonPlayerSprite(const DungeonSpriteSheet& sheet,
+                                         const DungeonAttackSheet& attackSheet,
+                                         QGraphicsItem* parent)
     : QGraphicsPixmapItem(parent)
     , m_sheet(sheet)
+    , m_attackSheet(attackSheet)
 {
     setTransformationMode(Qt::FastTransformation);
     setTransformOriginPoint(W / 2.0, H / 2.0);
-    
+
     setIdleFrame(Direction::Down);
-    
-    // Shadow under player
+
     const qreal shadowW = W * 0.65;
     const qreal shadowH = H * 0.30;
-    
+
     m_shadow = new QGraphicsEllipseItem(0, 0, shadowW, shadowH, this);
-    
+
     QRadialGradient grad(shadowW / 2.0, shadowH / 2.0, shadowW / 2.0);
     grad.setColorAt(0.0, QColor(0, 0, 0, 160));
     grad.setColorAt(0.6, QColor(0, 0, 0, 90));
     grad.setColorAt(1.0, QColor(0, 0, 0, 0));
-    
+
     m_shadow->setBrush(grad);
     m_shadow->setPen(Qt::NoPen);
     m_shadow->setPos((W - shadowW) / 2.0, H * 0.78);
@@ -46,28 +90,30 @@ DungeonPlayerSprite::DungeonPlayerSprite(const DungeonSpriteSheet &sheet,
 
 void DungeonPlayerSprite::setIdleFrame(Direction dir)
 {
-    m_isIdle     = true;
-    m_facing     = dir;
+    m_isIdle = true;
+    m_facing = dir;
     m_frameIndex = 0;
-    m_tickAccum  = 0;
+    m_tickAccum = 0;
     applyFrame();
 }
 
 void DungeonPlayerSprite::setWalkAnim(Direction dir)
 {
-    if (!m_isIdle && m_facing == dir) return;
-    
-    m_isIdle     = false;
-    m_facing     = dir;
+    if (!m_isIdle && m_facing == dir)
+        return;
+
+    m_isIdle = false;
+    m_facing = dir;
     m_frameIndex = 0;
-    m_tickAccum  = 0;
+    m_tickAccum = 0;
     applyFrame();
 }
 
 void DungeonPlayerSprite::applyFrame()
 {
-    int col, row;
-    
+    int col;
+    int row;
+
     if (m_isIdle) {
         row = 0;
         col = idleCol(m_facing);
@@ -75,8 +121,29 @@ void DungeonPlayerSprite::applyFrame()
         row = walkRow(m_facing);
         col = m_frameIndex;
     }
-    
+
     QPixmap raw = m_sheet.frame(col, row);
+
+    setPixmap(raw.scaled(
+        static_cast<int>(W),
+        static_cast<int>(H),
+        Qt::KeepAspectRatio,
+        Qt::FastTransformation
+    ));
+}
+
+void DungeonPlayerSprite::applyAttackFrame()
+{
+    if (m_attackSheet.pixmap.isNull()) {
+        applyFrame();
+        return;
+    }
+
+    const int row = walkRow(m_facing) - 1;
+    const int col = m_attackFrameIndex;
+
+    QPixmap raw = m_attackSheet.frame(col, row);
+
     setPixmap(raw.scaled(
         static_cast<int>(W),
         static_cast<int>(H),
@@ -87,131 +154,356 @@ void DungeonPlayerSprite::applyFrame()
 
 void DungeonPlayerSprite::updateAnimation(bool isMoving, Direction facingDir)
 {
+    if (m_isAttacking) {
+        ++m_attackTickAccum;
+
+        if (m_attackTickAccum >= ATTACK_TICKS_PER_FRAME) {
+            m_attackTickAccum = 0;
+            ++m_attackFrameIndex;
+
+            if (m_attackFrameIndex >= ATTACK_FRAMES) {
+                m_isAttacking = false;
+                m_attackFrameIndex = 0;
+                setIdleFrame(m_facing);
+                return;
+            }
+
+            applyAttackFrame();
+        }
+
+        return;
+    }
+
     if (isMoving) {
         setWalkAnim(facingDir);
         ++m_tickAccum;
+
         if (m_tickAccum >= TICKS_PER_FRAME) {
-            m_tickAccum  = 0;
+            m_tickAccum = 0;
             m_frameIndex = (m_frameIndex + 1) % WALK_FRAMES;
             applyFrame();
         }
     } else {
-        if (!m_isIdle) setIdleFrame(m_facing);
+        if (!m_isIdle)
+            setIdleFrame(m_facing);
     }
 }
 
-// ═════════════════════════════════════════════════════════════════════════════
-//  EnemySprite — now with proper sprites instead of colored rectangles
-// ═════════════════════════════════════════════════════════════════════════════
-
-static QPixmap getEnemySprite(CharacterType t)
+void DungeonPlayerSprite::refreshFrame()
 {
-    QString path;
-    switch (t) {
-    case CharacterType::Warrior: path = ":/sprites/warrior_front.png"; break;
-    case CharacterType::Mage:    path = ":/sprites/mage_front.png";    break;
-    case CharacterType::Archer:  path = ":/sprites/archer_front.png";  break;
-    }
-    return SpriteCache::instance().getScaled(path, 
-                                             static_cast<int>(EnemySprite::W), 
-                                             static_cast<int>(EnemySprite::H));
+    applyFrame();
 }
 
-EnemySprite::EnemySprite(CharacterType type, const QString &name, 
-                         QGraphicsItem *parent)
+void DungeonPlayerSprite::startAttackAnimation(Direction dir)
+{
+    if (m_attackSheet.pixmap.isNull())
+        return;
+
+    m_isAttacking = true;
+    m_isIdle = false;
+    m_facing = dir;
+
+    m_attackFrameIndex = 0;
+    m_attackTickAccum = 0;
+
+    applyAttackFrame();
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+//  Enemy monster sprite sheet helpers
+// ═════════════════════════════════════════════════════════════════════════════
+
+static QString enemyMovementSheetFor(CharacterType type)
+{
+    switch (type) {
+    case CharacterType::Warrior:
+        return ":/sprites/skeleton_guard_movement_8dir_6frames.png";
+    case CharacterType::Mage:
+        return ":/sprites/goblin_brute_movement_8dir_6frames.png";
+    case CharacterType::Archer:
+        return ":/sprites/goblin_movement_8dir_6frames.png";
+    }
+
+    return ":/sprites/goblin_movement_8dir_6frames.png";
+}
+
+static QString enemyAttackSheetFor(CharacterType type)
+{
+    switch (type) {
+    case CharacterType::Warrior:
+        return ":/sprites/skeleton_guard_attack_8dir_7frames.png";
+    case CharacterType::Mage:
+        return ":/sprites/goblin_brute_attack_8dir_7frames.png";
+    case CharacterType::Archer:
+        return ":/sprites/goblin_attack_8dir_7frames.png";
+    }
+
+    return ":/sprites/goblin_attack_8dir_7frames.png";
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+//  EnemySprite
+// ═════════════════════════════════════════════════════════════════════════════
+
+EnemySprite::EnemySprite(CharacterType type,
+                         const QString& name,
+                         QGraphicsItem* parent)
     : QGraphicsPixmapItem(parent)
     , m_type(type)
     , m_name(name)
 {
-    m_sprite = getEnemySprite(type);
-    setPixmap(m_sprite);
+    m_movementSheet = SpriteCache::instance().get(enemyMovementSheetFor(type));
+    m_attackSheet = SpriteCache::instance().get(enemyAttackSheetFor(type));
+
     setTransformationMode(Qt::FastTransformation);
-    
-    // Random starting velocity
-    auto *rng = QRandomGenerator::global();
-    m_vx = (rng->bounded(2) == 0 ? 1 : -1) * (1 + rng->bounded(2));
-    m_vy = (rng->bounded(2) == 0 ? 1 : -1) * (1 + rng->bounded(2));
-    
-    // Shadow under enemy
-    const qreal shadowW = W * 0.60;
+
+    m_facing = Direction::Down;
+    m_frameIndex = 0;
+    m_tickAccum = 0;
+    m_attackFrameIndex = 0;
+    m_attackTickAccum = 0;
+    m_isMoving = false;
+    m_isAttacking = false;
+
+    applyFrame();
+
+    const qreal shadowW = W * 0.70;
     const qreal shadowH = H * 0.25;
-    
+
     m_shadow = new QGraphicsEllipseItem(0, 0, shadowW, shadowH, this);
-    
+
     QRadialGradient grad(shadowW / 2.0, shadowH / 2.0, shadowW / 2.0);
     grad.setColorAt(0.0, QColor(0, 0, 0, 140));
     grad.setColorAt(0.6, QColor(0, 0, 0, 70));
     grad.setColorAt(1.0, QColor(0, 0, 0, 0));
-    
+
     m_shadow->setBrush(grad);
     m_shadow->setPen(Qt::NoPen);
     m_shadow->setPos((W - shadowW) / 2.0, H * 0.75);
     m_shadow->setZValue(-1);
-    
-    // Name label above enemy
+
     m_nameLabel = new QGraphicsTextItem(name, this);
     m_nameLabel->setDefaultTextColor(QColor("#ffcccc"));
     m_nameLabel->setFont(QFont("Arial", 6));
-    
-    // Center the label
+
     qreal labelW = m_nameLabel->boundingRect().width();
     m_nameLabel->setPos((W - labelW) / 2.0, -14);
     m_nameLabel->setZValue(1);
+
+    m_lastPos = pos();
 }
 
-void EnemySprite::patrol(const QRectF &worldBounds)
+QRectF EnemySprite::hitBox() const
 {
-    qreal nx = x() + m_vx;
-    qreal ny = y() + m_vy;
-    
-    // Bounce off edges
-    if (nx < worldBounds.left()       || nx > worldBounds.right()  - W) { 
-        m_vx = -m_vx; 
-        nx = x(); 
+    return sceneBoundingRect();
+}
+
+void EnemySprite::applyFrame()
+{
+    if (m_movementSheet.isNull())
+        return;
+
+    int row;
+    int col;
+
+    if (m_isMoving) {
+        row = walkRow(m_facing);
+        col = m_frameIndex;
+    } else {
+        row = 0;
+        col = idleCol(m_facing);
     }
-    if (ny < worldBounds.top() + 60   || ny > worldBounds.bottom() - H) { 
-        m_vy = -m_vy; 
-        ny = y(); 
+
+    QPixmap raw = m_movementSheet.copy(
+        col * FRAME_W,
+        row * FRAME_H,
+        FRAME_W,
+        FRAME_H
+    );
+
+    setPixmap(raw.scaled(
+        static_cast<int>(W),
+        static_cast<int>(H),
+        Qt::KeepAspectRatio,
+        Qt::FastTransformation
+    ));
+}
+
+void EnemySprite::applyAttackFrame()
+{
+    if (m_attackSheet.isNull()) {
+        applyFrame();
+        return;
     }
-    
-    setPos(nx, ny);
+
+    const int row = walkRow(m_facing) - 1;
+    const int col = m_attackFrameIndex;
+
+    QPixmap raw = m_attackSheet.copy(
+        col * FRAME_W,
+        row * FRAME_H,
+        FRAME_W,
+        FRAME_H
+    );
+
+    setPixmap(raw.scaled(
+        static_cast<int>(W),
+        static_cast<int>(H),
+        Qt::KeepAspectRatio,
+        Qt::FastTransformation
+    ));
+}
+
+void EnemySprite::setFacingFromMovement(const QPointF& oldPos,
+                                        const QPointF& newPos)
+{
+    qreal dx = newPos.x() - oldPos.x();
+    qreal dy = newPos.y() - oldPos.y();
+
+    if (qAbs(dx) < 0.01 && qAbs(dy) < 0.01)
+        return;
+
+    if (qAbs(dx) > qAbs(dy)) {
+        if (dx > 0)
+            m_facing = Direction::Right;
+        else
+            m_facing = Direction::Left;
+    } else {
+        if (dy > 0)
+            m_facing = Direction::Down;
+        else
+            m_facing = Direction::Up;
+    }
+}
+
+void EnemySprite::chasePlayer(const QRectF& playerBounds,
+                              const QRectF& worldBounds)
+{
+    QPointF oldPos = pos();
+
+    QPointF enemyCenter = sceneBoundingRect().center();
+    QPointF playerCenter = playerBounds.center();
+
+    QPointF delta = playerCenter - enemyCenter;
+
+    qreal length = std::sqrt(delta.x() * delta.x() + delta.y() * delta.y());
+
+    if (length < 4.0) {
+        m_isMoving = false;
+        return;
+    }
+
+    QPointF dir(delta.x() / length, delta.y() / length);
+
+    static constexpr qreal ENEMY_SPEED = 1.35;
+
+    QPointF nextPos = pos() + dir * ENEMY_SPEED;
+
+    qreal clampedX = std::clamp(
+        nextPos.x(),
+        worldBounds.left(),
+        worldBounds.right() - W
+    );
+
+    qreal clampedY = std::clamp(
+        nextPos.y(),
+        worldBounds.top(),
+        worldBounds.bottom() - H
+    );
+
+    QPointF newPos(clampedX, clampedY);
+
+    setFacingFromMovement(oldPos, newPos);
+
+    m_isMoving = true;
+    setPos(newPos);
+}
+
+void EnemySprite::startAttackAnimation(Direction dir)
+{
+    if (m_attackSheet.isNull())
+        return;
+
+    m_isAttacking = true;
+    m_isMoving = false;
+    m_facing = dir;
+
+    m_attackFrameIndex = 0;
+    m_attackTickAccum = 0;
+
+    applyAttackFrame();
 }
 
 void EnemySprite::updateAnimation()
 {
-    // Simple idle animation: subtle bob or frame cycle
-    ++m_tickAccum;
-    if (m_tickAccum >= 30) {  // slower than player walk
-        m_tickAccum = 0;
-        m_frameIndex = (m_frameIndex + 1) % 2;  // simple 2-frame idle
-        
-        // Optional: add slight vertical bob
-        qreal bob = (m_frameIndex == 0) ? 0.0 : 1.0;
-        setY(y() - bob);
+    if (m_isAttacking) {
+        ++m_attackTickAccum;
+
+        if (m_attackTickAccum >= ATTACK_TICKS_PER_FRAME) {
+            m_attackTickAccum = 0;
+            ++m_attackFrameIndex;
+
+            if (m_attackFrameIndex >= ATTACK_FRAMES) {
+                m_isAttacking = false;
+                m_attackFrameIndex = 0;
+                applyFrame();
+                return;
+            }
+
+            applyAttackFrame();
+        }
+
+        return;
     }
+
+    if (!m_isMoving) {
+        m_frameIndex = 0;
+        m_tickAccum = 0;
+        applyFrame();
+        return;
+    }
+
+    ++m_tickAccum;
+
+    if (m_tickAccum >= TICKS_PER_FRAME) {
+        m_tickAccum = 0;
+        m_frameIndex = (m_frameIndex + 1) % WALK_FRAMES;
+        applyFrame();
+    }
+
+    m_isMoving = false;
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
 //  DungeonWidget
 // ═════════════════════════════════════════════════════════════════════════════
 
-DungeonWidget::DungeonWidget(AudioManager *audio, QWidget *parent)
+DungeonWidget::DungeonWidget(AudioManager* audio, QWidget* parent)
     : QWidget(parent)
     , m_audio(audio)
 {
-    // Load player sprite sheet (reuse same one as overworld)
-    m_sheet.pixmap = SpriteCache::instance().get(":/sprites/player.png");
-    
-    auto *layout = new QVBoxLayout(this);
+    loadPlayerSheet(m_playerType);
+    loadAttackSheet(m_playerType);
+
+    auto* layout = new QVBoxLayout(this);
     layout->setContentsMargins(0, 0, 0, 0);
     layout->setSpacing(0);
 
     m_scene = new QGraphicsScene(0, 0, WORLD_W, WORLD_H, this);
+    m_combat.setScene(m_scene);
+
+    connect(&m_combat, &WorldCombatManager::playerDied, this, [this] {
+        deactivate();
+        updatePlayerHud();
+
+        emit dungeonGameOver(m_runManager.coinsEarned(),
+                             m_runManager.wavesSurvived());
+    });
 
     m_view = new QGraphicsView(m_scene, this);
     m_view->setFrameShape(QFrame::NoFrame);
     m_view->setAlignment(Qt::AlignLeft | Qt::AlignTop);
-    m_view->setViewportUpdateMode(QGraphicsView::FullViewportUpdate);
+    m_view->setViewportUpdateMode(QGraphicsView::BoundingRectViewportUpdate);
     m_view->setOptimizationFlag(QGraphicsView::DontAdjustForAntialiasing);
     m_view->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     m_view->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
@@ -219,16 +511,19 @@ DungeonWidget::DungeonWidget(AudioManager *audio, QWidget *parent)
     m_view->setFocusPolicy(Qt::NoFocus);
     layout->addWidget(m_view);
 
-    m_ticker.setInterval(16);  // ~60 fps
+    m_ticker.setInterval(16);
     connect(&m_ticker, &QTimer::timeout, this, &DungeonWidget::onTick);
 
     buildScene();
+
     setFocusPolicy(Qt::StrongFocus);
     m_view->setSceneRect(0, 0, WORLD_W, WORLD_H);
 
     m_pauseOverlay = new PauseOverlayWidget(false, this);
-    connect(m_pauseOverlay, &PauseOverlayWidget::resumeRequested, 
+
+    connect(m_pauseOverlay, &PauseOverlayWidget::resumeRequested,
             this, &DungeonWidget::togglePause);
+
     connect(m_pauseOverlay, &PauseOverlayWidget::menuRequested, this, [this] {
         m_paused = false;
         m_pauseOverlay->hide();
@@ -238,14 +533,30 @@ DungeonWidget::DungeonWidget(AudioManager *audio, QWidget *parent)
 
     m_goldHud = new GoldHudWidget(this);
     m_goldHud->raise();
+
+    buildPlayerHud();
+    updatePlayerHud();
 }
 
 void DungeonWidget::activate()
 {
-    if (m_audio) m_audio->playMusic("/music/battle.ogg");
+    if (m_audio)
+        m_audio->playMusic("/music/battle.ogg");
+
     m_heldKeys.clear();
+    m_combat.clearAttacks();
+    m_combat.resetSpecialMeter();
+
+    m_waveNumber = 1; // kept for old save/debug compatibility
+    m_runCoinsEarned = 0;
+    m_runManager.reset();
+
     placePlayer();
     spawnEnemies();
+
+    updatePlayerHud();
+    positionPlayerHud();
+
     m_ticker.start();
     setFocus();
 }
@@ -254,75 +565,81 @@ void DungeonWidget::deactivate()
 {
     m_ticker.stop();
     m_heldKeys.clear();
+    m_combat.clearAttacks();
 }
 
-void DungeonWidget::buildScene() {
-    // Dark stone floor
-    m_scene->setBackgroundBrush(QColor("#1a1a2e"));
+void DungeonWidget::loadPlayerSheet(CharacterType type)
+{
+    m_sheet.pixmap = SpriteCache::instance().get(movementSheetFor(type));
 
-    // Stone tile grid
-    const int tileW = 80, tileH = 60;
-    for (int col = 0; col < WORLD_W / tileW; ++col) {
-        for (int row = 0; row < WORLD_H / tileH; ++row) {
-            m_scene->addRect(col * tileW + 1, row * tileH + 1,
-                             tileW - 2, tileH - 2,
-                             QPen(QColor("#263238"), 1),
-                             QBrush(QColor("#263238")))->setZValue(0);
-        }
+    if (m_sheet.pixmap.isNull())
+        m_sheet.pixmap = SpriteCache::instance().get(":/sprites/player.png");
+}
+
+void DungeonWidget::loadAttackSheet(CharacterType type)
+{
+    m_attackSheet.pixmap = SpriteCache::instance().get(attackSheetFor(type));
+}
+
+void DungeonWidget::setPlayerCharacterType(CharacterType type)
+{
+    m_playerType = type;
+
+    loadPlayerSheet(type);
+    loadAttackSheet(type);
+
+    if (m_player)
+        m_player->refreshFrame();
+}
+
+void DungeonWidget::setPlayerCharacter(Character* player)
+{
+    m_combat.setPlayer(player);
+    updatePlayerHud();
+}
+
+void DungeonWidget::buildScene()
+{
+    m_scene->clear();
+    m_scene->setSceneRect(0, 0, WORLD_W, WORLD_H);
+    m_combat.setScene(m_scene);
+
+    QPixmap dungeonBg(":/backgrounds/dungeon_bg.png");
+
+    if (!dungeonBg.isNull()) {
+        QGraphicsPixmapItem* bgItem = m_scene->addPixmap(
+            dungeonBg.scaled(
+                WORLD_W,
+                WORLD_H,
+                Qt::IgnoreAspectRatio,
+                Qt::FastTransformation
+            )
+        );
+
+        bgItem->setPos(0, 0);
+        bgItem->setZValue(0);
+    } else {
+        m_scene->setBackgroundBrush(QColor("#1a1a2e"));
+        qWarning("Could not load dungeon background: :/backgrounds/dungeon_bg.png");
     }
 
-    // Wall pillars
-    const QList<QPointF> pillars = {
-        {160, 120}, {400, 120}, {620, 120},
-        {160, 340}, {400, 340}, {620, 340},
-        {80,  460}, {500, 460},
-    };
-    for (const QPointF &p : pillars) {
-        m_scene->addRect(p.x(), p.y(), 32, 48,
-                         QPen(QColor("#37474f"), 2),
-                         QBrush(QColor("#455a64")))->setZValue(1);
-    }
-
-    // Torches (glowing yellow dots)
-    const QList<QPointF> torches = {
-        {100, 80}, {440, 80}, {720, 80},
-        {100, 480},{440, 480},{720, 480},
-    };
-    for (const QPointF &t : torches) {
-        auto *glow = m_scene->addEllipse(t.x() - 8, t.y() - 8, 20, 20,
-                                         Qt::NoPen, QBrush(QColor("#ff6f0080")));
-        glow->setZValue(1);
-        m_scene->addEllipse(t.x() - 2, t.y() - 2, 8, 8,
-                            Qt::NoPen, QBrush(QColor("#ffca28")))->setZValue(2);
-    }
-
-    // Exit portal (bottom-center)
-    const qreal ew = 80, eh = 56;
+    const qreal ew = 80;
+    const qreal eh = 56;
     const qreal ex = (WORLD_W - ew) / 2.0;
     const qreal ey = WORLD_H - eh - 6;
 
-    m_scene->addRect(ex - 10, ey - 6, ew + 20, eh + 10,
-                     Qt::NoPen, QBrush(QColor("#1b5e20")))->setZValue(1);
+    m_exitArea = QRectF(ex, ey, ew, eh);
 
-    m_exitZone = m_scene->addRect(ex, ey, ew, eh,
-                                  Qt::NoPen, QBrush(QColor("#00c853")));
-    m_exitZone->setZValue(2);
+    // Invisible floor boundary.
+    // The player/enemies cannot walk outside this rectangle.
+    m_walkableArea = QRectF(
+        95,   // left
+        155,   // top
+        650,  // width
+        330   // height
+    );
 
-    auto *exitLabel = m_scene->addText("EXIT ↑", QFont("Arial", 8, QFont::Bold));
-    exitLabel->setDefaultTextColor(Qt::white);
-    exitLabel->setPos(ex + 12, ey + 18);
-    exitLabel->setZValue(3);
-
-    // HUD hint
-    auto *hint = m_scene->addText(
-        "Touch an enemy to fight!    ESC = menu",
-        QFont("Arial", 7));
-    hint->setDefaultTextColor(QColor("#ffffff88"));
-    hint->setPos(8, 4);
-    hint->setZValue(10);
-
-    // Player sprite
-    m_player = new DungeonPlayerSprite(m_sheet);
+    m_player = new DungeonPlayerSprite(m_sheet, m_attackSheet);
     m_scene->addItem(m_player);
     m_player->setZValue(9);
 }
@@ -338,43 +655,85 @@ void DungeonWidget::placePlayer()
     if (!m_player)
         return;
 
-    m_player->setPos((WORLD_W - DungeonPlayerSprite::W) / 2.0,
-                     WORLD_H - DungeonPlayerSprite::H - 90);
+    QRectF bounds = m_walkableArea.isValid()
+        ? m_walkableArea
+        : QRectF(0, 0, WORLD_W, WORLD_H);
+
+    m_player->setPos(
+        bounds.center().x() - DungeonPlayerSprite::W / 2.0,
+        bounds.bottom() - DungeonPlayerSprite::H - 20.0
+    );
+}
+
+void DungeonWidget::clearEnemies()
+{
+    for (EnemySprite* sprite : m_enemies) {
+        if (!sprite)
+            continue;
+
+        Enemy* enemy = m_enemyLogic.value(sprite, nullptr);
+
+        if (enemy) {
+            m_combat.unregisterEnemy(enemy);
+            delete enemy;
+        }
+
+        m_scene->removeItem(sprite);
+        delete sprite;
+    }
+
+    m_enemies.clear();
+    m_enemyLogic.clear();
+    m_combat.clearEnemies();
 }
 
 void DungeonWidget::spawnEnemies()
 {
-    for (EnemySprite* enemy : m_enemies) {
-        m_scene->removeItem(enemy);
-        delete enemy;
+    clearEnemies();
+
+    const QList<DungeonEnemySpawn> spawns = m_runManager.createWaveSpawns();
+
+    for (const DungeonEnemySpawn& spawn : spawns) {
+        EnemySprite* sprite = new EnemySprite(spawn.type, spawn.name);
+        sprite->setPos(spawn.position);
+        sprite->setZValue(8);
+
+        Enemy* enemy = new Enemy(
+            spawn.type,
+            spawn.name,
+            spawn.hp,
+            spawn.damage
+        );
+
+        m_scene->addItem(sprite);
+        m_enemies.append(sprite);
+
+        m_enemyLogic.insert(sprite, enemy);
+        m_combat.registerEnemy(enemy);
     }
-    m_enemies.clear();
+}
 
-    struct EnemyInfo {
-        CharacterType type;
-        QString name;
-        QPointF pos;
-    };
-
-    const QList<EnemyInfo> enemies = {
-        { CharacterType::Warrior, "Guard",  QPointF(120, 130) },
-        { CharacterType::Mage,    "Mage",   QPointF(380, 210) },
-        { CharacterType::Archer,  "Archer", QPointF(620, 150) }
-    };
-
-    for (const EnemyInfo& info : enemies) {
-        EnemySprite* enemy = new EnemySprite(info.type, info.name);
-        enemy->setPos(info.pos);
-        enemy->setZValue(8);
-        m_scene->addItem(enemy);
-        m_enemies.append(enemy);
-    }
+void DungeonWidget::startNextWave()
+{
+    m_runManager.advanceWave();
+    m_waveNumber = m_runManager.waveNumber();
+    spawnEnemies();
 }
 
 void DungeonWidget::keyPressEvent(QKeyEvent* e)
 {
     if (e->key() == Qt::Key_Escape) {
         togglePause();
+        return;
+    }
+
+    if (e->key() == Qt::Key_J && !e->isAutoRepeat()) {
+        handleClassAttack();
+        return;
+    }
+
+    if (e->key() == Qt::Key_K && !e->isAutoRepeat()) {
+        handleSpecialAbility();
         return;
     }
 
@@ -402,6 +761,8 @@ void DungeonWidget::resizeEvent(QResizeEvent* e)
 
     if (m_goldHud)
         m_goldHud->move(width() - m_goldHud->width() - 16, 16);
+
+    positionPlayerHud();
 }
 
 void DungeonWidget::onTick()
@@ -411,43 +772,65 @@ void DungeonWidget::onTick()
 
     movePlayer();
     patrolEnemies();
-    checkCollisions();
-    fitView();
-}
 
+    m_combat.update(0.016f);
+    checkAttackCollisions();
+
+    checkCollisions();
+
+    if (m_player && m_view)
+        m_view->centerOn(m_player);
+
+    updatePlayerHud();
+}
 void DungeonWidget::movePlayer()
 {
     if (!m_player)
         return;
 
-    m_controller.setSpeed(SPEED);
+    QPointF velocity = m_movement.velocityFromKeys(
+        m_heldKeys,
+        SPEED,
+        GameplayMovementManager::ControlScheme::WasdAndArrows
+    );
 
-    QPointF velocity = m_controller.computeVelocity(m_heldKeys);
-    QPointF nextPos = m_player->pos() + velocity;
+    QRectF bounds = m_walkableArea.isValid()
+        ? m_walkableArea
+        : QRectF(0, 0, WORLD_W, WORLD_H);
 
-    nextPos = m_controller.clampToWorld(
-        nextPos,
+    QPointF nextPos = m_movement.resolveMovement(
+        m_player->pos(),
+        velocity,
         DungeonPlayerSprite::W,
         DungeonPlayerSprite::H,
-        WORLD_W,
-        WORLD_H
+        bounds
     );
 
     m_player->setPos(nextPos);
 
-    bool moving = m_controller.isMoving(m_heldKeys);
-    Direction dir = m_controller.computeDirection(m_heldKeys);
+    bool moving = velocity.x() != 0.0 || velocity.y() != 0.0;
+    Direction dir = m_movement.directionFromVelocity(velocity, m_facing);
+
     m_player->updateAnimation(moving, dir);
+
+    if (moving)
+        m_facing = dir;
 }
 
 void DungeonWidget::patrolEnemies()
 {
-    QRectF bounds(0, 0, WORLD_W, WORLD_H);
+    if (!m_player)
+        return;
 
-    for (EnemySprite* enemy : m_enemies) {
-        enemy->patrol(bounds);
-        enemy->updateAnimation();
-    }
+    QRectF worldBounds = m_walkableArea.isValid()
+        ? m_walkableArea
+        : QRectF(0, 0, WORLD_W, WORLD_H);
+
+    m_runManager.updateEnemyMovement(
+        m_enemies,
+        m_player->sceneBoundingRect(),
+        worldBounds
+    );
 }
 
 void DungeonWidget::checkCollisions()
@@ -455,17 +838,44 @@ void DungeonWidget::checkCollisions()
     if (!m_player)
         return;
 
-    if (m_exitZone && m_player->collidesWithItem(m_exitZone)) {
+    if (m_exitArea.isValid() &&
+        m_player->sceneBoundingRect().intersects(m_exitArea)) {
         deactivate();
         emit exitedDungeon();
         return;
     }
 
-    for (EnemySprite* enemy : m_enemies) {
-        if (m_player->collidesWithItem(enemy)) {
-            deactivate();
-            emit battleTriggered(enemy->enemyType(), enemy->enemyName());
-            return;
+    for (EnemySprite* sprite : m_enemies) {
+        if (!sprite)
+            continue;
+
+        Enemy* enemy = m_enemyLogic.value(sprite, nullptr);
+
+        if (!enemy || !enemy->isAlive())
+            continue;
+
+        QRectF playerHurtBox = m_player->sceneBoundingRect().adjusted(
+            28, 28,
+            -28, -12
+        );
+
+        QRectF enemyMeleeBox = sprite->hitBox().adjusted(
+            14, 14,
+            -14, -8
+        );
+
+        if (playerHurtBox.intersects(enemyMeleeBox) &&
+            m_combat.canEnemyAttack(enemy)) {
+
+            int damage = m_combat.enemyAttackDamage(enemy);
+            m_combat.damagePlayer(damage);
+            m_combat.startEnemyAttackCooldown(enemy);
+            sprite->startAttackAnimation(sprite->facingDirection());
+
+            if (m_audio)
+                m_audio->playSfx("/sfx/hit.wav");
+
+            updatePlayerHud();
         }
     }
 }
@@ -476,11 +886,7 @@ void DungeonWidget::fitView()
         return;
 
     m_view->resetTransform();
-
-    // Zoom in
     m_view->scale(2.0, 2.0);
-
-    // Camera follows player
     m_view->centerOn(m_player);
 }
 
@@ -500,4 +906,211 @@ void DungeonWidget::togglePause()
         m_pauseOverlay->hide();
         setFocus();
     }
+}
+
+void DungeonWidget::handleClassAttack()
+{
+    if (!m_player)
+        return;
+
+    QRectF playerBounds = m_player->sceneBoundingRect();
+
+    ActiveAttack* attack = m_combat.createPlayerAttack(playerBounds, m_facing);
+
+    if (attack) {
+        m_player->startAttackAnimation(m_facing);
+
+        if (m_audio)
+            m_audio->playSfx("/sfx/special.wav");
+    }
+}
+
+void DungeonWidget::handleSpecialAbility()
+{
+    if (!m_player)
+        return;
+
+    QRectF playerBounds = m_player->sceneBoundingRect();
+
+    const bool warriorWasActive = m_combat.warriorSpecialActive();
+
+    QList<ActiveAttack*> attacks = m_combat.createPlayerSpecial(playerBounds, m_facing);
+
+    const bool warriorChanged = warriorWasActive != m_combat.warriorSpecialActive();
+
+    if (!attacks.isEmpty() || warriorChanged) {
+        m_player->startAttackAnimation(m_facing);
+
+        if (m_audio)
+            m_audio->playSfx("/sfx/special.wav");
+    }
+
+    updatePlayerHud();
+}
+
+void DungeonWidget::checkAttackCollisions()
+{
+    const QList<ActiveAttack*>& attacks = m_combat.activeAttacks();
+
+    for (ActiveAttack* attack : attacks) {
+        if (!attack || attack->expired)
+            continue;
+
+        for (EnemySprite* sprite : m_enemies) {
+            if (!sprite)
+                continue;
+
+            Enemy* enemy = m_enemyLogic.value(sprite, nullptr);
+
+            if (!enemy || !enemy->isAlive())
+                continue;
+
+            if (!attack->bounds.intersects(sprite->hitBox()))
+                continue;
+
+            if (attack->enemiesHit.contains(enemy))
+                continue;
+
+            attack->enemiesHit.insert(enemy);
+
+            m_combat.damageEnemy(enemy, attack->damage);
+
+            if (!attack->piercing)
+                m_combat.expireAttack(attack);
+
+            if (m_audio)
+                m_audio->playSfx("/sfx/hit.wav");
+
+            if (!attack->piercing)
+                break;
+        }
+    }
+
+    for (int i = m_enemies.size() - 1; i >= 0; --i) {
+        EnemySprite* sprite = m_enemies[i];
+
+        if (!sprite)
+            continue;
+
+        Enemy* enemy = m_enemyLogic.value(sprite, nullptr);
+
+        if (enemy && !enemy->isAlive()) {
+            m_combat.addSpecialFromKill();
+
+            Character* player = m_combat.player();
+            if (player && player->isAlive())
+                player->heal(m_runManager.healAmountForKill(*player));
+
+            const int gold = m_runManager.registerKillReward();
+            m_runCoinsEarned = m_runManager.coinsEarned();
+            emit goldEarned(gold);
+
+            if (m_audio)
+                m_audio->playSfx("/sfx/faint.wav");
+
+            m_combat.unregisterEnemy(enemy);
+            m_enemyLogic.remove(sprite);
+            m_enemies.removeAt(i);
+
+            m_scene->removeItem(sprite);
+
+            delete sprite;
+            delete enemy;
+
+            updatePlayerHud();
+        }
+    }
+
+    if (m_enemies.isEmpty())
+        startNextWave();
+}
+
+void DungeonWidget::buildPlayerHud()
+{
+    if (m_playerHud)
+        return;
+
+    m_playerHud = new QWidget(this);
+    m_playerHud->setFixedSize(250, 78);
+    m_playerHud->setAttribute(Qt::WA_StyledBackground, true);
+    m_playerHud->setStyleSheet(
+        "QWidget {"
+        " background-color: rgba(13, 13, 26, 190);"
+        " border: 3px solid #F0E8D0;"
+        "}"
+        "QLabel {"
+        " background: transparent;"
+        " border: none;"
+        " color: #F0E8D0;"
+        " font-size: 8px;"
+        "}"
+    );
+
+    auto* root = new QVBoxLayout(m_playerHud);
+    root->setContentsMargins(10, 8, 10, 8);
+    root->setSpacing(6);
+
+    auto* healthRow = new QHBoxLayout;
+    healthRow->setSpacing(8);
+
+    m_healthLabel = new QLabel("HP", m_playerHud);
+    m_healthLabel->setFixedWidth(60);
+
+    m_healthBar = new HealthBarWidget(m_playerHud);
+    m_healthBar->setFixedSize(160, 18);
+
+    healthRow->addWidget(m_healthLabel);
+    healthRow->addWidget(m_healthBar);
+
+    auto* specialRow = new QHBoxLayout;
+    specialRow->setSpacing(8);
+
+    m_specialLabel = new QLabel("SPECIAL", m_playerHud);
+    m_specialLabel->setFixedWidth(60);
+
+    m_specialBar = new HealthBarWidget(m_playerHud);
+    m_specialBar->setFixedSize(160, 18);
+    m_specialBar->setFixedBarColor(QColor("#4A90D9"));
+
+    specialRow->addWidget(m_specialLabel);
+    specialRow->addWidget(m_specialBar);
+
+    root->addLayout(healthRow);
+    root->addLayout(specialRow);
+
+    positionPlayerHud();
+    m_playerHud->raise();
+    m_playerHud->show();
+}
+
+void DungeonWidget::updatePlayerHud()
+{
+    if (!m_healthBar || !m_specialBar)
+        return;
+
+    Character* player = m_combat.player();
+
+    if (!player) {
+        m_healthBar->setBarPercent(0.0f);
+        m_specialBar->setBarPercent(0.0f);
+        return;
+    }
+
+    m_healthBar->setBarPercent(player->getHealthPercent());
+    m_specialBar->setBarPercent(m_combat.specialMeter());
+}
+
+void DungeonWidget::positionPlayerHud()
+{
+    if (!m_playerHud)
+        return;
+
+    constexpr int margin = 16;
+
+    m_playerHud->move(
+        width() - m_playerHud->width() - margin,
+        height() - m_playerHud->height() - margin
+    );
+
+    m_playerHud->raise();
 }
