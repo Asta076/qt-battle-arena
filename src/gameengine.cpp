@@ -49,15 +49,25 @@ Character* GameEngine::createCharacter(CharacterType type, const QString& name)
 
 void GameEngine::spawnEnemy()
 {
-    const QStringList names = {
-        "Shadow Warrior", "Dark Mage", "Black Arrow",
-        "Iron Fist", "Void Caster", "Silent Hunter"
-    };
-    CharacterType type = static_cast<CharacterType>(
-        QRandomGenerator::global()->bounded(3));
-    QString name = names[QRandomGenerator::global()->bounded(names.size())];
-    delete m_enemy;
-    m_enemy = createCharacter(type, name);
+    if (m_hasNextEnemy) {
+        delete m_enemy;
+        m_enemy = createCharacter(m_nextEnemyType, m_nextEnemyName);
+        if (m_enemyBonusHp  > 0) m_enemy->applyBonusHealth(m_enemyBonusHp);
+        if (m_enemyBonusAtk > 0) m_enemy->applyBonusAttack(m_enemyBonusAtk);
+        m_hasNextEnemy  = false;
+        m_enemyBonusHp  = 0;
+        m_enemyBonusAtk = 0;
+    } else {
+        const QStringList names = {
+            "Shadow Warrior", "Dark Mage", "Black Arrow",
+            "Iron Fist", "Void Caster", "Silent Hunter"
+        };
+        CharacterType type = static_cast<CharacterType>(
+            QRandomGenerator::global()->bounded(3));
+        QString name = names[QRandomGenerator::global()->bounded(names.size())];
+        delete m_enemy;
+        m_enemy = createCharacter(type, name);
+    }
 }
 
 void GameEngine::resetRound()
@@ -482,4 +492,21 @@ void GameEngine::applyPlayerBonuses()
     m_player->applyBonusHealth   (m_bonusHp);
     m_player->applyBonusAttack   (m_bonusAttack);
     m_player->applyBonusSpPerAtk (m_bonusSpPerAtk);
+}
+void GameEngine::setNextEnemy(CharacterType type, const QString& name)
+{
+    m_nextEnemyType = type;
+    m_nextEnemyName = name;
+    m_hasNextEnemy  = true;
+}
+
+void GameEngine::setMaxRounds(int rounds)
+{
+    m_maxRounds = rounds;
+}
+
+void GameEngine::setEnemyBonuses(int bonusHp, int bonusAttack)
+{
+    m_enemyBonusHp  = bonusHp;
+    m_enemyBonusAtk = bonusAttack;
 }

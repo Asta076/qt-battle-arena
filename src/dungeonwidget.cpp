@@ -242,6 +242,7 @@ DungeonWidget::DungeonWidget(AudioManager *audio, QWidget *parent)
 
 void DungeonWidget::activate()
 {
+    m_defeatedCount = 0;
     if (m_audio) m_audio->playMusic("/music/battle.ogg");
     m_heldKeys.clear();
     placePlayer();
@@ -461,10 +462,19 @@ void DungeonWidget::checkCollisions()
         return;
     }
 
-    for (EnemySprite* enemy : m_enemies) {
-        if (m_player->collidesWithItem(enemy)) {
+    for (int i = 0; i < m_enemies.size(); ++i) {
+        EnemySprite* e = m_enemies[i];
+        if (m_player->collidesWithItem(e)) {
+            CharacterType type = e->enemyType();
+            QString       name = e->enemyName();
+
+            m_scene->removeItem(e);
+            delete e;
+            m_enemies.removeAt(i);
+            m_defeatedCount++;
+
             deactivate();
-            emit battleTriggered(enemy->enemyType(), enemy->enemyName());
+            emit battleTriggered(type, name);
             return;
         }
     }
@@ -499,5 +509,24 @@ void DungeonWidget::togglePause()
     } else {
         m_pauseOverlay->hide();
         setFocus();
+    }
+}
+
+void DungeonWidget::reactivate()
+{
+    m_heldKeys.clear();
+    placePlayer();   // put player back at start position
+    m_ticker.start();
+    setFocus();
+
+    // If all enemies defeated, show "path clear" overlay briefly
+    // then force exit after 2 seconds
+    if (m_enemies.isEmpty()) {
+        // Could show a label here — for now just emit exitedDungeon
+        // after a short delay so the player sees the empty dungeon
+        QTimer::singleShot(1500, this, [this]{
+            deactivate();
+            emit exitedDungeon();
+        });
     }
 }
