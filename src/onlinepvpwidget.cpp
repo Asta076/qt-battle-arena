@@ -343,7 +343,7 @@ void OnlinePvpWidget::updateHud()
             .arg(static_cast<int>(m_remoteChar->getHealthPercent() * m_remoteChar->getMaxHealth()))
             .arg(m_remoteChar->getMaxHealth()));
     m_remoteHpBar->animateTo(m_remoteChar->getHealthPercent());
-
+    m_localHpBar->animateTo(m_localChar->getHealthPercent());
     m_scoreLabel->setText(
         QString("%1 — %2").arg(m_localScore).arg(m_remoteScore));
 }
@@ -388,12 +388,14 @@ void OnlinePvpWidget::onTick()
         // Process pending attacks
         if (m_localAttackPending)  { handleAttack(true);   m_localAttackPending  = false; }
         if (m_localSpecialPending) { handleSpecial(true);  m_localSpecialPending = false; }
-        if (m_remoteAttackPending) { handleAttack(false);  m_remoteAttackPending  = false; }
-        if (m_remoteSpecialPending){ handleSpecial(false); m_remoteSpecialPending = false; }
+
 
         // Remote attack flags from input message
         if (m_remoteKeyMask & KEY_ATTACK)  m_remoteAttackPending  = true;
         if (m_remoteKeyMask & KEY_SPECIAL) m_remoteSpecialPending = true;
+
+        if (m_remoteAttackPending) { handleAttack(false);  m_remoteAttackPending  = false; }
+        if (m_remoteSpecialPending){ handleSpecial(false); m_remoteSpecialPending = false; }
 
         checkCombat();
         updateHud();

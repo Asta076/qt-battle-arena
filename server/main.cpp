@@ -210,7 +210,7 @@ void Session::doRead() {
 void Session::handleMessage(const std::string& msg)
 {
     std::string type = jType(msg);
-    std::lock_guard<std::mutex> lock(m_server.m_mutex);
+    // std::lock_guard<std::mutex> lock(m_server.m_mutex);
 
     // ── JOIN ─────────────────────────────────────────────────────────────────
     if (type == "join") {
