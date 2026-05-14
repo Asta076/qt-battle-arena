@@ -81,7 +81,8 @@ static QSet<int> keysFromMask(uint32_t mask)
 OnlinePvpWidget::OnlinePvpWidget(AudioManager* audio, QWidget* parent)
     : QWidget(parent), m_audio(audio)
 {
-    /*auto* layout = new QVBoxLayout(this);
+    // Keep the view in a layout — this is the safe approach
+    auto* layout = new QVBoxLayout(this);
     layout->setContentsMargins(0, 0, 0, 0);
     layout->setSpacing(0);
 
@@ -94,17 +95,16 @@ OnlinePvpWidget::OnlinePvpWidget(AudioManager* audio, QWidget* parent)
     m_view->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     m_view->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     m_view->setFocusPolicy(Qt::NoFocus);
-    layout->addWidget(m_view);*/
-    m_view->setParent(this);
+    layout->addWidget(m_view);
 
-    m_ticker.setInterval(16);   // ~60fps
+    m_ticker.setInterval(16);
     connect(&m_ticker, &QTimer::timeout, this, &OnlinePvpWidget::onTick);
 
-    m_voteTimer.setInterval(1000);   // 1 second per tick
+    m_voteTimer.setInterval(1000);
     connect(&m_voteTimer, &QTimer::timeout, this, &OnlinePvpWidget::onVoteTimerTick);
 
     setFocusPolicy(Qt::StrongFocus);
-    buildHud();
+    buildHud();   // HUD floats on top as an overlay child
 }
 
 OnlinePvpWidget::~OnlinePvpWidget()
@@ -293,7 +293,6 @@ void OnlinePvpWidget::buildHud()
     row->addStretch();
     row->addWidget(m_remoteHpBar);
     row->addWidget(m_remoteHpLabel);
-    m_hudWidget->setGeometry(0, 0, 800, 60);
     m_hudWidget->raise();
 
     // Round over overlay label
@@ -719,19 +718,17 @@ void OnlinePvpWidget::resizeEvent(QResizeEvent* e)
 {
     QWidget::resizeEvent(e);
 
+    // HUD floats at top as overlay — same pattern as GoldHudWidget
     if (m_hudWidget)
         m_hudWidget->setGeometry(0, 0, width(), 60);
 
-    QTimer::singleShot(0, this, [this]{ fitView(); });
+    if (m_hudWidget) m_hudWidget->raise();
 
-    fitView();
+    QTimer::singleShot(0, this, [this]{ fitView(); });
 }
 
 void OnlinePvpWidget::fitView()
 {
-    if (!m_view) return;
-    // Manually set the view geometry to sit below the HUD
-    m_view->setGeometry(0, 60, width(), height() - 60);
-    m_view->fitInView(0, 0, WORLD_W, WORLD_H, Qt::IgnoreAspectRatio);
+    if (m_view)
+        m_view->fitInView(0, 0, WORLD_W, WORLD_H, Qt::IgnoreAspectRatio);
 }
-
