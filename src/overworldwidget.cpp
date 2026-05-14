@@ -160,7 +160,7 @@ OverworldWidget::OverworldWidget(AudioManager *audio, QWidget *parent)
     m_view = new QGraphicsView(m_scene, this);
     m_view->setFrameShape(QFrame::NoFrame);
     m_view->setAlignment(Qt::AlignLeft | Qt::AlignTop);
-    m_view->setViewportUpdateMode(QGraphicsView::FullViewportUpdate);
+    m_view->setViewportUpdateMode(QGraphicsView::BoundingRectViewportUpdate);
     m_view->setOptimizationFlag(QGraphicsView::DontAdjustForAntialiasing);
     m_view->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     m_view->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
@@ -237,6 +237,8 @@ void OverworldWidget::deactivate()
 
 void OverworldWidget::buildScene()
 {
+    m_treeCollisionRects.clear();
+
     // --- grass background tiles ---
     QPixmap grassTile(":/sprites/grass.png");
 
@@ -265,8 +267,10 @@ void OverworldWidget::buildScene()
     QPixmap d1 = dirt1.scaled(TILE, TILE, Qt::IgnoreAspectRatio, Qt::FastTransformation);
     QPixmap d2 = dirt2.scaled(TILE, TILE, Qt::IgnoreAspectRatio, Qt::FastTransformation);
 
-    qreal pathX = WORLD_W * 0.38;
-    qreal pathW = WORLD_W * 0.24;
+    // Keep the path based on the original 800px layout.
+    // WORLD_W is wider now only to add extra grass on the right.
+    qreal pathX = BASE_WORLD_W * 0.38;
+    qreal pathW = BASE_WORLD_W * 0.24;
 
     for (int y = 0; y < WORLD_H; y += TILE) {
         for (int x = pathX; x < pathX + pathW; x += TILE) {
@@ -437,10 +441,36 @@ void OverworldWidget::buildScene()
         shadow->setBrush(grad);
         shadow->setZValue(2);
 
-        // tree sprite on top of the shadow
+        // Tree visual goes above the player so the player can appear behind it.
         auto *treeItem = m_scene->addPixmap(px);
         treeItem->setPos(p.x(), p.y());
-        treeItem->setZValue(3);
+        treeItem->setZValue(12);
+
+        // Collision is only the lower trunk/base area, not the whole tree.
+        // Store it as plain data instead of an invisible QGraphicsRectItem.
+        qreal colliderX;
+        qreal colliderY;
+        qreal colliderW;
+        qreal colliderH;
+
+        if (isRound) {
+            colliderX = p.x() + tw * 0.36;
+            colliderY = p.y() + th * 0.72;
+            colliderW = tw * 0.28;
+            colliderH = th * 0.16;
+        } else {
+            colliderX = p.x() + tw * 0.34;
+            colliderY = p.y() + th * 0.74;
+            colliderW = tw * 0.32;
+            colliderH = th * 0.15;
+        }
+
+        m_treeCollisionRects.append(QRectF(
+            colliderX,
+            colliderY,
+            colliderW,
+            colliderH
+        ));
     }
 
     // --- dungeon entrance ---
@@ -503,22 +533,70 @@ void OverworldWidget::buildScene()
     hint->setPos(8, WORLD_H - 20);
     hint->setZValue(10);
 
-    // ── LEVELS portal ────────────────────────────────────────────────────────
-    const qreal lw = 100, lh = 56;
-    const qreal lx = WORLD_W - lw - 40;
-    const qreal ly = 80;
+// ── LEVEL SELECTOR ─────────────────────────────────────────────────────
 
-    m_scene->addRect(lx - 10, ly - 6, lw + 20, lh + 10,
-                     Qt::NoPen, QBrush(QColor("#1a3a1a")))->setZValue(1);
 
-    m_level1Zone = m_scene->addRect(lx, ly, lw, lh,
-                                    Qt::NoPen, QBrush(QColor("#00e676")));
-    m_level1Zone->setZValue(2);
+static constexpr qreal LEVEL_W = 320.0;
+static constexpr qreal LEVEL_H = 320.0;
 
-    auto* llabel = m_scene->addText("► LEVELS", QFont("Arial", 8, QFont::Bold));
-    llabel->setDefaultTextColor(QColor("#a5d6a7"));
-    llabel->setPos(lx + 10, ly + 16);
-    llabel->setZValue(3);
+
+const qreal LEVEL_X = 735.0;
+const qreal LEVEL_Y = 5.0;
+
+
+const qreal levelShadowW = LEVEL_W * 0.58;
+const qreal levelShadowH = LEVEL_H * 0.20;
+const qreal levelShadowX = LEVEL_X + (LEVEL_W - levelShadowW) / 2.0;
+const qreal levelShadowY = LEVEL_Y + LEVEL_H * 0.66;
+
+auto* levelShadow = m_scene->addRect(
+    levelShadowX,
+    levelShadowY,
+    levelShadowW,
+    levelShadowH,
+    Qt::NoPen,
+    QBrush(QColor(0, 0, 0, 75))
+);
+levelShadow->setZValue(2);
+
+
+QPixmap levelSelectorPx(":/sprites/level_selector.png");
+
+if (!levelSelectorPx.isNull()) {
+    QGraphicsPixmapItem* levelSelectorItem = m_scene->addPixmap(
+        levelSelectorPx.scaled(
+            static_cast<int>(LEVEL_W),
+            static_cast<int>(LEVEL_H),
+            Qt::KeepAspectRatio,
+            Qt::FastTransformation
+        )
+    );
+
+    levelSelectorItem->setPos(LEVEL_X, LEVEL_Y);
+
+
+    levelSelectorItem->setZValue(12);
+} else {
+    qWarning("Could not load :/sprites/level_selector.png");
+}
+
+const qreal triggerInsetX = LEVEL_W * 0.28;
+const qreal triggerX      = LEVEL_X + triggerInsetX;
+const qreal triggerY      = LEVEL_Y + LEVEL_H * 0.54;
+const qreal triggerW      = LEVEL_W - triggerInsetX * 2.0;
+const qreal triggerH      = LEVEL_H * 0.20;
+
+m_level1Zone = m_scene->addRect(
+    triggerX,
+    triggerY,
+    triggerW,
+    triggerH,
+    Qt::NoPen,
+    Qt::NoBrush
+);
+
+m_level1Zone->setZValue(20);
+m_level1Zone->setVisible(false);
 
     // --- player sprite ---
     m_player = new PlayerSprite(m_sheet);
@@ -527,15 +605,18 @@ void OverworldWidget::buildScene()
     placePlayer();
 }
 
-// put the player in the center of the map
 void OverworldWidget::placePlayer()
 {
-    if (m_player) {
-        m_player->setPos(
-            (WORLD_W - PlayerSprite::W) / 2.0,
-            (WORLD_H - PlayerSprite::H) / 2.0
-        );
-    }
+    if (!m_player)
+        return;
+
+    const qreal pathX = BASE_WORLD_W * 0.38;
+    const qreal pathW = BASE_WORLD_W * 0.24;
+
+    const qreal spawnX = pathX + pathW / 2.0 - PlayerSprite::W / 2.0;
+    const qreal spawnY = WORLD_H / 2.0 - PlayerSprite::H / 2.0;
+
+    m_player->setPos(spawnX, spawnY);
 }
 
 
@@ -556,6 +637,8 @@ void OverworldWidget::onTick()
 
     if (m_shopCollider)
         solids.append(m_shopCollider->sceneBoundingRect());
+
+    solids += m_treeCollisionRects;
 
     OverworldLogicManager::MovementResult movement = m_logic.resolvePlayerMovement(
         m_player->pos(),
@@ -693,3 +776,5 @@ void OverworldWidget::setGold(int gold)
 {
     if (m_goldHud) m_goldHud->setGold(gold);
 }
+
+

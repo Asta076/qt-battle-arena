@@ -184,6 +184,7 @@ qt_add_resources(CS2-Battle-Arena "assets"
 
         resources/sprites/house.png
         resources/sprites/shop.png
+        resources/sprites/level_selector.png
         resources/sprites/tree_round.png
         resources/sprites/tree_pine.png
         resources/sprites/dungeon_entrance.png

@@ -8,7 +8,9 @@
 #include <QGraphicsRectItem>
 #include <QTimer>
 #include <QSet>
+#include <QList>
 #include <QPixmap>
+#include <QRectF>
 #include <QKeyEvent>
 
 #include "goldhudwidget.h"
@@ -165,8 +167,9 @@ private:
     void togglePause();      // shows/hides the pause overlay
 
     // world size in scene units
-    static constexpr qreal WORLD_W = 800;
-    static constexpr qreal WORLD_H = 600;
+    static constexpr qreal BASE_WORLD_W = 800;
+    static constexpr qreal WORLD_W      = 1088;
+    static constexpr qreal WORLD_H      = 600;
 
     // --- scene objects ---
     QGraphicsScene    *m_scene             = nullptr;
@@ -179,6 +182,10 @@ private:
     QGraphicsRectItem *m_level1Zone        = nullptr;
     QGraphicsRectItem *m_houseEntranceZone = nullptr;
     GoldHudWidget     *m_goldHud           = nullptr;
+
+    // Plain QRectF data is much cheaper than adding invisible QGraphicsRectItems
+    // for every tree. These are used only by movement collision.
+    QList<QRectF> m_treeCollisionRects;
 
     // --- game loop stuff ---
     QTimer    m_ticker;
@@ -193,3 +200,5 @@ private:
     PauseOverlayWidget* m_pauseOverlay = nullptr;
     bool          m_paused       = false;
 };
+
+
