@@ -81,7 +81,7 @@ static QSet<int> keysFromMask(uint32_t mask)
 OnlinePvpWidget::OnlinePvpWidget(AudioManager* audio, QWidget* parent)
     : QWidget(parent), m_audio(audio)
 {
-    auto* layout = new QVBoxLayout(this);
+    /*auto* layout = new QVBoxLayout(this);
     layout->setContentsMargins(0, 0, 0, 0);
     layout->setSpacing(0);
 
@@ -94,7 +94,8 @@ OnlinePvpWidget::OnlinePvpWidget(AudioManager* audio, QWidget* parent)
     m_view->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     m_view->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     m_view->setFocusPolicy(Qt::NoFocus);
-    layout->addWidget(m_view);
+    layout->addWidget(m_view);*/
+    m_view->setParent(this);
 
     m_ticker.setInterval(16);   // ~60fps
     connect(&m_ticker, &QTimer::timeout, this, &OnlinePvpWidget::onTick);
@@ -167,9 +168,12 @@ void OnlinePvpWidget::activate(CharacterType localChar, CharacterType remoteChar
 
     m_ticker.start();
     setFocus();
+    QTimer::singleShot(0, this, [this]{ fitView(); });
 
-    if (m_audio) m_audio->playMusic("/music/battle.ogg");
-}
+
+    QTimer::singleShot(100, this, [this]{
+        if (m_audio) m_audio->playMusic("/music/battle.ogg");
+    });}
 
 void OnlinePvpWidget::deactivate()
 {
@@ -210,7 +214,7 @@ void OnlinePvpWidget::buildScene(CharacterType localChar, CharacterType remoteCh
     m_remoteSprite->setZValue(9);
 
     // Mirror remote sprite so they face each other
-    m_remoteSprite->setTransform(QTransform().scale(-1, 1));
+    //m_remoteSprite->setTransform(QTransform().scale(-1, 1));
 
     m_scene->addItem(m_localSprite);
     m_scene->addItem(m_remoteSprite);
@@ -289,6 +293,8 @@ void OnlinePvpWidget::buildHud()
     row->addStretch();
     row->addWidget(m_remoteHpBar);
     row->addWidget(m_remoteHpLabel);
+    m_hudWidget->setGeometry(0, 0, 800, 60);
+    m_hudWidget->raise();
 
     // Round over overlay label
     m_roundOverlay = new QLabel("", this);
@@ -391,11 +397,12 @@ void OnlinePvpWidget::onTick()
 
 
         // Remote attack flags from input message
-        if (m_remoteKeyMask & KEY_ATTACK)  m_remoteAttackPending  = true;
-        if (m_remoteKeyMask & KEY_SPECIAL) m_remoteSpecialPending = true;
+        if (m_remoteKeyMask & KEY_ATTACK)  { handleAttack(false);  }
+        if (m_remoteKeyMask & KEY_SPECIAL) { handleSpecial(false); }
 
-        if (m_remoteAttackPending) { handleAttack(false);  m_remoteAttackPending  = false; }
-        if (m_remoteSpecialPending){ handleSpecial(false); m_remoteSpecialPending = false; }
+        // Clear attack bits from mask after processing — movement bits stay
+        m_remoteKeyMask &= ~KEY_ATTACK;
+        m_remoteKeyMask &= ~KEY_SPECIAL;
 
         checkCombat();
         updateHud();
@@ -715,12 +722,16 @@ void OnlinePvpWidget::resizeEvent(QResizeEvent* e)
     if (m_hudWidget)
         m_hudWidget->setGeometry(0, 0, width(), 60);
 
+    QTimer::singleShot(0, this, [this]{ fitView(); });
+
     fitView();
 }
 
 void OnlinePvpWidget::fitView()
 {
-    if (m_view)
-        m_view->fitInView(0, 0, WORLD_W, WORLD_H, Qt::IgnoreAspectRatio);
+    if (!m_view) return;
+    // Manually set the view geometry to sit below the HUD
+    m_view->setGeometry(0, 60, width(), height() - 60);
+    m_view->fitInView(0, 0, WORLD_W, WORLD_H, Qt::IgnoreAspectRatio);
 }
 
