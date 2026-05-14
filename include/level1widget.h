@@ -14,7 +14,6 @@
 #include "worldcombatmanager.h"
 #include "goldhudwidget.h"
 #include "healthbarwidget.h"
-#include "playercontroller.h"
 #include "gameplaymovementmanager.h"
 #include "dungeonrunmanager.h"
 #include "leveldef.h"

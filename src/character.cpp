@@ -30,7 +30,6 @@ QString Character::getName()          const { return m_name; }
 int     Character::getMaxHealth()     const { return m_maxHealth; }
 int     Character::getHealth()        const { return m_health; }
 int     Character::getAttackPower()   const { return m_attackPower; }
-int     Character::getCharacterCount()      { return s_characterCount; }
 
 float Character::getHealthPercent() const
 {
@@ -95,7 +94,5 @@ void Character::drainSp()
 {
     m_sp = std::max(0, m_sp - m_specialCost);
 }
-void Character::addSpFromAttack()
-{
-    addSp(m_spPerAttack);
-}
+
+

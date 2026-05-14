@@ -31,6 +31,12 @@ qt_add_executable(CS2-Battle-Arena
         include/projectile.h
         src/projectile.cpp
 
+        include/arrow.h
+        src/arrow.cpp
+
+        include/fireball.h
+        src/fireball.cpp
+
         include/playerprofile.h
         src/playerprofile.cpp
 
@@ -48,9 +54,6 @@ qt_add_executable(CS2-Battle-Arena
 
         include/gameplaymovementmanager.h
         src/gameplaymovementmanager.cpp
-
-        include/playercontroller.h
-        src/playercontroller.cpp
 
         include/overworldlogicmanager.h
         src/overworldlogicmanager.cpp

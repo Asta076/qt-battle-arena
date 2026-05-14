@@ -3,39 +3,15 @@
 #include <QObject>
 #include <QHash>
 #include <QList>
-#include <QRectF>
 #include <QPointF>
+#include <QRectF>
 #include <QGraphicsScene>
-#include <QGraphicsItem>
-#include <QSet>
 
 #include "character.h"
 #include "enemy.h"
 #include "direction.h"
 #include "gamecombatmanager.h"
-
-enum class AttackType {
-    Sword,
-    Arrow,
-    Fireball
-};
-
-struct ActiveAttack {
-    AttackType type;
-    QRectF bounds;
-    QPointF velocity;
-    int damage = 0;
-    float lifetime = 0.0f;
-    bool expired = false;
-
-    // If true, this attack keeps flying after hitting an enemy.
-    bool piercing = false;
-
-    // Prevents piercing attacks from damaging the same enemy every frame.
-    QSet<Enemy*> enemiesHit;
-
-    QGraphicsItem* visual = nullptr;
-};
+#include "projectile.h"
 
 class WorldCombatManager : public QObject
 {
@@ -118,14 +94,6 @@ private:
     static constexpr float ARCHER_SPECIAL_COST = 0.20f;
     static constexpr float WARRIOR_SPECIAL_DRAIN_PER_SECOND = 0.20f;
 
-    static constexpr int SWORD_DAMAGE = 25;
-    static constexpr int ARROW_DAMAGE = 18;
-    static constexpr int FIREBALL_DAMAGE = 30;
-
-    static constexpr int GIANT_ARROW_DAMAGE = 45;
-    static constexpr int MAGE_SPECIAL_FIREBALL_DAMAGE = 24;
-
-    QPointF directionVector(Direction facing) const;
     QRectF swordBounds(const QRectF& playerBounds, Direction facing) const;
 
     void updateCooldowns(float deltaTime);
@@ -134,22 +102,4 @@ private:
     void removeExpiredAttacks();
 
     int applyPlayerDamageModifiers(int baseDamage) const;
-
-    ActiveAttack* createArrowProjectile(const QRectF& playerBounds,
-                                        Direction facing,
-                                        qreal width,
-                                        qreal height,
-                                        qreal speed,
-                                        int damage,
-                                        float lifetime,
-                                        bool startCooldown,
-                                        bool piercing);
-
-    ActiveAttack* createFireballProjectile(const QRectF& playerBounds,
-                                           Direction facing,
-                                           qreal size,
-                                           qreal speed,
-                                           int damage,
-                                           float lifetime,
-                                           bool startCooldown);
 };

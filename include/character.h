@@ -26,7 +26,6 @@ public:
     bool    canUseSpecial()    const;   // sp >= m_specialCost
     void    addSp(int amount);          // called after basic attack
     void    drainSp();                  // called when special is used
-    void    addSpFromAttack();   // adds m_spPerAttack — called after basic attack
     void applyBonusSpPerAtk(int bonus);
 
     // ── Combat interface ──────────────────────────

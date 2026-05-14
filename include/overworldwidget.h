@@ -14,7 +14,6 @@
 #include <QKeyEvent>
 
 #include "goldhudwidget.h"
-#include "playercontroller.h"
 #include "overworldlogicmanager.h"
 #include "direction.h"
 #include "character.h"

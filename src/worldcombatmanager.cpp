@@ -4,11 +4,11 @@
 
 #include <QBrush>
 #include <QColor>
-#include <QGraphicsEllipseItem>
-#include <QGraphicsPixmapItem>
 #include <QGraphicsRectItem>
 #include <QPen>
-#include <QPixmap>
+
+#include "arrow.h"
+#include "fireball.h"
 
 WorldCombatManager::WorldCombatManager(QObject* parent)
     : QObject(parent)
@@ -94,18 +94,7 @@ void WorldCombatManager::updateAttacks(float deltaTime)
         if (!attack || attack->expired)
             continue;
 
-        attack->lifetime -= deltaTime;
-
-        if (attack->lifetime <= 0.0f) {
-            attack->expired = true;
-            continue;
-        }
-
-        QPointF movement = attack->velocity * deltaTime;
-        attack->bounds.translate(movement);
-
-        if (attack->visual)
-            attack->visual->moveBy(movement.x(), movement.y());
+        attack->update(deltaTime);
     }
 }
 
@@ -120,9 +109,7 @@ void WorldCombatManager::removeExpiredAttacks()
         if (attack->visual && m_scene)
             m_scene->removeItem(attack->visual);
 
-        delete attack->visual;
         delete attack;
-
         m_activeAttacks.removeAt(i);
     }
 }
@@ -136,7 +123,6 @@ void WorldCombatManager::clearAttacks()
         if (attack->visual && m_scene)
             m_scene->removeItem(attack->visual);
 
-        delete attack->visual;
         delete attack;
     }
 
@@ -228,6 +214,8 @@ QList<ActiveAttack*> WorldCombatManager::createPlayerSpecial(const QRectF& playe
 
         m_specialMeter = std::max(0.0f, m_specialMeter - MAGE_SPECIAL_COST);
 
+        const GameCombatManager::AttackConfig config = m_sharedCombat.fireballConfig(true);
+
         const QList<Direction> dirs = {
             Direction::Right,
             Direction::ForwardRight,
@@ -240,18 +228,18 @@ QList<ActiveAttack*> WorldCombatManager::createPlayerSpecial(const QRectF& playe
         };
 
         for (Direction dir : dirs) {
-            ActiveAttack* attack = createFireballProjectile(
+            auto* attack = new Fireball(
                 playerBounds,
                 dir,
-                40.0,
-                300.0,
-                MAGE_SPECIAL_FIREBALL_DAMAGE,
-                1.25f,
-                false
+                config.width,
+                config.speed,
+                config.damage,
+                config.lifetimeSeconds
             );
 
-            if (attack)
-                created.append(attack);
+            attack->attachToScene(m_scene, dir);
+            m_activeAttacks.append(attack);
+            created.append(attack);
         }
 
         return created;
@@ -263,20 +251,22 @@ QList<ActiveAttack*> WorldCombatManager::createPlayerSpecial(const QRectF& playe
 
         m_specialMeter = std::max(0.0f, m_specialMeter - ARCHER_SPECIAL_COST);
 
-        ActiveAttack* attack = createArrowProjectile(
+        const GameCombatManager::AttackConfig config = m_sharedCombat.arrowConfig(true);
+
+        auto* attack = new Arrow(
             playerBounds,
             facing,
-            180.0,
-            68.0,
-            420.0,
-            GIANT_ARROW_DAMAGE,
-            1.45f,
-            false,
-            true
+            config.width,
+            config.height,
+            config.speed,
+            config.damage,
+            config.lifetimeSeconds,
+            config.piercing
         );
 
-        if (attack)
-            created.append(attack);
+        attack->attachToScene(m_scene, facing);
+        m_activeAttacks.append(attack);
+        created.append(attack);
 
         return created;
     }
@@ -285,45 +275,10 @@ QList<ActiveAttack*> WorldCombatManager::createPlayerSpecial(const QRectF& playe
     return created;
 }
 
-QPointF WorldCombatManager::directionVector(Direction facing) const
-{
-    return m_sharedCombat.directionVector(facing);
-}
-
-static qreal projectileRotation(Direction facing)
-{
-    switch (facing) {
-    case Direction::Right:
-        return 0.0;
-
-    case Direction::ForwardRight:
-        return -45.0;
-
-    case Direction::Up:
-        return -90.0;
-
-    case Direction::ForwardLeft:
-        return -135.0;
-
-    case Direction::Left:
-        return 180.0;
-
-    case Direction::DownLeft:
-        return 135.0;
-
-    case Direction::Down:
-        return 90.0;
-
-    case Direction::DownRight:
-        return 45.0;
-    }
-
-    return 0.0;
-}
-
 QRectF WorldCombatManager::swordBounds(const QRectF& playerBounds, Direction facing) const
 {
-    const qreal size = 48.0;
+    const GameCombatManager::AttackConfig config = m_sharedCombat.swordConfig(false);
+    const qreal size = config.width;
 
     switch (facing) {
     case Direction::Left:
@@ -374,13 +329,16 @@ ActiveAttack* WorldCombatManager::createSwordSwing(const QRectF& playerBounds,
 
     m_playerSwordCooldown = PLAYER_SWORD_COOLDOWN;
 
-    ActiveAttack* attack = new ActiveAttack;
-    attack->type = AttackType::Sword;
-    attack->bounds = swordBounds(playerBounds, facing);
-    attack->velocity = QPointF(0.0, 0.0);
-    attack->damage = applyPlayerDamageModifiers(m_sharedCombat.swordConfig(false).damage);
-    attack->lifetime = 0.12f;
-    attack->piercing = false;
+    const GameCombatManager::AttackConfig config = m_sharedCombat.swordConfig(false);
+
+    auto* attack = new Projectile(
+        AttackType::Sword,
+        swordBounds(playerBounds, facing),
+        QPointF(0.0, 0.0),
+        applyPlayerDamageModifiers(config.damage),
+        config.lifetimeSeconds,
+        false
+    );
 
     if (m_scene) {
         QGraphicsRectItem* item = m_scene->addRect(
@@ -400,165 +358,49 @@ ActiveAttack* WorldCombatManager::createSwordSwing(const QRectF& playerBounds,
 ActiveAttack* WorldCombatManager::shootArrow(const QRectF& playerBounds,
                                              Direction facing)
 {
-    return createArrowProjectile(
+    if (!canPlayerShoot())
+        return nullptr;
+
+    m_playerShootCooldown = PLAYER_SHOOT_COOLDOWN;
+
+    const GameCombatManager::AttackConfig config = m_sharedCombat.arrowConfig(false);
+
+    auto* attack = new Arrow(
         playerBounds,
         facing,
-        48.0,
-        18.0,
-        360.0,
-        ARROW_DAMAGE,
-        1.2f,
-        true,
-        false
+        config.width,
+        config.height,
+        config.speed,
+        config.damage,
+        config.lifetimeSeconds,
+        config.piercing
     );
+
+    attack->attachToScene(m_scene, facing);
+    m_activeAttacks.append(attack);
+    return attack;
 }
 
 ActiveAttack* WorldCombatManager::shootFireball(const QRectF& playerBounds,
                                                 Direction facing)
 {
-    return createFireballProjectile(
+    if (!canPlayerShoot())
+        return nullptr;
+
+    m_playerShootCooldown = PLAYER_SHOOT_COOLDOWN;
+
+    const GameCombatManager::AttackConfig config = m_sharedCombat.fireballConfig(false);
+
+    auto* attack = new Fireball(
         playerBounds,
         facing,
-        40.0,
-        260.0,
-        FIREBALL_DAMAGE,
-        1.5f,
-        true
+        config.width,
+        config.speed,
+        config.damage,
+        config.lifetimeSeconds
     );
-}
 
-ActiveAttack* WorldCombatManager::createArrowProjectile(const QRectF& playerBounds,
-                                                        Direction facing,
-                                                        qreal width,
-                                                        qreal height,
-                                                        qreal speed,
-                                                        int damage,
-                                                        float lifetime,
-                                                        bool startCooldown,
-                                                        bool piercing)
-{
-    if (startCooldown) {
-        if (!canPlayerShoot())
-            return nullptr;
-
-        m_playerShootCooldown = PLAYER_SHOOT_COOLDOWN;
-    }
-
-    QPointF dir = directionVector(facing);
-    QPointF start = playerBounds.center();
-
-    ActiveAttack* attack = new ActiveAttack;
-    attack->type = AttackType::Arrow;
-    attack->bounds = QRectF(
-        start.x() - width / 2.0,
-        start.y() - height / 2.0,
-        width,
-        height
-    );
-    attack->velocity = dir * speed;
-    attack->damage = damage;
-    attack->lifetime = lifetime;
-    attack->piercing = piercing;
-
-    if (m_scene) {
-        QPixmap px(":/sprites/arrow.png");
-
-        if (!px.isNull()) {
-            QGraphicsPixmapItem* item = new QGraphicsPixmapItem(
-                px.scaled(
-                    static_cast<int>(width),
-                    static_cast<int>(height),
-                    Qt::KeepAspectRatio,
-                    Qt::FastTransformation
-                )
-            );
-
-            item->setTransformOriginPoint(item->boundingRect().center());
-            item->setRotation(projectileRotation(facing));
-            item->setPos(attack->bounds.topLeft());
-            item->setZValue(10);
-
-            m_scene->addItem(item);
-            attack->visual = item;
-        } else {
-            QGraphicsRectItem* item = m_scene->addRect(
-                attack->bounds,
-                QPen(QColor("#c8a15a")),
-                QBrush(QColor("#c8a15a"))
-            );
-
-            item->setZValue(10);
-            attack->visual = item;
-        }
-    }
-
-    m_activeAttacks.append(attack);
-    return attack;
-}
-
-ActiveAttack* WorldCombatManager::createFireballProjectile(const QRectF& playerBounds,
-                                                           Direction facing,
-                                                           qreal size,
-                                                           qreal speed,
-                                                           int damage,
-                                                           float lifetime,
-                                                           bool startCooldown)
-{
-    if (startCooldown) {
-        if (!canPlayerShoot())
-            return nullptr;
-
-        m_playerShootCooldown = PLAYER_SHOOT_COOLDOWN;
-    }
-
-    QPointF dir = directionVector(facing);
-    QPointF start = playerBounds.center();
-
-    ActiveAttack* attack = new ActiveAttack;
-    attack->type = AttackType::Fireball;
-    attack->bounds = QRectF(
-        start.x() - size / 2.0,
-        start.y() - size / 2.0,
-        size,
-        size
-    );
-    attack->velocity = dir * speed;
-    attack->damage = damage;
-    attack->lifetime = lifetime;
-    attack->piercing = false;
-
-    if (m_scene) {
-        QPixmap px(":/sprites/fireball.png");
-
-        if (!px.isNull()) {
-            QGraphicsPixmapItem* item = new QGraphicsPixmapItem(
-                px.scaled(
-                    static_cast<int>(size),
-                    static_cast<int>(size),
-                    Qt::KeepAspectRatio,
-                    Qt::FastTransformation
-                )
-            );
-
-            item->setTransformOriginPoint(item->boundingRect().center());
-            item->setRotation(projectileRotation(facing));
-            item->setPos(attack->bounds.topLeft());
-            item->setZValue(10);
-
-            m_scene->addItem(item);
-            attack->visual = item;
-        } else {
-            QGraphicsEllipseItem* item = m_scene->addEllipse(
-                attack->bounds,
-                QPen(QColor("#ff7043")),
-                QBrush(QColor("#ff7043"))
-            );
-
-            item->setZValue(10);
-            attack->visual = item;
-        }
-    }
-
+    attack->attachToScene(m_scene, facing);
     m_activeAttacks.append(attack);
     return attack;
 }
@@ -571,7 +413,7 @@ const QList<ActiveAttack*>& WorldCombatManager::activeAttacks() const
 void WorldCombatManager::expireAttack(ActiveAttack* attack)
 {
     if (attack)
-        attack->expired = true;
+        attack->expire();
 }
 
 int WorldCombatManager::enemyAttackDamage(Enemy* enemy) const
