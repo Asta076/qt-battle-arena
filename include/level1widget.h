@@ -110,7 +110,7 @@ private:
     QTimer           m_ticker;
     QSet<int>        m_heldKeys;
     Direction        m_facing    = Direction::Down;
-    PlayerController m_controller; // kept for compatibility; movement rules now live in GameplayMovementManager
+
     GameplayMovementManager m_movement;
     DungeonRunManager m_enemyMovement;
 

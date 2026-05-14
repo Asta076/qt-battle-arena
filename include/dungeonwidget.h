@@ -189,7 +189,7 @@ private slots:
     void onTick();
 
 private:
-    PlayerController m_controller; // kept for compatibility; movement rules now live in GameplayMovementManager
+
     GameplayMovementManager m_movement;
     DungeonRunManager m_runManager;
 

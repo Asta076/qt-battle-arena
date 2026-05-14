@@ -34,8 +34,6 @@ public:
     virtual int           attack()         const = 0;
     virtual int           specialAbility() const = 0;
     void          applyBonusAttack(int bonus);
-    // ── Static ────────────────────────────────────
-    static int getCharacterCount();
 
 protected:
     int getAttackPower() const;

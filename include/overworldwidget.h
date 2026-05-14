@@ -151,7 +151,7 @@ private slots:
 
 private:
     
-    PlayerController m_controller; // kept for compatibility; movement rules now live in OverworldLogicManager
+
     OverworldLogicManager m_logic;
     // --- setup ---
     void buildScene();       // creates all the tiles, trees, buildings etc.
